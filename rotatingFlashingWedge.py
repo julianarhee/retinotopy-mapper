@@ -14,16 +14,16 @@ import os
 import optparse
 
 parser = optparse.OptionParser()
-parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True)
-parser.add_option('--save-images', action="store_true", dest="save_images", default=False)
-parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz'], default='png')
-parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True)
-parser.add_option('--use-opencv', action="store_false", dest="use_pvapi")
-parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True)
-parser.add_option('--debug-window', action="store_false", dest="fullscreen")
-parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True)
-parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process")
+parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
+parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
+parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz'], default='png', help="out file format, png or npz [default: png]")
+parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
+parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
+parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
+parser.add_option('--debug-window', action="store_false", dest="fullscreen", help="don't display full screen, debug mode")
+parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
+parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 
 (options, args) = parser.parse_args()
 
@@ -138,9 +138,10 @@ if save_in_separate_process:
 else:
     disk_writer = threading.Thread(target=save_images_to_disk)
 
-disk_writer.daemon = True
+# disk_writer.daemon = True
 
 if save_images:
+    disk_writer.daemon = True
     disk_writer.start()
 
 
@@ -216,13 +217,12 @@ if acquire_images:
 
 if save_images:
     hang_time = time.time()
-    nag_time = 2.0
+    nag_time = 0.05
 
     sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
     sys.stdout.flush()
     waits = 0
-    while (not im_queue.empty()):
-        
+    while not im_queue.empty():
         now = time.time()
         if (now - hang_time) > nag_time:
             sys.stdout.write('.')
@@ -230,6 +230,7 @@ if save_images:
             hang_time = now
             waits += 1
 
+    print waits
     print("\n")
 
     if not im_queue.empty():
@@ -238,9 +239,11 @@ if save_images:
     disk_writer_alive = False
 
     if save_in_separate_process and disk_writer is not None:
+        print("Terminating disk writer...")
+        disk_writer.join()
         disk_writer.terminate()
-
-    disk_writer.join()
+    
+    # disk_writer.join()
     print('Disk writer terminated')
         
 
