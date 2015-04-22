@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 #rotate flashing wedge
-from psychopy import visual, event, core
+from psychopy import visual, event, core, monitors
 from pvapi import PvAPI, Camera
 import time
 from scipy.misc import imsave
@@ -13,6 +13,8 @@ import errno
 import os
 import optparse
 
+monitor_list = monitors.getAllMonitors()
+
 parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
@@ -24,7 +26,7 @@ parser.add_option('--fullscreen', action="store_true", dest="fullscreen", defaul
 parser.add_option('--debug-window', action="store_false", dest="fullscreen", help="don't display full screen, debug mode")
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
-
+parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
 (options, args) = parser.parse_args()
 
 acquire_images = options.acquire_images
@@ -33,6 +35,11 @@ output_path = options.output_path
 output_format = options.output_format
 save_in_separate_process = options.save_in_separate_process
 fullscreen = options.fullscreen
+whichMonitor = options.whichMonitor
+if not fullscreen:
+    winsize = [800, 600]
+else:
+    winsize = monitors.Monitor(whichMonitor).getSizePix()
 use_pvapi = options.use_pvapi
 
 if not acquire_images:
@@ -150,7 +157,7 @@ if save_images:
 # -------------------------------------------------------------
 
 globalClock = core.Clock()
-win = visual.Window(fullscr=fullscreen, size=[1680, 1050], units='deg', monitor='testMonitor')
+win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 sq_size = [15., 15.]
 #make two wedges (in opposite contrast) and alternate them for flashing
 wedge1 = visual.RadialStim(win, tex='sqrXsqr', color=1, size=sq_size,
