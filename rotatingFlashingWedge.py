@@ -9,58 +9,103 @@ import multiprocessing as mp
 import threading
 from Queue import Queue
 import sys
+import errno
+import os
+import optparse
 
+parser = optparse.OptionParser()
+parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True)
+parser.add_option('--save-images', action="store_true", dest="save_images", default=False)
+parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz'], default='png')
+parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True)
+parser.add_option('--use-opencv', action="store_false", dest="use_pvapi")
+parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True)
+parser.add_option('--debug-window', action="store_false", dest="fullscreen")
+parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True)
+parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process")
 
-acquire_images = True
-save_images = True
-save_as_png = True
-save_in_separate_process = False
-fullscreen = False
+(options, args) = parser.parse_args()
 
-pvapi_retries = 50
+acquire_images = options.acquire_images
+save_images = options.save_images
+output_path = options.output_path
+output_format = options.output_format
+save_in_separate_process = options.save_in_separate_process
+fullscreen = options.fullscreen
+use_pvapi = options.use_pvapi
+
+if not acquire_images:
+    save_images = False
+
+save_as_png = False
+save_as_npz = False
+if output_format == 'png':
+    save_as_png = True
+elif output_format == 'npz':
+    save_as_npz = True
+
+# Make the output path if it doesn't already exist
+try:
+    os.mkdir(output_path)
+except OSError, e:
+    if e.errno != errno.EEXIST:
+        raise e
+    pass
+
 
 
 # -------------------------------------------------------------
 # Camera Setup
 # -------------------------------------------------------------
 
-print('Finding camera...')
+camera = None
 
-# try PvAPI
-try:
-    camera_driver = PvAPI(libpath='./')
-    cameras = camera_driver.camera_list()
-    cam_info = cameras[0]
+if acquire_images:
 
-    # Let it have a few tries in case the camera is waking up
-    n = 0
-    while cam_info.UniqueId == 0L and n < pvapi_retries:
-        cameras = camera_driver.camera_list()
-        cam_info = cameras[0]
-        n += 1
-        time.sleep(0.1)
+    print('Searching for camera...')
 
-    if cameras[0].UniqueId == 0L:
-        raise Exception('No cameras found')
-    camera = Camera(camera_driver, cameras[0])
 
-    print("Bound to PvAPI camera (name: %s, uid: %s)" % (camera.name, camera.uid))
+    # try PvAPI
+    if use_pvapi:
 
-except Exception as e:
+        pvapi_retries = 50
 
-    print("Unable to find PvAPI camera")
-    print(e)
+        try:
+            camera_driver = PvAPI(libpath='./')
+            cameras = camera_driver.camera_list()
+            cam_info = cameras[0]
 
-    try:
-        import opencv_fallback
+            # Let it have a few tries in case the camera is waking up
+            n = 0
+            while cam_info.UniqueId == 0L and n < pvapi_retries:
+                cameras = camera_driver.camera_list()
+                cam_info = cameras[0]
+                n += 1
+                time.sleep(0.1)
 
-        camera = opencv_fallback.Camera(0)
+            if cameras[0].UniqueId == 0L:
+                raise Exception('No cameras found')
+            camera = Camera(camera_driver, cameras[0])
 
-        print("Bound to OpenCV fallback camera.")
-    except Exception as e2:
-        print("Could not load OpenCV fallback camera")
-        print e2
-        exit()
+            print("Bound to PvAPI camera (name: %s, uid: %s)" % (camera.name, camera.uid))
+
+        except Exception as e:
+
+            print("Unable to find PvAPI camera: %s" % e)
+
+
+    if camera is None:
+        try:
+            import opencv_fallback
+
+            camera = opencv_fallback.Camera(0)
+
+            print("Bound to OpenCV fallback camera.")
+        except Exception as e2:
+            print("Could not load OpenCV fallback camera")
+            print e2
+            exit()
 
 
 # -------------------------------------------------------------
@@ -81,9 +126,9 @@ def save_images_to_disk():
         if not im_queue.empty():
             im_array = im_queue.get()
             if save_as_png:
-                imsave('/tmp/frames/test%d.png' % n, im_array)
+                imsave('%s/test%d.png' % (output_path, n), im_array)
             else:
-                np.savez_compressed('/tmp/frames/test%d.npz' % n, im_array)
+                np.savez_compressed('%s/test%d.npz' % (output_path, n), im_array)
             n += 1
     print('Disk-saving thread inactive...')
 
@@ -136,7 +181,6 @@ while True:
     t = globalClock.getTime()
 
     if (nframes/4) % 2 == 0:
-    # if (t%flashPeriod) < (flashPeriod/2.0):# (NB more accurate to use number of frames)
         stim = wedge1
     else:
         stim = wedge2
@@ -165,39 +209,38 @@ while True:
 
 win.close()
 
-camera.capture_end()
-camera.close()
+if acquire_images:
+    camera.capture_end()
+    camera.close()
 
-hang_time = time.time()
-nag_time = 2.0
 
-sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
-sys.stdout.flush()
-waits = 0
-while (not im_queue.empty()):
-    
-    now = time.time()
-    if (now - hang_time) > nag_time:
-        sys.stdout.write('.')
-        sys.stdout.flush()
-        hang_time = now
-        waits += 1
+if save_images:
+    hang_time = time.time()
+    nag_time = 2.0
 
-print("\n")
+    sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
+    sys.stdout.flush()
+    waits = 0
+    while (not im_queue.empty()):
+        
+        now = time.time()
+        if (now - hang_time) > nag_time:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            hang_time = now
+            waits += 1
 
-if not im_queue.empty():
-    print("WARNING: not all images have been saved to disk!")
+    print("\n")
 
-disk_writer_alive = False
+    if not im_queue.empty():
+        print("WARNING: not all images have been saved to disk!")
 
-if save_in_separate_process and disk_writer is not None:
-    disk_writer.terminate()
+    disk_writer_alive = False
 
-disk_writer.join()
-print('Disk writer terminated')
-    
+    if save_in_separate_process and disk_writer is not None:
+        disk_writer.terminate()
 
-# if save_images:
-#     exit(0)  # pull the plug, otherwise it hangs (hacky)
-
+    disk_writer.join()
+    print('Disk writer terminated')
+        
 
