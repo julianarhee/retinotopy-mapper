@@ -23,6 +23,7 @@ Updated in July-September 2011 by Mikael Mannberg, Cranfield University, United 
 
 from ctypes import *
 import platform, sys
+import numpy as np
 
 class ResultValues():
     ePvErrSuccess       = 0        # No error
@@ -222,7 +223,7 @@ class Camera:
 
         im = self.frame.ImageBuffer[0:(self.frame.ImageBufferSize)]
         im_array = np.fromstring(im, dtype='uint16')
-        im_array.shape = (camera.height, camera.width)
+        im_array.shape = (self.height, self.width)
 
         return im_array
 
