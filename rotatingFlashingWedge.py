@@ -129,15 +129,17 @@ disk_writer_alive = True
 def save_images_to_disk():
     print('Disk-saving thread active...')
     n = 0
-    while disk_writer_alive: 
-        if not im_queue.empty():
-            im_array = im_queue.get()
-            if save_as_png:
-                imsave('%s/test%d.png' % (output_path, n), im_array)
-            else:
-                np.savez_compressed('%s/test%d.npz' % (output_path, n), im_array)
-            n += 1
+    im_array = im_queue.get()
+    while im_array is not None:
+        if save_as_png:
+            imsave('%s/test%d.png' % (output_path, n), im_array)
+        else:
+            np.savez_compressed('%s/test%d.npz' % (output_path, n), im_array)
+        n += 1
+        im_array = im_queue.get()
+
     print('Disk-saving thread inactive...')
+    disk_writer_alive = False
 
 
 if save_in_separate_process:
@@ -221,36 +223,25 @@ if acquire_images:
     camera.capture_end()
     camera.close()
 
+im_queue.put(None)
 
 if save_images:
     hang_time = time.time()
-    nag_time = 0.05
+    nag_time = 2.0
 
     sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
     sys.stdout.flush()
-    waits = 0
-    while not im_queue.empty():
-        now = time.time()
-        if (now - hang_time) > nag_time:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            hang_time = now
-            waits += 1
+    while disk_writer.is_alive():
+        sys.stdout.write('.')
+        sys.stdout.flush()
+        time.sleep(nag_time)
 
-    print waits
     print("\n")
 
     if not im_queue.empty():
         print("WARNING: not all images have been saved to disk!")
-
-    disk_writer_alive = False
-
-    if save_in_separate_process and disk_writer is not None:
-        print("Terminating disk writer...")
-        disk_writer.join()
-        disk_writer.terminate()
     
-    # disk_writer.join()
-    print('Disk writer terminated')
+    disk_writer.join()
+    print('Disk writer finished')
         
 
