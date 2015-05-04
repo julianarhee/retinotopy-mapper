@@ -197,9 +197,9 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # Try pre-loading all the textures w/ ImageStim to avoid delays during display loop:
-# imgList = sorted(glob.glob(os.path.join('imframes', '*.png')), key=natural_keys)
+imgList = sorted(glob.glob(os.path.join('imframes', '*.png')), key=natural_keys)
 # print('loading up...')
-# pictures = [visual.ImageStim(win, img) for img in imgList[0:500]]
+pictures = [visual.ImageStim(win, img) for img in imgList[0::2]]
 
 t=0
 
@@ -217,13 +217,13 @@ if acquire_images:
     camera.queue_frame()
 
 
-imframe = ("./imframes/"+fnames[nframes])
+# imframe = ("./imframes/"+fnames[nframes])
 # imframe = out[0]/128.
 # imframe = images[0]
 # imframe = imagetools.array2image(movie[0])
-stim = visual.ImageStim(win, image=imframe)
+# stim = visual.ImageStim(win, image=imframe)
 
-
+didit = 0
 while True:
     t = globalClock.getTime()
 
@@ -235,15 +235,22 @@ while True:
 
     # stim.ori = t * rotationRate * 360.0  # set new rotation
     # stim.setImage(imframe) # JYR: slightly helped w/ FR
-    # pictures[nframes].draw()
-    stim.draw()
-    win.flip()
+
+    if nframes % 2.0 == 0.:
+        print 0
+        pictures[nframes].draw()
+        win.flip()
+        didit = 1
+    # stim.draw()
+    # win.flip()
     
-    nframes += 1
-    # print nframes
+    if didit==1:
+        pictures.pop(0) # get rid of first item to reduce load
+        didit = 0
+
     # imframe = imagetools.array2image(movie[nframes])
-    imframe = ("./imframes/"+fnames[nframes])
-    stim.setImage(imframe)
+    # imframe = ("./imframes/"+fnames[nframes])
+    # stim.setImage(imframe)
 
     if acquire_images:
         im_array = camera.capture_wait()
@@ -261,6 +268,8 @@ while True:
     if event.getKeys(keyList=['escape', 'q']):
         break
 
+    nframes += 1
+    print len(pictures)
 
 win.close()
 
