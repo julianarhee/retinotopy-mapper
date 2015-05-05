@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 #rotate flashing wedge
-from psychopy import visual, event, core, monitors, logging
+from psychopy import visual, event, core, monitors, logging, tools
 from pvapi import PvAPI, Camera
 import time
 from scipy.misc import imsave
@@ -14,6 +14,26 @@ import os
 import optparse
 
 import pylab, math, serial, numpy
+
+import random
+import itertools
+
+def valid_duplicate_spacing(x, nconds):
+    for i, elem in enumerate(x):
+        if elem in x[i+1:i+nconds-1]:
+            return False
+    return True
+
+def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
+    sample_seq = []
+    sample_seq = [sample_seq + seq for i in range(nreps)] 
+    sample_seq = list(itertools.chain.from_iterable(sample_seq))    
+    # sample_seq = seq + seq        
+    random.shuffle(sample_seq)    
+    while not valid_duplicate_spacing(sample_seq, nconds):
+        random.shuffle(sample_seq)
+    return sample_seq
+
 
 monitor_list = monitors.getAllMonitors()
 
@@ -163,36 +183,35 @@ globalClock = core.Clock()
 #make a window
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
+# SET CONDITIONS:
+num_cond_reps = 6 # how many times to run each condition
+num_seq_reps = 2 # how many times to do the cycle of 1 condition
+conditionTypes = ['1', '2', '3', '4']
+condLabel = ['V-Left','V-Right','H-Down','H-Up']
+conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+
+
 #input parameters 
+cyc_per_sec = 0.1 # 
+screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
+screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
+total_length = max([screen_width_cm])
+fps = 60.
+total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
+frames_per_cycle = fps/cyc_per_sec
+distance = monitors.Monitor(whichMonitor).getDistance()
 
 #time parameters
-duration = 60*20; #how long to run the stim for (seconds)
-movementPeriod = 30; #how long it takes for a bar to move from startPoint to endPoint
+duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
 
-#bar parameters
-orientation = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
-barColor = 1 #1 for white, -1 for black, 0.5 for low contrast white, etc.
-
-#position parameters
-centerPoint = [0,0] #center of screen is [0,0] (degrees).
-startPoint = -45; #bar starts this far from centerPoint (in degrees)
-endPoint = 45; #bar moves to this far from centerPoint (in degrees)
-stimSize = (180,4) #First number is longer dimension no matter what the orientation is.
-
+# serial port / trigger info
 useSerialTrigger = 0 #0=run now, 1=wait for serial port trigger
-
-#serial port info
 ser = None
 if useSerialTrigger==1:
     ser = serial.Serial('/dev/tty.pci-serial1', 9600, timeout=1) 
     bytes = "1" 
     while bytes: #burn up any old bits that might be lying around in the serial buffer
         bytes = ser.read() 
-
-#create bar stim
-barTexture = numpy.ones([256,256,3])*barColor;
-barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=orientation)
-barStim.setAutoDraw(True)
 
 
 t=0
@@ -218,35 +237,105 @@ if useSerialTrigger==1:
         
 
 #run
-clock = core.Clock()
-while clock.getTime()<duration:
+getout = 0
+for condType in conditionMatrix:
+    print condType
+    print condLabel[int(condType)-1]
+    if condType == '1':
+        orientation = 1 # 1 = VERTICAL, 0 = horizontal
+        direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
 
-    t = globalClock.getTime()
+    elif condType == '2':
+        orientation = 1 # vertical
+        direction = 0 # start from RIGHT
 
-    posLinear = (clock.getTime() % movementPeriod) / movementPeriod * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
-    posX = posLinear*math.sin(orientation*math.pi/180)+centerPoint[0]
-    posY = posLinear*math.cos(orientation*math.pi/180)+centerPoint[1]
-    barStim.setPos([posX,posY])
-    win.flip()
+    elif condType == '3':
+        orientation = 0 # horizontal
+        direction = 0 # start from TOP
 
-    nframes += 1
+    elif condType == '4':
+        orientation = 0 # horizontal
+        direction = 1 # start from BOTTOM
 
-    if acquire_images:
-        im_array = camera.capture_wait()
-        camera.queue_frame()
+    #bar parameters
+    barColor = 1 # 1 for white, -1 for black, 0.5 for low contrast white, etc.
+    barWidth = 1 # bar width in degrees 
+    if orientation==1:
+        angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
+        longside = screen_height_cm
+        travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
+    else:
+        angle = 0
+        longside = screen_width_cm
+        travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
 
-        if save_images:
-            im_queue.put(im_array)
+    uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
+    total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
+    stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
 
-    if nframes % report_period == 0:
-        if last_t is not None:
-            print('avg frame rate: %f' % (report_period / (t - last_t)))
-        last_t = t
 
-    # Break out of the while loop if these keys are registered
-    if event.getKeys(keyList=['escape', 'q']):
-        break           
+    #position parameters
+    centerPoint = [0,0] #center of screen is [0,0] (degrees).
+    if direction==1: # START FROM NEG, go POS (start left-->right, or start bottom-->top)
+        startSign = -1
+    else:
+        startSign = 1
+    startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
+    # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
+    endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint)); 
+    # 1. bar moves to this far from centerPoint (in degrees)
+    # 2. bar starts & ends OFF the screen
 
+    #create bar stim
+    barTexture = numpy.ones([256,256,3])*barColor;
+    barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
+    barStim.setAutoDraw(False)
+
+
+    # DISPLAY LOOP
+    win.flip() # first clear everything
+    time.sleep(1.0) # wait a sec
+
+    clock = core.Clock()
+    # while clock.getTime()<duration:
+    frame_counter = 0
+    while frame_counter <= frames_per_cycle*num_seq_reps: 
+        t = globalClock.getTime()
+
+        posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
+        # print posLinear
+        posX = posLinear*math.sin(angle*math.pi/180)+centerPoint[0]
+        posY = posLinear*math.cos(angle*math.pi/180)+centerPoint[1]
+        barStim.setPos([posX,posY])
+        barStim.draw()
+        win.flip()
+
+        nframes += 1
+        frame_counter += 1
+
+        if acquire_images:
+            im_array = camera.capture_wait()
+            camera.queue_frame()
+
+            if save_images:
+                im_queue.put(im_array)
+
+        if nframes % report_period == 0:
+            if last_t is not None:
+                print('avg frame rate: %f' % (report_period / (t - last_t)))
+            last_t = t
+
+        # Break out of the while loop if these keys are registered
+        if event.getKeys(keyList=['escape', 'q']):
+            getout = 1
+            break  
+
+    print "TOTAL COND TIME: " + str(clock.getTime())
+    # Break out of the FOR loop if these keys are registered        
+    if getout==1:
+        break
+    else:
+        continue
 
 win.close() 
 
@@ -286,5 +375,5 @@ if save_images:
     
     # disk_writer.join()
     print('Disk writer terminated')
-        
+    
 
