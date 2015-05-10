@@ -17,6 +17,9 @@ import pylab, math, serial, numpy
 
 import random
 import itertools
+import cPickle as pkl
+
+from datetime import datetime
 
 def valid_duplicate_spacing(x, nconds):
     for i, elem in enumerate(x):
@@ -63,6 +66,8 @@ if not fullscreen:
 else:
     winsize = monitors.Monitor(whichMonitor).getSizePix()
 use_pvapi = options.use_pvapi
+
+print winsize
 
 if not acquire_images:
     save_images = False
@@ -184,18 +189,28 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 6 # how many times to run each condition
-num_seq_reps = 2 # how many times to do the cycle of 1 condition
+num_cond_reps = 8 # how many times to run each condition
+num_seq_reps = 1 # how many times to do the cycle of 1 condition
 conditionTypes = ['1', '2', '3', '4']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
-conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+# conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+conditionMatrix = []
+for i in conditionTypes:
+    conditionMatrix.append([np.tile(i, num_cond_reps)])
+# conditionMatirx = list(itertools.chain.from_iterable(conditionMatrix))
+conditionMatrix = list(itertools.chain(*conditionMatrix))
+conditionMatrix = list(itertools.chain(*conditionMatrix))
 
 
 #input parameters 
 cyc_per_sec = 0.1 # 
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
-total_length = max([screen_width_cm])
+total_length = max([screen_width_cm, screen_height_cm])
+print screen_width_cm
+print screen_height_cm
+print total_length
+
 fps = 60.
 total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps/cyc_per_sec
@@ -238,12 +253,25 @@ if useSerialTrigger==1:
 
 #run
 getout = 0
+tstamps = []
 for condType in conditionMatrix:
     print condType
     print condLabel[int(condType)-1]
+
+    try:
+        outdir = output_path
+        cond_path = outdir + '_' + condLabel[int(condType)-1]
+        os.mkdir(cond_path)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise e
+        pass
+    output_path = cond_path
+
     if condType == '1':
         orientation = 1 # 1 = VERTICAL, 0 = horizontal
         direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
+
 
     elif condType == '2':
         orientation = 1 # vertical
@@ -262,11 +290,11 @@ for condType in conditionMatrix:
     barWidth = 1 # bar width in degrees 
     if orientation==1:
         angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
-        longside = screen_height_cm
+        longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
         travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
     else:
         angle = 0
-        longside = screen_width_cm
+        longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
         travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
 
     uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
@@ -282,7 +310,9 @@ for condType in conditionMatrix:
         startSign = 1
     startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
     # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
-    endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint)); 
+    endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint))
+    dist = endPoint - startPoint
+    print dist
     # 1. bar moves to this far from centerPoint (in degrees)
     # 2. bar starts & ends OFF the screen
 
@@ -299,7 +329,10 @@ for condType in conditionMatrix:
     clock = core.Clock()
     # while clock.getTime()<duration:
     frame_counter = 0
-    while frame_counter <= frames_per_cycle*num_seq_reps: 
+    posLinear = startPoint
+    print posLinear
+    print endPoint
+    while endPoint - startPoint <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
 
         posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
@@ -309,9 +342,8 @@ for condType in conditionMatrix:
         barStim.setPos([posX,posY])
         barStim.draw()
         win.flip()
-
-        nframes += 1
-        frame_counter += 1
+        # dt = datetime.now()
+        tstamps.append(datetime.now())
 
         if acquire_images:
             im_array = camera.capture_wait()
@@ -324,6 +356,9 @@ for condType in conditionMatrix:
             if last_t is not None:
                 print('avg frame rate: %f' % (report_period / (t - last_t)))
             last_t = t
+
+        nframes += 1
+        frame_counter += 1
 
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
@@ -338,6 +373,9 @@ for condType in conditionMatrix:
         continue
 
 win.close() 
+pfile = open('timestamps.pkl', 'wb')
+pkl.dump(tstamps, pfile)
+pfile.close()
 
 
 if acquire_images:
