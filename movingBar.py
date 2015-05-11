@@ -52,7 +52,7 @@ parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz'], default='png', help="out file format, png or npz [default: png]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz', 'pkl'], default='png', help="out file format, png | npz | pkl [default: png]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -76,16 +76,22 @@ else:
 use_pvapi = options.use_pvapi
 
 print winsize
+print output_format
 
 if not acquire_images:
     save_images = False
 
 save_as_png = False
 save_as_npz = False
+save_as_dict = False
 if output_format == 'png':
     save_as_png = True
 elif output_format == 'npz':
     save_as_npz = True
+else:
+    save_as_dict = True
+
+print save_as_dict
 
 # Make the output path if it doesn't already exist
 try:
@@ -157,6 +163,8 @@ if acquire_images:
 # TODO:  fix this so that I can create new processes (image queue / disk-writer)
 # for each condition, since it's easier to read in data corresponding to condition X that way.
 
+fdict = dict()
+
 if save_in_separate_process:
     im_queue = mp.Queue()
 else:
@@ -164,24 +172,46 @@ else:
 
 disk_writer_alive = True
 
-def save_images_to_disk(output_path):
+
+def save_images_to_disk():
     print('Disk-saving thread active...')
     n = 0
     while disk_writer_alive: 
         if not im_queue.empty():
-            im_array = im_queue.get()
+
+            fdict = im_queue.get()
+            # print fdict.keys()
+            # fdict['im'] = im_array
+
             if save_as_png:
                 imsave('%s/test%d.png' % (output_path, n), im_array)
-            else:
+            elif save_as_npz:
                 np.savez_compressed('%s/test%d.npz' % (output_path, n), im_array)
+            else:
+                # print "Saving as dict..."
+
+                # Make the output path if it doesn't already exist
+                currpath = '%s/%s/' % (output_path, fdict['condName'])
+                try:
+                    os.mkdir(currpath)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise e
+                    pass
+
+                fname = '%s/%s/00%i_%i.pkl' % (output_path, fdict['condName'], int(fdict['condNum']), int(fdict['reltime']))
+
+                with open(fname, 'wb') as f:
+                    pkl.dump(fdict, f)
+
             n += 1
     print('Disk-saving thread inactive...')
 
 
 if save_in_separate_process:
-    disk_writer = mp.Process(target=save_images_to_disk, args=(output_path,))
+    disk_writer = mp.Process(target=save_images_to_disk)
 else:
-    disk_writer = threading.Thread(target=save_images_to_disk, args=(output_path,))
+    disk_writer = threading.Thread(target=save_images_to_disk)
 
 # disk_writer.daemon = True
 
@@ -264,11 +294,15 @@ if acquire_images:
         
 
 # RUN:
+# fdict = dict()
 getout = 0
 tstamps = []
 for condType in conditionMatrix:
     print condType
     print condLabel[int(condType)-1]
+
+    fdict['condNum'] = condType
+    fdict['condName'] = condLabel[int(condType)-1]
 
     # SAVE EACH CONDITION TO SEPARATE DIRECTORY, MAKE NEW PROCESS:
     # if save_images:
@@ -371,14 +405,24 @@ for condType in conditionMatrix:
         barStim.draw()
         win.flip()
         # dt = datetime.now()
-        tstamps.append(datetime.now())
+        # tstamps.append(datetime.now())
+
+        fdict['reltime'] = round(t*1000) #datetime.now().microsecond
+        fdict['frame'] = frame_counter
+        fdict['time'] = datetime.now()
 
         if acquire_images:
             im_array = camera.capture_wait()
+            fdict['im'] = im_array
             camera.queue_frame()
 
             if save_images:
-                im_queue.put(im_array)
+                if save_as_dict:
+                    "dict dict"
+                    im_queue.put(fdict)
+                else:
+                    im_queue.put(im_array)
+
 
         if nframes % report_period == 0:
             if last_t is not None:
