@@ -20,6 +20,13 @@ import itertools
 import cPickle as pkl
 
 from datetime import datetime
+import re
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split('(\d+)', text) ]
 
 def valid_duplicate_spacing(x, nconds):
     for i, elem in enumerate(x):
@@ -35,7 +42,8 @@ def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
     random.shuffle(sample_seq)    
     while not valid_duplicate_spacing(sample_seq, nconds):
         random.shuffle(sample_seq)
-    return sample_seq
+    return sample_seqgithub
+
 
 
 monitor_list = monitors.getAllMonitors()
@@ -146,6 +154,9 @@ if acquire_images:
 # Set up a thread to write stuff to disk
 # -------------------------------------------------------------
 
+# TODO:  fix this so that I can create new processes (image queue / disk-writer)
+# for each condition, since it's easier to read in data corresponding to condition X that way.
+
 if save_in_separate_process:
     im_queue = mp.Queue()
 else:
@@ -153,7 +164,7 @@ else:
 
 disk_writer_alive = True
 
-def save_images_to_disk():
+def save_images_to_disk(output_path):
     print('Disk-saving thread active...')
     n = 0
     while disk_writer_alive: 
@@ -168,9 +179,9 @@ def save_images_to_disk():
 
 
 if save_in_separate_process:
-    disk_writer = mp.Process(target=save_images_to_disk)
+    disk_writer = mp.Process(target=save_images_to_disk, args=(output_path,))
 else:
-    disk_writer = threading.Thread(target=save_images_to_disk)
+    disk_writer = threading.Thread(target=save_images_to_disk, args=(output_path,))
 
 # disk_writer.daemon = True
 
@@ -189,17 +200,18 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 8 # how many times to run each condition
+num_cond_reps = 2 # how many times to run each condition
 num_seq_reps = 1 # how many times to do the cycle of 1 condition
 conditionTypes = ['1', '2', '3', '4']
+# conditionTypes = ['1']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
 for i in conditionTypes:
     conditionMatrix.append([np.tile(i, num_cond_reps)])
-# conditionMatirx = list(itertools.chain.from_iterable(conditionMatrix))
 conditionMatrix = list(itertools.chain(*conditionMatrix))
-conditionMatrix = list(itertools.chain(*conditionMatrix))
+conditionMatrix = sorted(list(itertools.chain(*conditionMatrix)), key=natural_keys)
+print conditionMatrix
 
 
 #input parameters 
@@ -219,14 +231,14 @@ distance = monitors.Monitor(whichMonitor).getDistance()
 #time parameters
 duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
 
-# serial port / trigger info
-useSerialTrigger = 0 #0=run now, 1=wait for serial port trigger
-ser = None
-if useSerialTrigger==1:
-    ser = serial.Serial('/dev/tty.pci-serial1', 9600, timeout=1) 
-    bytes = "1" 
-    while bytes: #burn up any old bits that might be lying around in the serial buffer
-        bytes = ser.read() 
+# # serial port / trigger info
+# useSerialTrigger = 0 #0=run now, 1=wait for serial port trigger
+# ser = None
+# if useSerialTrigger==1:
+#     ser = serial.Serial('/dev/tty.pci-serial1', 9600, timeout=1) 
+#     bytes = "1" 
+#     while bytes: #burn up any old bits that might be lying around in the serial buffer
+#         bytes = ser.read() 
 
 
 t=0
@@ -244,30 +256,40 @@ if acquire_images:
     camera.queue_frame()
 
 
-#wait for serial
-if useSerialTrigger==1:
-    bytes = ""
-    while(bytes == ""):
-        bytes = ser.read(1)
+# #wait for serial
+# if useSerialTrigger==1:
+#     bytes = ""
+#     while(bytes == ""):
+#         bytes = ser.read(1)
         
 
-#run
+# RUN:
 getout = 0
 tstamps = []
 for condType in conditionMatrix:
     print condType
     print condLabel[int(condType)-1]
 
-    try:
-        outdir = output_path
-        cond_path = outdir + '_' + condLabel[int(condType)-1]
-        os.mkdir(cond_path)
-    except OSError, e:
-        if e.errno != errno.EEXIST:
-            raise e
-        pass
-    output_path = cond_path
+    # SAVE EACH CONDITION TO SEPARATE DIRECTORY, MAKE NEW PROCESS:
+    # if save_images:
+    #     currDir = output_path + '/' + condLabel[int(condType)-1]
+    #     print currDir
+    #     if not os.path.exists(currDir):
+    #         os.mkdir(currDir)
 
+    #         if save_in_separate_process:
+    #             disk_writer = mp.Process(target=save_images_to_disk, args=(currDir,))
+    #         else:
+    #             disk_writer = threading.Thread(target=save_images_to_disk, args=(currDir,))
+
+    #         # disk_writer.daemon = True
+
+    #         if save_images:
+    #             disk_writer.daemon = True
+    #             disk_writer.start()
+
+
+    # SPECIFICY CONDITION TYPES:
     if condType == '1':
         orientation = 1 # 1 = VERTICAL, 0 = horizontal
         direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
@@ -285,22 +307,27 @@ for condType in conditionMatrix:
         orientation = 0 # horizontal
         direction = 1 # start from BOTTOM
 
-    #bar parameters
+    # SPECIFY STIM PARAMETERS
     barColor = 1 # 1 for white, -1 for black, 0.5 for low contrast white, etc.
     barWidth = 1 # bar width in degrees 
     if orientation==1:
         angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
         longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
-        travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
+        # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
+        width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
+        travelDist = width_deg*0.5
     else:
         angle = 0
         longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
-        travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
+        # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
+        height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
+        travelDist = height_deg*0.5
 
-    uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
+    # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
     total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
     stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
-
+    # uStartPoint = travelDist + barWidth*0.5 
+    uStartPoint = travelDist
 
     #position parameters
     centerPoint = [0,0] #center of screen is [0,0] (degrees).
@@ -310,29 +337,30 @@ for condType in conditionMatrix:
         startSign = 1
     startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
     # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
+    # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
     endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint))
     dist = endPoint - startPoint
     print dist
     # 1. bar moves to this far from centerPoint (in degrees)
     # 2. bar starts & ends OFF the screen
 
-    #create bar stim
+    # CREATE THE STIMULUS:
     barTexture = numpy.ones([256,256,3])*barColor;
     barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
     barStim.setAutoDraw(False)
 
 
-    # DISPLAY LOOP
+    # DISPLAY LOOP:
     win.flip() # first clear everything
-    time.sleep(1.0) # wait a sec
+    # time.sleep(0.001) # wait a sec
 
     clock = core.Clock()
-    # while clock.getTime()<duration:
     frame_counter = 0
-    posLinear = startPoint
-    print posLinear
-    print endPoint
-    while endPoint - startPoint <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
+    # posLinear = startPoint
+    # print posLinear
+    # print endPoint
+
+    while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
 
         posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
@@ -373,9 +401,9 @@ for condType in conditionMatrix:
         continue
 
 win.close() 
-pfile = open('timestamps.pkl', 'wb')
-pkl.dump(tstamps, pfile)
-pfile.close()
+# pfile = open('/Volumes/MAC/data/timestamps.pkl', 'wb')
+# pkl.dump(tstamps, pfile)
+# pfile.close()
 
 
 if acquire_images:
