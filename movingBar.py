@@ -230,7 +230,7 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 2 # how many times to run each condition
+num_cond_reps = 16 # 8 how many times to run each condition
 num_seq_reps = 1 # how many times to do the cycle of 1 condition
 conditionTypes = ['1', '2', '3', '4']
 # conditionTypes = ['1']
@@ -303,6 +303,7 @@ for condType in conditionMatrix:
 
     fdict['condNum'] = condType
     fdict['condName'] = condLabel[int(condType)-1]
+    fdict['barWidth'] = barWidth
 
     # SAVE EACH CONDITION TO SEPARATE DIRECTORY, MAKE NEW PROCESS:
     # if save_images:
@@ -410,6 +411,8 @@ for condType in conditionMatrix:
         fdict['reltime'] = round(t*1000) #datetime.now().microsecond
         fdict['frame'] = frame_counter
         fdict['time'] = datetime.now()
+        fdict['stimPos'] = [posX,posY]
+        fdict['barWidth'] = barWidth
 
         if acquire_images:
             im_array = camera.capture_wait()
