@@ -1,5 +1,5 @@
-#!/usr/bin/env python2
-#rotate flashing wedge
+# #!/usr/bin/env python2
+# rotate flashing wedge
 from psychopy import visual, event, core, monitors, logging, tools
 from pvapi import PvAPI, Camera
 import time
@@ -21,8 +21,6 @@ import cPickle as pkl
 
 from datetime import datetime
 import re
-import StringIO
-import scipy.misc
 
 def atoi(text):
     return int(text) if text.isdigit() else text
@@ -48,13 +46,14 @@ def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
 
 
 
+fdict = dict() 
 monitor_list = monitors.getAllMonitors()
 
 parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz', 'pkl'], default='pkl', help="out file format, png | npz | pkl [default: png]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz','pkl'], default='png', help="out file format, png or npz [default: png]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -78,22 +77,21 @@ else:
 use_pvapi = options.use_pvapi
 
 print winsize
-print output_format
 
 if not acquire_images:
     save_images = False
 
 save_as_png = False
 save_as_npz = False
-save_as_dict = False
+save_as_pkl = False
 if output_format == 'png':
     save_as_png = True
 elif output_format == 'npz':
     save_as_npz = True
 else:
-    save_as_dict = True
+    save_as_pkl = True
 
-print save_as_dict
+print "FORMAT: ", output_format
 
 # Make the output path if it doesn't already exist
 try:
@@ -165,6 +163,8 @@ if acquire_images:
 # TODO:  fix this so that I can create new processes (image queue / disk-writer)
 # for each condition, since it's easier to read in data corresponding to condition X that way.
 
+FORMAT = '%Y%m%d%H%M%S%f'
+
 if save_in_separate_process:
     im_queue = mp.Queue()
 else:
@@ -172,86 +172,33 @@ else:
 
 disk_writer_alive = True
 
-# buff = StringIO.StringIO()
-# pickler = pkl.Pickler(buff, pkl.HIGHEST_PROTOCOL)
-# pickler.fast = 1
-
-def save_images_to_disk():
+def save_images_to_disk(output_path):
     print('Disk-saving thread active...')
     n = 0
-    # while disk_writer_alive: 
-    #     if not im_queue.empty():
+    # fdict = im_queue.get()
+    while disk_writer_alive: 
+        if not im_queue.empty():
+            fdict = im_queue.get()
+            im_array = fdict['im']
+            if save_as_png:
+                imsave('%s/test%d.png' % (output_path, n), im_array)
+            elif save_as_npz:
+                np.savez_compressed('%s/test%d.npz' % (output_path, n), im_array)
+            else:
+                # fname = '%s/%s/00%i_%i_%i_%i.pkl' % (output_path, fdict['condName'], int(fdict['condNum']), int(fdict['time']), int(fdict['frame']), int(n))
+                fname = '%s/%i_%i_%i.pkl' % (output_path, int(fdict['time']), int(fdict['frame']), int(n))
+                with open(fname, 'wb') as f:
+                    pkl.dump(fdict['im'], f)
+            n += 1
+            print 'DONE SAVING FRAME: ', fdict['frame'], n #fdict
 
-    #         currdict = im_queue.get()
-    #         currpath = '%s/%s/' % (output_path, currdict['condName'])
-
-    #         if save_as_png:
-    #             imsave('%s/test%d.png' % (output_path, n), currdict['im'])
-    #         elif save_as_npz:
-    #             np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
-    #         else:
-    #             # Make the output path if it doesn't already exist
-    #             currpath = '%s/%s/' % (output_path, currdict['condName'])
-    #             if not os.path.exists(currpath):
-    #                 os.mkdir(currpath)
-
-    #             # # Make the output path if it doesn't already exist
-    #             # currpath = '%s/%s/' % (output_path, fdict['condName'])
-    #             # try:
-    #             #     os.mkdir(currpath)
-    #             # except OSError, e:
-    #             #     if e.errno != errno.EEXIST:
-    #             #         raise e
-    #             #     pass
-
-    #             # fname = '%s/%s/00%i_%i.pkl' % (output_path, fdict['condName'], int(fdict['condNum']), int(fdict['reltime']))
-    #             fname = '%s/%s/00%i_%i_%i_%i.pkl' % (output_path, currdict['condName'], int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n))
-
-    #             with open(fname, 'wb') as f:
-    #                 pkl.dump(fdict['im'], f)
-
-    #         print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
-    #         n += 1
-
-    currdict = im_queue.get()
-    while currdict is not None:
-        if save_as_png:
-            # Make the output path if it doesn't already exist
-            currpath = '%s/%s/' % (output_path, currdict['condName'])
-            if not os.path.exists(currpath):
-                os.mkdir(currpath)
-
-            fname = '%s/%s/00%i_%i_%i_%i_%ideg_%s.png' % (output_path, currdict['condName'], int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['stimPos']))
-            img = scipy.misc.toimage(currdict['im'], high=65535, low=0, mode='I')
-            img.save(fname)
-            # imsave(fname, currdict['im'])
-            # imsave('%s/test%d.png' % (output_path, n), currdict['im'])
-        elif save_as_npz:
-            np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
-            # np.savez_compressed('%s/test%d.npz' % (output_path, n), fdict['im'])
-        else:
-            # Make the output path if it doesn't already exist
-            currpath = '%s/%s/' % (output_path, currdict['condName'])
-            if not os.path.exists(currpath):
-                os.mkdir(currpath)
-
-            fname = '%s/%s/00%i_%i_%i_%i.pkl' % (output_path, currdict['condName'], int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n))
-            with open(fname, 'wb') as f:
-                pkl.dump(currdict, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
-
-        print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
-        n += 1
-        currdict = im_queue.get()
-
-    disk_writer_alive = False
     print('Disk-saving thread inactive...')
-    # disk_writer_alive = False
 
 
 if save_in_separate_process:
-    disk_writer = mp.Process(target=save_images_to_disk)
+    disk_writer = mp.Process(target=save_images_to_disk, args=(output_path,))
 else:
-    disk_writer = threading.Thread(target=save_images_to_disk)
+    disk_writer = threading.Thread(target=save_images_to_disk, args=(output_path,))
 
 # disk_writer.daemon = True
 
@@ -270,7 +217,7 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 20 # 8 how many times to run each condition
+num_cond_reps = 2 # how many times to run each condition
 num_seq_reps = 1 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 conditionTypes = ['1']
@@ -340,6 +287,25 @@ for condType in conditionMatrix:
     print condType
     print condLabel[int(condType)-1]
 
+    # SAVE EACH CONDITION TO SEPARATE DIRECTORY, MAKE NEW PROCESS:
+    # if save_images:
+    #     currDir = output_path + '/' + condLabel[int(condType)-1]
+    #     print currDir
+    #     if not os.path.exists(currDir):
+    #         os.mkdir(currDir)
+
+    #         if save_in_separate_process:
+    #             disk_writer = mp.Process(target=save_images_to_disk, args=(currDir,))
+    #         else:
+    #             disk_writer = threading.Thread(target=save_images_to_disk, args=(currDir,))
+
+    #         # disk_writer.daemon = True
+
+    #         if save_images:
+    #             disk_writer.daemon = True
+    #             disk_writer.start()
+
+
     # SPECIFICY CONDITION TYPES:
     if condType == '1':
         orientation = 1 # 1 = VERTICAL, 0 = horizontal
@@ -361,8 +327,6 @@ for condType in conditionMatrix:
     # SPECIFY STIM PARAMETERS
     barColor = 1 # 1 for white, -1 for black, 0.5 for low contrast white, etc.
     barWidth = 1 # bar width in degrees 
-    # fdict['barWidth'] = barWidth
-
     if orientation==1:
         angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
         longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
@@ -412,8 +376,6 @@ for condType in conditionMatrix:
     # posLinear = startPoint
     # print posLinear
     # print endPoint
-    FORMAT = '%Y%m%d%H%M%S%f'
-    # datetime.now().strftime(FORMAT)
 
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
@@ -428,35 +390,17 @@ for condType in conditionMatrix:
         # dt = datetime.now()
         # tstamps.append(datetime.now())
 
-        # fdict['reltime'] = round(t*1000) #datetime.now().microsecond
-        # fdict['frame'] = frame_counter
-        # print 'frame #....', frame_counter
-        # fdict['time'] = datetime.now().strftime(FORMAT)
-        # fdict['stimPos'] = [posX,posY]
+        fdict['frame'] = frame_counter
+        fdict['time'] = datetime.now().strftime(FORMAT)
+        print 'F #....', frame_counter
 
         if acquire_images:
             im_array = camera.capture_wait()
             camera.queue_frame()
 
             if save_images:
-                fdict = dict()
                 fdict['im'] = im_array
-                fdict['barWidth'] = barWidth
-                fdict['condNum'] = condType
-                fdict['condName'] = condLabel[int(condType)-1]
-                fdict['frame'] = frame_counter
-                print 'frame #....', frame_counter
-                fdict['time'] = datetime.now().strftime(FORMAT)
-                fdict['stimPos'] = [posX,posY]
-
-
                 im_queue.put(fdict)
-                # if save_as_dict:
-                #     fdict['im'] = im_array
-                #     im_queue.put(fdict)
-                # else:
-                #     im_queue.put(im_array)
-
 
         if nframes % report_period == 0:
             if last_t is not None:
@@ -479,97 +423,44 @@ for condType in conditionMatrix:
         continue
 
 win.close() 
+# pfile = open('/Volumes/MAC/data/timestamps.pkl', 'wb')
+# pkl.dump(tstamps, pfile)
+# pfile.close()
+
 
 if acquire_images:
     camera.capture_end()
     camera.close()
 
-# fdict['im'] = None
-# fdict = None
-print "GOT HERE"
-im_queue.put(None)
-
-
-
-# if save_images:
-#     hang_time = time.time()
-#     nag_time = 0.05
-
-#     sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
-#     sys.stdout.flush()
-#     waits = 0
-#     while not im_queue.empty():
-#         now = time.time()
-#         if (now - hang_time) > nag_time:
-#             sys.stdout.write('.')
-#             sys.stdout.flush()
-#             hang_time = now
-#             waits += 1
-
-#     print waits
-#     print("\n")
-
-#     if not im_queue.empty():
-#         print("WARNING: not all images have been saved to disk!")
-
-#     disk_writer_alive = False
-
-#     if save_in_separate_process and disk_writer is not None:
-#         print("Terminating disk writer...")
-#         disk_writer.join()
-#         disk_writer.terminate()
-    
-#     # disk_writer.join()
-#     print('Disk writer terminated')
-
-
-
-
 
 if save_images:
     hang_time = time.time()
-    # nag_time = 0.05
-    nag_time = 2.0
+    nag_time = 0.05
 
     sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
     sys.stdout.flush()
-    # waits = 0
-    # while not im_queue.empty():
-    #     now = time.time()
-    #     if (now - hang_time) > nag_time:
-    #         sys.stdout.write('.')
-    #         sys.stdout.flush()
-    #         hang_time = now
-    #         waits += 1
+    waits = 0
+    while not im_queue.empty():
+        now = time.time()
+        if (now - hang_time) > nag_time:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            hang_time = now
+            waits += 1
 
-    # print waits
-
-    while disk_writer.is_alive():
-        sys.stdout.write('.')
-        sys.stdout.flush()
-        # disk_writer.pid(), disk_writer.exitcode()
-        time.sleep(nag_time)
-
+    print waits
     print("\n")
 
-    print 'disk_writer.isAlive()', disk_writer.is_alive()
     if not im_queue.empty():
-        print "NOT EMPTY"
-        print im_queue.get()
-        print "disk_writer_alive", disk_writer_alive
         print("WARNING: not all images have been saved to disk!")
-    else:
-        print "EMPTY QUEUE"
 
-    # disk_writer_alive = False
+    disk_writer_alive = False
 
-    # if save_in_separate_process and disk_writer is not None:
-    #     print("Terminating disk writer...")
-    #     disk_writer.join()
-    #     disk_writer.terminate()
-
-    # disk_writer.terminate()
-    disk_writer.join()
-    print('Disk writer terminated')
+    if save_in_separate_process and disk_writer is not None:
+        print("Terminating disk writer...")
+        disk_writer.join()
+        disk_writer.terminate()
     
-
+    # disk_writer.join()
+    print('Disk writer terminated')
+  
