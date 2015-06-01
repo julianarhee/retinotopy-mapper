@@ -429,13 +429,6 @@ for condType in conditionMatrix:
         posX = posLinear*math.sin(angle*math.pi/180)+centerPoint[0]
         posY = posLinear*math.cos(angle*math.pi/180)+centerPoint[1]
         barStim.setPos([posX,posY])
-        # if 8 < flash_count <= 16:
-        #     print 'black'
-        #     barStim.setColor(blackBar, 'rgb255')
-        #     flash_count = 0
-        # else:
-        #     # print 'white'
-        #     barStim.setColor(whiteBar, 'rgb255')
         barStim.draw()
         win.flip()
 
