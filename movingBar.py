@@ -162,9 +162,6 @@ if acquire_images:
 # Set up a thread to write stuff to disk
 # -------------------------------------------------------------
 
-# TODO:  fix this so that I can create new processes (image queue / disk-writer)
-# for each condition, since it's easier to read in data corresponding to condition X that way.
-
 if save_in_separate_process:
     im_queue = mp.Queue()
 else:
@@ -172,9 +169,6 @@ else:
 
 disk_writer_alive = True
 
-# buff = StringIO.StringIO()
-# pickler = pkl.Pickler(buff, pkl.HIGHEST_PROTOCOL)
-# pickler.fast = 1
 
 def save_images_to_disk():
     print('Disk-saving thread active...')
@@ -270,10 +264,10 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 20 # 8 how many times to run each condition
+num_cond_reps = 16 # 8 how many times to run each condition
 num_seq_reps = 1 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
-conditionTypes = ['1']
+conditionTypes = ['3']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -293,13 +287,25 @@ print screen_width_cm
 print screen_height_cm
 print total_length
 
+
+#time parameters
 fps = 60.
 total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 
-#time parameters
 duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
+
+#flashing parameters
+flashPeriod = 0.2 #amount of time it takes for a full cycle (on + off)
+dutyCycle = 0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+
+# SPECIFY STIM PARAMETERS
+barColor = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
+barWidth = 1 # bar width in degrees 
+
+blackBar = (0,0,0)
+whiteBar = (255,255,255)
 
 # # serial port / trigger info
 # useSerialTrigger = 0 #0=run now, 1=wait for serial port trigger
@@ -312,8 +318,9 @@ duration = total_time*num_seq_reps; #how long to run the same condition for (sec
 
 
 t=0
-nframes = 0
+nframes = 0.
 frame_accumulator = 0
+flash_count = 0
 last_t = None
 
 report_period = 60 # frames
@@ -335,7 +342,6 @@ if acquire_images:
 
 # RUN:
 getout = 0
-tstamps = []
 for condType in conditionMatrix:
     print condType
     print condLabel[int(condType)-1]
@@ -357,11 +363,6 @@ for condType in conditionMatrix:
     elif condType == '4':
         orientation = 0 # horizontal
         direction = 1 # start from BOTTOM
-
-    # SPECIFY STIM PARAMETERS
-    barColor = 1 # 1 for white, -1 for black, 0.5 for low contrast white, etc.
-    barWidth = 1 # bar width in degrees 
-    # fdict['barWidth'] = barWidth
 
     if orientation==1:
         angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
@@ -402,7 +403,6 @@ for condType in conditionMatrix:
     barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
     barStim.setAutoDraw(False)
 
-
     # DISPLAY LOOP:
     win.flip() # first clear everything
     # time.sleep(0.001) # wait a sec
@@ -413,26 +413,31 @@ for condType in conditionMatrix:
     # print posLinear
     # print endPoint
     FORMAT = '%Y%m%d%H%M%S%f'
-    # datetime.now().strftime(FORMAT)
 
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
+
+        if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
+            # barStim.setContrast(1)
+            barStim.setColor(whiteBar, 'rgb255')
+        else:
+            # barStim.setContrast(0)
+            barStim.setColor(blackBar, 'rgb255')
 
         posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
         # print posLinear
         posX = posLinear*math.sin(angle*math.pi/180)+centerPoint[0]
         posY = posLinear*math.cos(angle*math.pi/180)+centerPoint[1]
         barStim.setPos([posX,posY])
+        # if 8 < flash_count <= 16:
+        #     print 'black'
+        #     barStim.setColor(blackBar, 'rgb255')
+        #     flash_count = 0
+        # else:
+        #     # print 'white'
+        #     barStim.setColor(whiteBar, 'rgb255')
         barStim.draw()
         win.flip()
-        # dt = datetime.now()
-        # tstamps.append(datetime.now())
-
-        # fdict['reltime'] = round(t*1000) #datetime.now().microsecond
-        # fdict['frame'] = frame_counter
-        # print 'frame #....', frame_counter
-        # fdict['time'] = datetime.now().strftime(FORMAT)
-        # fdict['stimPos'] = [posX,posY]
 
         if acquire_images:
             im_array = camera.capture_wait()
@@ -445,7 +450,7 @@ for condType in conditionMatrix:
                 fdict['condNum'] = condType
                 fdict['condName'] = condLabel[int(condType)-1]
                 fdict['frame'] = frame_counter
-                print 'frame #....', frame_counter
+                # print 'frame #....', frame_counter
                 fdict['time'] = datetime.now().strftime(FORMAT)
                 fdict['stimPos'] = [posX,posY]
 
@@ -465,6 +470,7 @@ for condType in conditionMatrix:
 
         nframes += 1
         frame_counter += 1
+        flash_count += 1
 
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
