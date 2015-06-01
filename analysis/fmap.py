@@ -35,7 +35,6 @@ print len(files)
 
 print('copying files')
 
-
 for i, f in enumerate(files):
 
 	# if i > 20:
@@ -46,19 +45,14 @@ for i, f in enumerate(files):
 	im = imread(os.path.join(imdir, f)).astype('float')
 	# print im.shape
 	# im = im[30:-1, 50:310]
-	im = im[30:-1, 70:310]
+	# im = im[30:-1, 70:310]
 	
 	# im_reduced = block_reduce(im, reduce_factor)
-	im_reduced = im
-	stack[:,:,i] = im_reduced
+	stack[:,:,i] = im #im_reduced
 
-
-# flattened = series_stack.reshape(series_stack.shape[0]*series_stack.shape[1], series_stack.shape[2])
-# FFT = scipy.fftpack.fft(flattened, axis=1)
-# FFT2 = scipy.fftpack.fftshift(FFT) 
-# magnitudes = np.abs(FFT2)**2
-
-# logmagnitudes = scipy.log10(magnitudes)
+# meanim = np.mean(stack, axis=2)
+# plt.figure()
+# plt.imshow(meanim)
 
 freqs = fft.fftfreq(stack.shape[2], 1 / sampling_rate)
 binwidth = freqs[1] - freqs[0]
@@ -69,56 +63,80 @@ ft = fft.fft(fstack, axis=1)
 mag = np.abs(ft)
 phase = np.angle(ft)
 
-mag_map = np.empty(sample.shape)
-phase_map = np.empty(sample.shape)
+pm = [phase[x][target_bin] for x in range(phase.shape[0])]
+pm = np.array(pm)
+phase_map = pm.reshape(stack.shape[0], stack.shape[1])
 
-if binspread != 0:
-	mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
-	phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
-else:
-	mag_map[x, y] = 20*np.log10(mag[target_bin])
-	phase_map[x, y] = phase[target_bin]
+mm = [20*np.log10(mag[x][target_bin]) for x in range(mag.shape[0])]
+mm = np.array(mm)
+mag_map = mm.reshape(stack.shape[0], stack.shape[1])
 
-
-for x in range(sample.shape[0]):
-	for y in range(sample.shape[1]):
-
-		sig = stack[x, y, :]
-
-		sig = scipy.signal.detrend(sig)
-
-		ft = fft.fft(sig)
-		mag = abs(ft)
-		phase = np.angle(ft)
-
-
-		freqs = fft.fftfreq(len(sig), 1 / sampling_rate)
-		binwidth = freqs[1] - freqs[0]
-
-		target_bin = int(target_freq / binwidth)
-
-		# if x % int(sample.shape[0] / 4) == 0 or y % int(sample.shape[1] / 4) == 0:
-		# 	plt.subplot(2,1,1)
-		# 	plt.plot(freqs, mag, '*')
-		# 	plt.subplot(2,1,2)
-		# 	plt.plot(freqs, phase, '*')
-		# 	plt.show()
-
-		if binspread != 0:
-			mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
-			phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
-		else:
-			mag_map[x, y] = 20*np.log10(mag[target_bin])
-			phase_map[x, y] = phase[target_bin]
-
-
-# plt.subplot(2, 1, 1)
-# plt.imshow(mag_map)
-# plt.colorbar()
-# plt.subplot(2, 1, 2)
-plt.figure()
-fig = plt.imshow(phase_map)
+# plt.figure()
+plt.subplot(2,1,1)
+fig = plt.imshow(mag_map)
+fig.set_cmap("hot")
 plt.colorbar()
-plt.show() 
-# fig.set_cmap("spectral")
+fig.show()
+
+plt.subplot(2,1,2)
+figfig = plt.imshow(phase_map)
+figfig.set_cmap("spectral")
+plt.colorbar()
+figfig.show()
+
+
+# mag_map = np.empty(sample.shape)
+# phase_map = np.empty(sample.shape)
+
+# if binspread != 0:
+# 	mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
+# 	phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
+# else:
+# 	mag_map[x, y] = 20*np.log10(mag[target_bin])
+# 	phase_map[x, y] = phase[target_bin]
+
+
+
+
+# for x in range(sample.shape[0]):
+# 	for y in range(sample.shape[1]):
+
+# 		sig = stack[x, y, :]
+
+# 		sig = scipy.signal.detrend(sig)
+
+# 		ft = fft.fft(sig)
+# 		mag = abs(ft)
+# 		phase = np.angle(ft)
+
+
+# 		freqs = fft.fftfreq(len(sig), 1 / sampling_rate)
+# 		binwidth = freqs[1] - freqs[0]
+
+# 		target_bin = int(target_freq / binwidth)
+
+# 		# if x % int(sample.shape[0] / 4) == 0 or y % int(sample.shape[1] / 4) == 0:
+# 		# 	plt.subplot(2,1,1)
+# 		# 	plt.plot(freqs, mag, '*')
+# 		# 	plt.subplot(2,1,2)
+# 		# 	plt.plot(freqs, phase, '*')
+# 		# 	plt.show()
+
+# 		if binspread != 0:
+# 			mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
+# 			phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
+# 		else:
+# 			mag_map[x, y] = 20*np.log10(mag[target_bin])
+# 			phase_map[x, y] = phase[target_bin]
+
+
+# # plt.subplot(2, 1, 1)
+# # plt.imshow(mag_map)
+# # plt.colorbar()
+# # plt.subplot(2, 1, 2)
+# plt.figure()
+# fig = plt.imshow(phase_map)
+# plt.colorbar()
+# plt.show() 
+# # fig.set_cmap("spectral")
 

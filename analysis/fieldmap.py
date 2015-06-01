@@ -22,7 +22,8 @@ files = [f for f in files if os.path.splitext(f)[1] == '.png']
 # files = files[0:int(round(len(files)*0.5))]
 
 sample = imread(os.path.join(imdir, files[0]))
-sample = sample[30:-1, 50:310]
+# sample = sample[30:-1, 50:310]
+# sample = sample[:,70:300]
 print "FIRST", sample.dtype
 sample = block_reduce(sample, reduce_factor)
 
@@ -45,11 +46,12 @@ for i, f in enumerate(files):
 		print('%d images processed...' % i)
 	im = imread(os.path.join(imdir, f)).astype('float')
 	# print im.shape
-	im = im[30:-1, 50:310]
+	# im = im[30:-1, 50:310]
+	# im = im[:,70:300]
 	# print im.shape
-	im_reduced = block_reduce(im, reduce_factor)
+	# im_reduced = block_reduce(im, reduce_factor)
 	# im_reduced = im
-	stack[:,:,i] = im_reduced
+	stack[:,:,i] = im #im_reduced
 
 
 mag_map = np.empty(sample.shape)
@@ -87,13 +89,22 @@ for x in range(sample.shape[0]):
 			phase_map[x, y] = phase[target_bin]
 
 
-# plt.subplot(2, 1, 1)
-# plt.imshow(mag_map)
-# plt.colorbar()
-# plt.subplot(2, 1, 2)
-plt.figure()
-fig = plt.imshow(phase_map)
+plt.subplot(2, 1, 1)
+fig1 = plt.imshow(np.clip(mag_map, 0, mag_map.max()))
+fig1.set_cmap("hot")
+plt.colorbar()
+
+plt.subplot(2, 1, 2)
+# plt.figure()
+fig2 = plt.imshow(phase_map)
+fig2.set_cmap("spectral")
 plt.colorbar()
 plt.show() 
-# fig.set_cmap("spectral")
+
+
+figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+if not os.path.exists(figdir):
+	os.makedirs(figdir)
+imname = imdir + '.png'
+plt.savefig(figdir + imname)
 
