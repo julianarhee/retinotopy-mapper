@@ -216,7 +216,7 @@ def save_images_to_disk():
                 os.mkdir(currpath)
 
             fname = '%s/%s/00%i_%i_%i_%i_%ideg_%s.png' % (output_path, currdict['condName'], int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['stimPos']))
-            img = scipy.misc.toimage(currdict['im'], high=65535, low=0, mode='I')
+            img = scipy.misc.toimage(currdict['im'], high=65536, low=0, mode='I')
             img.save(fname)
             # imsave(fname, currdict['im'])
             # imsave('%s/test%d.png' % (output_path, n), currdict['im'])
@@ -233,7 +233,8 @@ def save_images_to_disk():
             with open(fname, 'wb') as f:
                 pkl.dump(currdict, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
 
-        print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
+        #if n % 100 == 0:
+        #print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
         n += 1
         currdict = im_queue.get()
 
@@ -264,10 +265,10 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 16 # 8 how many times to run each condition
-num_seq_reps = 1 # how many times to do the cycle of 1 condition
+num_cond_reps = 1 #20 # 8 how many times to run each condition
+num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
-conditionTypes = ['3']
+conditionTypes = ['4']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -297,8 +298,8 @@ distance = monitors.Monitor(whichMonitor).getDistance()
 duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
 
 #flashing parameters
-flashPeriod = 0.2 #amount of time it takes for a full cycle (on + off)
-dutyCycle = 0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+flashPeriod = 1. #0.2#0.2 #amount of time it takes for a full cycle (on + off)
+dutyCycle = 1. #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
 # SPECIFY STIM PARAMETERS
 barColor = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
@@ -342,70 +343,71 @@ if acquire_images:
 
 # RUN:
 getout = 0
+cyc = 1
 for condType in conditionMatrix:
-    print condType
-    print condLabel[int(condType)-1]
+        #print condType
+        #print condLabel[int(condType)-1]
 
-    # SPECIFICY CONDITION TYPES:
-    if condType == '1':
-        orientation = 1 # 1 = VERTICAL, 0 = horizontal
-        direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
+    if cyc == 1:
+        # SPECIFICY CONDITION TYPES:
+        if condType == '1':
+            orientation = 1 # 1 = VERTICAL, 0 = horizontal
+            direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
 
+        elif condType == '2':
+            orientation = 1 # vertical
+            direction = 0 # start from RIGHT
 
-    elif condType == '2':
-        orientation = 1 # vertical
-        direction = 0 # start from RIGHT
+        elif condType == '3':
+            orientation = 0 # horizontal
+            direction = 0 # start from TOP
 
-    elif condType == '3':
-        orientation = 0 # horizontal
-        direction = 0 # start from TOP
+        elif condType == '4':
+            orientation = 0 # horizontal
+            direction = 1 # start from BOTTOM
 
-    elif condType == '4':
-        orientation = 0 # horizontal
-        direction = 1 # start from BOTTOM
+        if orientation==1:
+            angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
+            longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
+            # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
+            width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
+            travelDist = width_deg*0.5
+        else:
+            angle = 0
+            longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
+            # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
+            height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
+            travelDist = height_deg*0.5
 
-    if orientation==1:
-        angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
-        longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
-        # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
-        width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
-        travelDist = width_deg*0.5
-    else:
-        angle = 0
-        longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
-        # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
-        height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
-        travelDist = height_deg*0.5
+        # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
+        total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
+        stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
+        # uStartPoint = travelDist + barWidth*0.5 
+        uStartPoint = travelDist
 
-    # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
-    total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
-    stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
-    # uStartPoint = travelDist + barWidth*0.5 
-    uStartPoint = travelDist
+        #position parameters
+        centerPoint = [0,0] #center of screen is [0,0] (degrees).
+        if direction==1: # START FROM NEG, go POS (start left-->right, or start bottom-->top)
+            startSign = -1
+        else:
+            startSign = 1
+        startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
+        # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
+        # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
+        endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint))
+        dist = endPoint - startPoint
+        #print dist
+        # 1. bar moves to this far from centerPoint (in degrees)
+        # 2. bar starts & ends OFF the screen
 
-    #position parameters
-    centerPoint = [0,0] #center of screen is [0,0] (degrees).
-    if direction==1: # START FROM NEG, go POS (start left-->right, or start bottom-->top)
-        startSign = -1
-    else:
-        startSign = 1
-    startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
-    # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
-    # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
-    endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint))
-    dist = endPoint - startPoint
-    print dist
-    # 1. bar moves to this far from centerPoint (in degrees)
-    # 2. bar starts & ends OFF the screen
+        # CREATE THE STIMULUS:
+        barTexture = numpy.ones([256,256,3])*barColor;
+        barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
+        barStim.setAutoDraw(False)
 
-    # CREATE THE STIMULUS:
-    barTexture = numpy.ones([256,256,3])*barColor;
-    barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
-    barStim.setAutoDraw(False)
-
-    # DISPLAY LOOP:
-    win.flip() # first clear everything
-    # time.sleep(0.001) # wait a sec
+        # DISPLAY LOOP:
+        win.flip() # first clear everything
+        # time.sleep(0.001) # wait a sec
 
     clock = core.Clock()
     frame_counter = 0
@@ -470,12 +472,14 @@ for condType in conditionMatrix:
             getout = 1
             break  
 
-    print "TOTAL COND TIME: " + str(clock.getTime())
+    #print "TOTAL COND TIME: " + str(clock.getTime())
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
     else:
         continue
+
+    cyc += 1
 
 win.close() 
 
