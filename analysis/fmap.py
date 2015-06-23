@@ -19,10 +19,14 @@ imdir = sys.argv[1]
 files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
+# Only take first 15 cycles (to reduce memory load)
+strts = [i for i,f in enumerate(files) if '_0_' in f]
+files = files[0:strts[12]]
+
 # files = files[0:int(round(len(files)*0.5))]
 
 sample = imread(os.path.join(imdir, files[0]))
-sample = sample[30:-1, 70:310]
+# sample = sample[30:-1, 70:310]
 print "FIRST:", sample.dtype
 sample = block_reduce(sample, reduce_factor)
 
@@ -71,18 +75,42 @@ mm = [20*np.log10(mag[x][target_bin]) for x in range(mag.shape[0])]
 mm = np.array(mm)
 mag_map = mm.reshape(stack.shape[0], stack.shape[1])
 
-# plt.figure()
-plt.subplot(2,1,1)
-fig = plt.imshow(mag_map)
-fig.set_cmap("hot")
-plt.colorbar()
-fig.show()
 
-plt.subplot(2,1,2)
-figfig = plt.imshow(phase_map)
-figfig.set_cmap("spectral")
+plt.subplot(2, 1, 1)
+fig1 = plt.imshow(np.clip(mag_map, 0, mag_map.max()))
+fig1.set_cmap("hot")
 plt.colorbar()
-figfig.show()
+
+plt.subplot(2, 1, 2)
+fig2 = plt.imshow(phase_map)
+fig2.set_cmap("spectral")
+plt.colorbar()
+
+# SAVE FIG
+figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+if not os.path.exists(figdir):
+	os.makedirs(figdir)
+sess = os.path.split(os.path.split(imdir)[0])[1]
+cond = os.path.split(imdir)[1]
+imname = sess + '_' + cond + '_fmap.png'
+plt.savefig(figdir + '/' + imname)
+
+plt.show() 
+
+
+
+
+# plt.figure()
+# plt.subplot(2,1,1)
+# fig = plt.imshow(mag_map)
+# fig.set_cmap("hot")
+# plt.colorbar()
+# fig.show()
+
+# plt.subplot(2,1,2)
+# figfig = plt.imshow(phase_map)
+# figfig.set_cmap("spectral")
+# plt.colorbar()
 
 
 # mag_map = np.empty(sample.shape)

@@ -18,9 +18,16 @@ imdir = sys.argv[1]
 files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
+# WEIRDNESS...
+files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
+files = files[0:11982]
+#files = files[11982:-1]
+print files[0]
 # files = files[0:100]
 
 sample = imread(os.path.join(imdir, files[0]))
+#sample = sample[20:230,40:275]
+print "FIRST", sample.dtype
 sample = block_reduce(sample, reduce_factor)
 
 # plt.imshow(sample)
@@ -54,6 +61,7 @@ print('copying files')
 
 
 ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
+#ref_im = ref_im[20:230,40:275] # CROP
 ref_im_reduced = block_reduce(ref_im, reduce_factor)
 
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
@@ -66,6 +74,8 @@ for i, f in enumerate(files):
 	if i % 100 == 0:
 		print('%d images processed...' % i)
 	im = imread(os.path.join(imdir, f)).astype('float')
+	#im = im[20:230,40:275] # CROP
+
 	im_reduced = block_reduce(im, reduce_factor)
 
 	im_reduced -= np.mean(im_reduced.ravel())
@@ -81,8 +91,8 @@ for i, f in enumerate(files):
 
 norm_im = np.sqrt(len_im)
 
-# cos_im /= norm_im
-# sin_im /= norm_im
+cos_im /= norm_im
+sin_im /= norm_im
 
 print cos_im
 
@@ -108,6 +118,18 @@ plt.subplot(2, 2, 4)
 plot = plt.imshow(phase_map)
 plot.set_cmap('spectral')
 plt.colorbar()
+
+# SAVE FIG
+# figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures', 'demodulate')
+basepath = os.path.split(os.path.split(imdir)[0])[0]
+session = os.path.split(os.path.split(imdir)[0])[1]
+figdir = os.path.join(basepath, 'figures', session, 'demodulate')
+print figdir
+if not os.path.exists(figdir):
+	os.makedirs(figdir)
+sess = os.path.split(os.path.split(imdir)[0])[1]
+cond = os.path.split(imdir)[1]
+imname = sess + '_' + cond + '_demodulate_' + str(reduce_factor) + '.png'
+plt.savefig(figdir + '/' + imname)
+
 plt.show()
-
-
