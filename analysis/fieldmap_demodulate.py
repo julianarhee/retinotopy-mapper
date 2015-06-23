@@ -18,8 +18,10 @@ imdir = sys.argv[1]
 files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
+#files = sorted([f for f in files if os.path.isfiles(os.path.join(imdir, f))])
+#files = files[11981:-1]
 # files = files[0:100]
-
+print files[0]
 sample = imread(os.path.join(imdir, files[0]))
 sample = block_reduce(sample, reduce_factor)
 
@@ -109,5 +111,12 @@ plot = plt.imshow(phase_map)
 plot.set_cmap('spectral')
 plt.colorbar()
 plt.show()
+
+
+figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+if not os.path.exists(figdir):
+	os.makedirs(figdir)
+imname = imdir + '.png'
+plt.savefig(figdir + imname)
 
 
