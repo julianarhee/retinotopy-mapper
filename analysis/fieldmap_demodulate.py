@@ -8,13 +8,22 @@ import scipy.signal
 import numpy.fft as fft
 import sys
 
-sampling_rate = 60.0
-reduce_factor = (4, 4)
-cache_file = True
-target_freq = 0.1
-
 imdir = sys.argv[1]
 
+if len(sys.argv) == 3:
+	stimfreq = float(sys.argv[2])
+else:
+	stimfreq = 0.05
+
+if len(sys.argv) == 4:
+	reduce_val = int(sys.argv[3])
+else:
+	reduce_val = 4
+
+sampling_rate = 60.0
+reduce_factor = (int(reduce_val), int(reduce_val))
+cache_file = True
+target_freq = stimfreq
 
 
 files = os.listdir(imdir)

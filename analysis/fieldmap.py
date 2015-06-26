@@ -21,15 +21,15 @@ def movingaverage(interval, window_size):
 
 imdir = sys.argv[1]
 
-if len(sys.argv) == 4:
-	reduce_val = int(sys.argv[3])
-else:
-	reduce_val = 4
-
 if len(sys.argv) == 3:
 	stimfreq = float(sys.argv[2])
 else:
 	stimfreq = 0.05
+
+if len(sys.argv) == 4:
+	reduce_val = int(sys.argv[3])
+else:
+	reduce_val = 4
 
 
 # crop_fov = 0
