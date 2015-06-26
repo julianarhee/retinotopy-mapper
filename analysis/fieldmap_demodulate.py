@@ -15,6 +15,8 @@ target_freq = 0.1
 
 imdir = sys.argv[1]
 
+
+
 files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
@@ -23,7 +25,7 @@ files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
 #files = files[11982:-1]
 # files = files[0:100]
 print files[0]
-sample = imread(os.path.join(imdir, files[0]))
+sample = imread(os.path.join(imdir, files[0])).astype('float')
 print files[0]
 sample = block_reduce(sample, reduce_factor)
 

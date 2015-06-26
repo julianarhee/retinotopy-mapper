@@ -12,12 +12,25 @@ import matplotlib.cm as cm
 import re
 import itertools
 
+import optparse
+
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
     return np.convolve(interval, window, 'valid')
 
 
 imdir = sys.argv[1]
+
+if len(sys.argv) == 4:
+	reduce_val = int(sys.argv[3])
+else:
+	reduce_val = 4
+
+if len(sys.argv) == 3:
+	stimfreq = float(sys.argv[2])
+else:
+	stimfreq = 0.05
+
 
 # crop_fov = 0
 # if len(sys.argv) > 2:
@@ -87,12 +100,12 @@ sample = imread(os.path.join(imdir, files[0]))
 # plt.imshow(sample)
 # plt.show()
 
-
-cycle_dur = 20. #10.
 sampling_rate = 60. #np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
-reduce_factor = (4, 4)
+reduce_factor = (reduce_val, reduce_val)
 cache_file = True
-target_freq = 0.05 #0.1
+target_freq = stimfreq #0.05 #0.1
+cycle_dur = 1./target_freq #10.
+
 binspread = 0
 
 print "FIRST", sample.dtype

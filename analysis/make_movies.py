@@ -12,6 +12,8 @@ import matplotlib.cm as cm
 import re
 import itertools
 
+from libtiff import TIFF
+
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
     return np.convolve(interval, window, 'valid')
@@ -178,7 +180,8 @@ for i in range(1,meanD.shape[2]):
 del D
 
 # os.path.split(imdir)[0]
-framedir = os.path.join(os.path.split(imdir)[0], 'processed', os.path.split(imdir)[1])
+condition = os.path.split(imdir)[1]
+framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
 if not os.path.exists(framedir):
 	os.makedirs(framedir)
 for i in range(S.shape[2]):
