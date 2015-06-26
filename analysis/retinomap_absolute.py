@@ -207,27 +207,27 @@ if V_phase.any():
 scaleit = 1#1E4
 plt.subplot(3, 4, 9)
 #fig =  plt.imshow(np.clip(H_magmaps[H_magmaps.keys()[0]], 0, H_magmaps[H_magmaps.keys()[0]].max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 5)
-fig =  plt.imshow(H_magmaps[H_magmaps.keys()[0]]*scaleit, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 2)
+fig =  plt.imshow(H_magmaps[H_magmaps.keys()[0]]*scaleit, cmap = plt.get_cmap('gray'))
 plt.title('Mag: %s' % H_magmaps.keys()[0])
 plt.colorbar()
 
 plt.subplot(3, 4, 10)
 if H_mag.any():
 	# fig =  plt.imshow(np.clip(H_magmaps[H_magmaps.keys()[1]], 0, H_magmaps[H_magmaps.keys()[1]].max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 5)
-	fig =  plt.imshow(H_magmaps[H_magmaps.keys()[1]]*scaleit, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 2)
+	fig =  plt.imshow(H_magmaps[H_magmaps.keys()[1]]*scaleit, cmap = plt.get_cmap('gray'))
 	plt.title('Mag: %s' % H_magmaps.keys()[1])
 	plt.colorbar()
 
 plt.subplot(3, 4, 11)
 # fig =  plt.imshow(np.clip(V_magmaps[V_magmaps.keys()[0]], 0, V_magmaps[V_magmaps.keys()[0]].max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 5)
-fig =  plt.imshow(V_magmaps[V_magmaps.keys()[0]]*scaleit, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 2)
+fig =  plt.imshow(V_magmaps[V_magmaps.keys()[0]]*scaleit, cmap = plt.get_cmap('gray'))
 plt.title('Mag: %s' % V_magmaps.keys()[0])
 plt.colorbar()
 
 plt.subplot(3, 4, 12)
 if V_mag.any():
 	# fig =  plt.imshow(np.clip(V_magmaps[V_magmaps.keys()[1]], 0, V_magmaps[V_magmaps.keys()[1]].max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 5)
-	fig =  plt.imshow(V_magmaps[V_magmaps.keys()[1]]*scaleit, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 2)
+	fig =  plt.imshow(V_magmaps[V_magmaps.keys()[1]]*scaleit, cmap = plt.get_cmap('gray'))
 	plt.title('Mag: %s' % V_magmaps.keys()[1])
 	plt.colorbar()
 

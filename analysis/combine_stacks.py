@@ -17,7 +17,7 @@ def movingaverage(interval, window_size):
     return np.convolve(interval, window, 'valid')
 
 
-imdir = sys.argv[1]
+imdirs = [sys.argv[1], sys.argv[2]]
 
 # crop_fov = 0
 # if len(sys.argv) > 2:
@@ -25,8 +25,86 @@ imdir = sys.argv[1]
 # 	[strtX, endX, strtY, endY] = [int(i) for i in cropped]
 # 	crop_fov = 1
 
-files = os.listdir(imdir)
-files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
+fdict = dict()
+for imdir in imdirs:
+	flist = os.listdir(imdir)
+	flist = sorted([f for f in flist if os.path.splitext(f)[1] == '.png'])
+	print flist[-1]
+	fdict[imdir] = flist
+
+if len(set([len(l) for l in fdict.values()])) > 1:
+	cutoff = min(set([len(l) for l in fdict.values()]))
+	chopthis = [f for f in fdict.keys() if len(fdict[f]) > cutoff]
+	for key in chopthis:
+		del fdict[key][cutoff:len(fdict[key])]
+
+D = dict()
+for fkey in fdict.keys():
+	files = fdict[fkey]
+	print fkey, len(files)
+	sample = imread(os.path.join(fkey, files[0]))
+	#sample = block_reduce(sample, reduce_factor, func = np.mean)
+	plt.imshow(sample)
+	plt.show()
+
+	substack = np.empty((sample.shape[0], sample.shape[1], len(files)))
+	print len(files)
+
+	print('copying files')
+
+	for i, f in enumerate(files):
+
+		if i % 100 == 0:
+			print('%d images processed...' % i)
+		# print f
+		im = imread(os.path.join(fkey, f)).astype('float')
+
+		#im = im[strtX:endX,strtY:endY]
+		# print im.shape
+
+		#im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+		substack[:,:,i] = im #im_reduced
+
+	D[fkey] = substack
+
+stack = (D[D.keys()[0]] + D[D.keys()[1]] ) / 2.
+
+
+
+# cycle_dur = 10.
+# sampling_rate = 60. #np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
+# reduce_factor = (4, 4)
+# cache_file = True
+# target_freq = 0.1
+# binspread = 0
+
+stack_sample = stack[:,:,0]
+stack_sample = block_reduce(stack_sample, reduce_factor, func=np.mean)
+plt.imshow(stack_sample)
+plt.show()
+
+stack = map(lambda x: block_reduce(x, reduce_factor, func=np.mean), stack)
+print stack.shape
+
+condition = os.path.split(imdir)[1]
+session = os.path.split(os.path.split(imdir)[0])[1]
+basepath = os.path.split(os.path.split(imdir)[0])[0]
+
+stackdir = os.path.join(basepath, session, 'stacks')
+if not os.path.exists(stackdir):
+	os.makedirs(stackdir)
+
+fext = 'stack_%s.pkl' % condition
+fname = os.path.join(outdir, fext)
+with open(fname, 'wb') as f:
+    pkl.dump(stack, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
+
+
+
+
+
+
+
 #files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
 #files = files[0:11982]
 #files = files[11982:-1]
@@ -47,22 +125,22 @@ print files[-1]
 # files = files[0:int(round(len(files)*0.5))]
 
 
-# positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
-# plist = list(itertools.chain.from_iterable(positions))
-# positions = [map(float, i.split(',')) for i in plist]
-# find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) > 0)))
-# strt_idxs = [i+1 for i in find_cycs]
-# strt_idxs.append(0)
-# strt_idxs = sorted(strt_idxs)
+positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+plist = list(itertools.chain.from_iterable(positions))
+positions = [map(float, i.split(',')) for i in plist]
+find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) < 0)))
+strt_idxs = [i+1 for i in find_cycs]
+strt_idxs.append(0)
+strt_idxs = sorted(strt_idxs)
 
 sample = imread(os.path.join(imdir, files[0]))
 
 # Divide into cycles:
-# chunks = []
-# step = 5
-# for i in range(0, len(strt_idxs)-1, step):
-# 	print i
-# 	chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
+chunks = []
+step = 5
+for i in range(0, len(strt_idxs)-1, step):
+	print i
+	chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
 
 
 # If need to crop, can just replace strtX, strtY, etc.
@@ -72,8 +150,8 @@ sample = imread(os.path.join(imdir, files[0]))
 # sample = sample[:,70:300]
 #sample = sample[20:230,40:275]
 
-# if crop_fov:
-# 	sample = sample[strtX:endX, strtY:endY]
+if crop_fov:
+	sample = sample[strtX:endX, strtY:endY]
 
 	# strtX = 0 #35
 	# endX = -1 #251
@@ -81,18 +159,18 @@ sample = imread(os.path.join(imdir, files[0]))
 	# endY = -1 #275
 
 # print "FIRST", sample.dtype
-#sample = block_reduce(sample, reduce_factor)
+# sample = block_reduce(sample, reduce_factor)
 
 # plt.figure()
 # plt.imshow(sample)
 # plt.show()
 
 
-cycle_dur = 20. #10.
+cycle_dur = 10.
 sampling_rate = 60. #np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
 reduce_factor = (4, 4)
 cache_file = True
-target_freq = 0.05 #0.1
+target_freq = 0.1
 binspread = 0
 
 print "FIRST", sample.dtype
@@ -115,8 +193,8 @@ for i, f in enumerate(files):
 	#im = im[strtX:endX,strtY:endY]
 	# print im.shape
 
-	im_reduced = block_reduce(im, reduce_factor, func=np.mean)
-	stack[:,:,i] = im_reduced
+	#im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+	stack[:,:,i] = im #im_reduced
 
 
 # # SET FFT PARAMETERS:
@@ -171,8 +249,8 @@ for x in range(sample.shape[0]):
 			mag_map[x, y] = np.mean(mag[target_bin-binspread:target_bin+binspread+1] / mag[0])
 			phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
 		else:
-			mag_map[x, y] = 20*np.log10(mag[target_bin])
-			#mag_map[x,y] = mag[target_bin] / mag[0.]
+			#mag_map[x, y] = 20*np.log10(mag[target_bin])
+			mag_map[x,y] = mag[target_bin] / mag[0.]
 			#mag_map[x,y] = mag[target_bin]
 			phase_map[x, y] = phase[target_bin]
 
@@ -204,7 +282,7 @@ plt.subplot(1, 3, 2)
 # mag_map = mag_map*1E4
 #fig =  plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap=cm.hot)
 # fig = plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 1.0)
-fig = plt.imshow(mag_map, cmap = plt.get_cmap('gray'))#mag_map.max())
+fig = plt.imshow(mag_map, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 1)#mag_map.max())
 
 plt.title('Magnitude @ %0.3f' % (freqs[round(target_bin)]))
 #fig.set_cmap("hot")

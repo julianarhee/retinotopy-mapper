@@ -116,7 +116,7 @@ plot = plt.imshow(phase_map)
 plot.set_cmap('spectral')
 plt.colorbar()
 
-<<<<<<< HEAD
+
 # SAVE FIG
 # figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures', 'demodulate')
 basepath = os.path.split(os.path.split(imdir)[0])[0]
@@ -131,7 +131,7 @@ imname = sess + '_' + cond + '_demodulate_' + str(reduce_factor) + '.png'
 plt.savefig(figdir + '/' + imname)
 
 plt.show()
-=======
+
 figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
 if not os.path.exists(figdir):
 	os.makedirs(figdir)
@@ -139,4 +139,3 @@ imname = imdir + '.png'
 plt.savefig(figdir + imname)
 
 
->>>>>>> b67bfb263a40184219313c3636506e76c2fb23c6
