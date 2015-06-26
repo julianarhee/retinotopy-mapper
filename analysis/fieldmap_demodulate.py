@@ -2,6 +2,8 @@ import numpy as np
 import os
 from skimage.measure import block_reduce
 from scipy.misc import imread
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pylab as plt
 import cPickle as pkl
 import scipy.signal
@@ -155,7 +157,7 @@ cond = os.path.split(imdir)[1]
 imname = sess + '_' + cond + '_demodulate_' + str(reduce_factor) + '.png'
 plt.savefig(figdir + '/' + imname)
 
-plt.show()
+#plt.show()
 
 # figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
 # if not os.path.exists(figdir):
