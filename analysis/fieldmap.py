@@ -160,18 +160,18 @@ for x in range(sample.shape[0]):
 		# except RunTimeWarning:
 		# 	print f, x, y, dynrange[x,y]
 
-		pix = stack[x, y, :]
+		pix = scipy.signal.detrend(stack[x, y, :]) # THIS IS BASICALLY MOVING AVG WINDOW...
 		dynrange[x,y] = np.log2(pix.max() - pix.min())
 
 		#pix = scipy.signal.detrend(pix)
 
-		sig = movingaverage(pix, window)
-		mpix = (pix[0:len(sig)] - sig) / sig
+		#sig = movingaverage(pix, window)
+		#mpix = (pix[0:len(sig)] - sig) / sig
 
 		# sig = scipy.signal.detrend(sig)
 
 		#ft = fft.fft(scipy.signal.detrend(stack[x, y, :]))
-		ft = fft.fft(mpix)
+		ft = fft.fft(pix)
 		phase = np.angle(ft)
 
 		#ftraw = fft.fft(pix[0:len(mpix)])
@@ -185,16 +185,18 @@ for x in range(sample.shape[0]):
 		freqs = fft.fftfreq(len(mpix), 1 / sampling_rate) # sorted(fft.fftfreq(len(mpix), 1 / sampling_rate))
 		binwidth = freqs[1] - freqs[0] 
 		# np.where(freqs == min(freqs, key=lambda x: abs(float(x) - 0.1)))
-		target_bin = round(target_freq/binwidth) #int(target_freq / binwidth)
-
+		#target_bin = round(target_freq/binwidth) #int(target_freq / binwidth)
+		target_bin = np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
+		DC_bin = np.where(freqs==0.0)[0][0]
+		print target_bin, DC_bin
 
 		if binspread != 0:
 			#mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
 			mag_map[x, y] = np.mean(mag[target_bin-binspread:target_bin+binspread+1] / mag[0])
 			phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
 		else:
-			mag_map[x, y] = 20*np.log10(mag[target_bin])
-			#mag_map[x,y] = mag[target_bin] / mag[0.]
+			#mag_map[x, y] = 20*np.log10(mag[target_bin])
+			mag_map[x,y] = mag[target_bin] # / mag[DC_bin]
 			#mag_map[x,y] = mag[target_bin]
 			phase_map[x, y] = phase[target_bin]
 
