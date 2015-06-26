@@ -8,6 +8,8 @@ import scipy.signal
 import numpy.fft as fft
 import sys
 
+from libtiff import TIFF
+
 imdir = sys.argv[1]
 
 if len(sys.argv) == 3:
