@@ -30,13 +30,17 @@ files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
 
-files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
+# files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
 #files = files[11982:-1]
 # files = files[0:100]
 print files[0]
-sample = imread(os.path.join(imdir, files[0])).astype('float')
-print files[0]
-sample = block_reduce(sample, reduce_factor)
+#sample = imread(os.path.join(imdir, files[0])).astype('float')
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+sample = tiff.read_image().astype('float')
+print sample.dtype, [sample.max(), sample.min()]
+tiff.close()
+
+sample = block_reduce(sample, reduce_factor, func=np.mean)
 
 # plt.imshow(sample)
 # plt.show()
@@ -68,9 +72,14 @@ cos_ref = np.cos(2 * np.pi * t * target_freq )
 print('copying files')
 
 
-ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
+#ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
 #ref_im = ref_im[20:230,40:275] # CROP
-ref_im_reduced = block_reduce(ref_im, reduce_factor)
+tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
+ref_im = tiff.read_image().astype('float')
+print ref_im.dtype, [sample.max(), sample.min()]
+tiff.close()
+
+ref_im_reduced = block_reduce(ref_im, reduce_factor, func=np.mean)
 
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
 
@@ -81,10 +90,13 @@ for i, f in enumerate(files):
 
 	if i % 100 == 0:
 		print('%d images processed...' % i)
-	im = imread(os.path.join(imdir, f)).astype('float')
+	#im = imread(os.path.join(imdir, f)).astype('float')
 	#im = im[20:230,40:275] # CROP
+	tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+	im = tiff.read_image().astype('float')
+	tiff.close()
 
-	im_reduced = block_reduce(im, reduce_factor)
+	im_reduced = block_reduce(im, reduce_factor, func=np.mean)
 
 	im_reduced -= np.mean(im_reduced.ravel())
 

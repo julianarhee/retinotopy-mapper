@@ -13,6 +13,7 @@ import re
 import itertools
 
 import optparse
+from libtiff import TIFF
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
@@ -68,7 +69,12 @@ print files[-1]
 # strt_idxs.append(0)
 # strt_idxs = sorted(strt_idxs)
 
-sample = imread(os.path.join(imdir, files[0]))
+#sample = imread(os.path.join(imdir, files[0]))
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+sample = tiff.read_image().astype('float')
+print sample.dtype, [sample.max(), sample.min()]
+tiff.close()
+#sample = block_reduce(sample, reduce_factor)
 
 # Divide into cycles:
 # chunks = []
@@ -123,7 +129,10 @@ for i, f in enumerate(files):
 	if i % 100 == 0:
 		print('%d images processed...' % i)
 	# print f
-	im = imread(os.path.join(imdir, f)).astype('float')
+	#im = imread(os.path.join(imdir, f)).astype('float')
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	im = tiff.read_image().astype('float')
+	tiff.close()
 
 	#im = im[strtX:endX,strtY:endY]
 	# print im.shape
