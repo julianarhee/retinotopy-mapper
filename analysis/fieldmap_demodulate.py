@@ -132,10 +132,10 @@ plt.savefig(figdir + '/' + imname)
 
 plt.show()
 
-figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
-if not os.path.exists(figdir):
-	os.makedirs(figdir)
-imname = imdir + '.png'
-plt.savefig(figdir + imname)
+# figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+# if not os.path.exists(figdir):
+# 	os.makedirs(figdir)
+# imname = imdir + '.png'
+# plt.savefig(figdir + imname)
 
 

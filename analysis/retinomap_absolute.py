@@ -23,6 +23,7 @@ def movingaverage(interval, window_size):
 
 outdir = sys.argv[1] # PATH TO OUTDIR:  '/media/juliana/MAC/data/JR009/20150620/output'
 which_sesh = sys.argv[2]
+reduce_val = sys.argv[3]
 
 flist = os.listdir(outdir)
 
@@ -40,7 +41,7 @@ session_path = os.path.join(outdir, sessions[int(which_sesh)]) ## LOOP THIS
 files = os.listdir(session_path)
 files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
 
-reduce_factor = (4, 4)
+reduce_factor = (int(reduce_val), int(reduce_val))
 
 # GET PHASE MAPS:
 fn_phase = [f for f in files if 'phase' in f]
@@ -131,26 +132,26 @@ else:
 
 # PLOT IT:
 
-plt.subplot(1,3,1) # GREEN LED image
-plt.imshow(imarray,cmap=cm.Greys_r)
+# plt.subplot(1,3,1) # GREEN LED image
+# plt.imshow(imarray,cmap=cm.Greys_r)
 
 
-plt.subplot(1, 3, 2) # ABS PHASE -- azimuth
-fig = plt.imshow(V_phase)
-fig.set_cmap("spectral")
-plt.colorbar()
-plt.title("azimuth")
+# plt.subplot(1, 3, 2) # ABS PHASE -- azimuth
+# fig = plt.imshow(V_phase)
+# fig.set_cmap("spectral")
+# plt.colorbar()
+# plt.title("azimuth")
 
-plt.subplot(1,3,3) # ABS PHASE -- elevation
-fig = plt.imshow(H_phase)
-fig.set_cmap("spectral")
-plt.colorbar()
-plt.title("elevation")
+# plt.subplot(1,3,3) # ABS PHASE -- elevation
+# fig = plt.imshow(H_phase)
+# fig.set_cmap("spectral")
+# plt.colorbar()
+# plt.title("elevation")
 
-plt.suptitle(session_path)
+# plt.suptitle(session_path)
 
 
-plt.show()
+# plt.show()
 
 
 
@@ -239,8 +240,17 @@ if V_mag.any():
 
 plt.suptitle(session_path)
 
-plt.show()
 
+
+# SAVE FIG
+outdirs = os.path.join(outdir, 'figures')
+print outdirs
+if not os.path.exists(outdirs):
+	os.makedirs(outdirs)
+imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.png'
+plt.savefig(outdirs + '/' + imname)
+
+plt.show()
 
 
 
