@@ -171,10 +171,11 @@ D = map(lambda x: x[:,:,0:min(nframes_per_cycle)], D)
 meanD = sum(D) / len(D)
 print meanD.shape
 
-S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]-1))
+S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]))
 for i in range(1,meanD.shape[2]):
 	S[:,:,i-1] = meanD[:,:,i] - meanD[:,:,0]
 
+del D
 
 # os.path.split(imdir)[0]
 framedir = os.path.join(os.path.split(imdir)[0], 'processed', os.path.split(imdir)[1])
@@ -182,9 +183,12 @@ if not os.path.exists(framedir):
 	os.makedirs(framedir)
 for i in range(S.shape[2]):
 	fname = '%s/%0.4i.png' % (framedir, i)
-	img = scipy.misc.toimage(S[:,:,i], cmin=S[:,:,1].min(), cmax=S[:,:,1].max())
+	tiff = TIFF.open(fname, mode='w')
+	tiff.write_image(S[:,:,i])
+	tiff.close()
+	#img = scipy.misc.toimage(S[:,:,i], high=S[:,:,1].min(), low=S[:,:,1].max())
 	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
-	img.save(fname)
+	#img.save(fname)
 
 
 
