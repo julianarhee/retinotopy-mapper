@@ -189,7 +189,7 @@ for x in range(sample.shape[0]):
 		# sig = scipy.signal.detrend(sig)
 
 		#ft = fft.fft(scipy.signal.detrend(stack[x, y, :]))
-		ft = fft.fft(pix)
+		ft = fft.fft(pix) / len(pix)
 		phase = np.angle(ft)
 
 		#ftraw = fft.fft(pix[0:len(mpix)])
