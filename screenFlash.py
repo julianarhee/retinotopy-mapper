@@ -24,11 +24,6 @@ import re
 import StringIO
 import scipy.misc
 
-#from skimage import io, exposure, img_as_uint
-#io.use_plugin('freeimage')
-
-from libtiff import TIFF
-
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -67,14 +62,12 @@ parser.add_option('--debug-window', action="store_false", dest="fullscreen", hel
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
-parser.add_option('--run-num', action="store", dest="run_num", default="1", help="run number for condition X")
 (options, args) = parser.parse_args()
 
 acquire_images = options.acquire_images
 save_images = options.save_images
 output_path = options.output_path
 output_format = options.output_format
-run_num = options.run_num
 save_in_separate_process = options.save_in_separate_process
 fullscreen = options.fullscreen
 whichMonitor = options.whichMonitor
@@ -169,9 +162,6 @@ if acquire_images:
 # Set up a thread to write stuff to disk
 # -------------------------------------------------------------
 
-# TODO:  fix this so that I can create new processes (image queue / disk-writer)
-# for each condition, since it's easier to read in data corresponding to condition X that way.
-
 if save_in_separate_process:
     im_queue = mp.Queue()
 else:
@@ -179,9 +169,6 @@ else:
 
 disk_writer_alive = True
 
-# buff = StringIO.StringIO()
-# pickler = pkl.Pickler(buff, pkl.HIGHEST_PROTOCOL)
-# pickler.fast = 1
 
 def save_images_to_disk():
     print('Disk-saving thread active...')
@@ -224,20 +211,13 @@ def save_images_to_disk():
     while currdict is not None:
         if save_as_png:
             # Make the output path if it doesn't already exist
-            currpath = '%s/%s_%s/' % (output_path, currdict['condName'], str(run_num))
+            currpath = '%s/%s/' % (output_path, currdict['condName'])
             if not os.path.exists(currpath):
                 os.mkdir(currpath)
 
-            fname = '%s/%s_%s/00%i_%i_%i_%i_%ideg_%s.png' % (output_path, currdict['condName'], str(run_num), int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['stimPos']))
-            #img = img_as_uint(currdict['im'])
-            #io.imsave(fname, img)
-            #img = scipy.misc.toimage(currdict['im'], cmax=65535, cmin=0, mode='I')
-            
-            #img = scipy.misc.toimage(currdict['im'], high=np.max(currdict['im']), low=np.min(currdict['im']), mode='I')
-            #img.save(fname)
-            tiff = TIFF.open(fname, mode='w')
-            tiff.write_image(currdict['im'])
-            tiff.close()
+            fname = '%s/%s/00%i_%i_%i_%i_%ideg_%s.png' % (output_path, currdict['condName'], int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['contrast']))
+            img = scipy.misc.toimage(currdict['im'], high=65536, low=0, mode='I')
+            img.save(fname)
             # imsave(fname, currdict['im'])
             # imsave('%s/test%d.png' % (output_path, n), currdict['im'])
         elif save_as_npz:
@@ -253,7 +233,8 @@ def save_images_to_disk():
             with open(fname, 'wb') as f:
                 pkl.dump(currdict, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
 
-        print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
+        #if n % 100 == 0:
+        #print 'DONE SAVING FRAME: ', currdict['frame'], n #fdict
         n += 1
         currdict = im_queue.get()
 
@@ -281,13 +262,13 @@ if save_images:
 globalClock = core.Clock()
 
 #make a window
-win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
+win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 20 # 8 how many times to run each condition
-num_seq_reps = 1 # how many times to do the cycle of 1 condition
+num_cond_reps = 1 #20 # 8 how many times to run each condition
+num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
-conditionTypes = ['3']
+conditionTypes = ['1']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -295,26 +276,40 @@ for i in conditionTypes:
     conditionMatrix.append([np.tile(i, num_cond_reps)])
 conditionMatrix = list(itertools.chain(*conditionMatrix))
 conditionMatrix = sorted(list(itertools.chain(*conditionMatrix)), key=natural_keys)
-# print conditionMatrix
+print conditionMatrix
 
 
 #input parameters 
-cyc_per_sec = 0.08 # 
+cyc_per_sec = 0.1 # 
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
 total_length = max([screen_width_cm, screen_height_cm])
-#print screen_width_cm
-#print screen_height_cm
-#print total_length
+print screen_width_cm
+print screen_height_cm
+print total_length
 
+
+#time parameters
 fps = 60.
 total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 
-#time parameters
 duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
-print "DUR: ", duration
+
+#flashing parameters
+# flashPeriod = 0.1 #0.2#0.2 #amount of time it takes for a full cycle (on + off) #seconds for one B-W cycle (ie 1/Hz)
+
+#flashFrequency = 5 # number of flashes per second
+dutyCycle = 0.1 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+
+# SPECIFY STIM PARAMETERS
+barColor = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
+barWidth = 1 # bar width in degrees 
+
+blackBar = (0,0,0)
+whiteBar = (255,255,255)
+
 # # serial port / trigger info
 # useSerialTrigger = 0 #0=run now, 1=wait for serial port trigger
 # ser = None
@@ -326,19 +321,18 @@ print "DUR: ", duration
 
 
 t=0
-nframes = 0
+nframes = 0.
 frame_accumulator = 0
+flash_count = 0
 last_t = None
 
 report_period = 60 # frames
-frame_rate = 60.000
-refresh_rate = 60.000
 
 if acquire_images:
     # Start acquiring
     win.flip()
     time.sleep(0.002)
-    camera.capture_start(frame_rate)
+    camera.capture_start()
     camera.queue_frame()
 
 
@@ -351,167 +345,185 @@ if acquire_images:
 
 # RUN:
 getout = 0
-tstamps = []
 cyc = 1
 for condType in conditionMatrix:
-    # print condType
-    # print condLabel[int(condType)-1]
+        #print condType
+        #print condLabel[int(condType)-1]
+
     if cyc == 1:
         # SPECIFICY CONDITION TYPES:
-        if condType == '1':
-            orientation = 1 # 1 = VERTICAL, 0 = horizontal
-            direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
+        angle = 0
 
-        elif condType == '2':
-            orientation = 1 # vertical
-            direction = 0 # start from RIGHT
+        # if condType == '1':
+        #     orientation = 1 # 1 = VERTICAL, 0 = horizontal
+        #     direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
 
-        elif condType == '3':
-            orientation = 0 # horizontal
-            direction = 0 # start from TOP
+        # elif condType == '2':
+        #     orientation = 1 # vertical
+        #     direction = 0 # start from RIGHT
 
-        elif condType == '4':
-            orientation = 0 # horizontal
-            direction = 1 # start from BOTTOM
+        # elif condType == '3':
+        #     orientation = 0 # horizontal
+        #     direction = 0 # start from TOP
 
-        # SPECIFY STIM PARAMETERS
-        barColor = 1 # 1 for white, -1 for black, 0.5 for low contrast white, etc.
-        barWidth = 1 # bar width in degrees 
-        # fdict['barWidth'] = barWidth
+        # elif condType == '4':
+        #     orientation = 0 # horizontal
+        #     direction = 1 # start from BOTTOM
 
-        if orientation==1:
-            angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
-            longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
-            # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
-            width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
-            travelDist = width_deg*0.5
-        else:
-            angle = 0
-            longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
-            # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
-            height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
-            travelDist = height_deg*0.5
+        # if orientation==1:
+        #     angle = 90 #0 is horizontal, 90 is vertical. 45 goes from up-left to down-right.
+        #     longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
+        #     # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
+        #     width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
+        #     travelDist = width_deg*0.5
+        # else:
+        #     angle = 0
+        #     longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
+        #     # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
+        #     height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
+        #     travelDist = height_deg*0.5
 
-        # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
-        total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
-        stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
+        # # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
+        # total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
+        # #stimSize = (longside,barWidth) # First number is longer dimension no matter what the orientation is.
         # uStartPoint = travelDist + barWidth*0.5 
-        uStartPoint = travelDist
+        # uStartPoint = travelDist
 
         #position parameters
         centerPoint = [0,0] #center of screen is [0,0] (degrees).
-        if direction==1: # START FROM NEG, go POS (start left-->right, or start bottom-->top)
-            startSign = -1
-        else:
-            startSign = 1
-        startPoint = startSign*uStartPoint +barWidth*0.5; #bar starts this far from centerPoint (in degrees)
-        # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
-        # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
-        endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint - barWidth*0.5))
-        dist = endPoint - startPoint
-        print "DIST: ", dist
-        cyc = 0
+        # if direction==1: # START FROM NEG, go POS (start left-->right, or start bottom-->top)
+        #     startSign = -1
+        # else:
+        #     startSign = 1
+        # startPoint = startSign*uStartPoint; #bar starts this far from centerPoint (in degrees)
+        # # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
+        # # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
+        # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint))
+        # dist = endPoint - startPoint
+        #print dist
+        # 1. bar moves to this far from centerPoint (in degrees)
+        # 2. bar starts & ends OFF the screen
 
-    # 1. bar moves to this far from centerPoint (in degrees)
-    # 2. bar starts & ends OFF the screen
+        # CREATE THE STIMULUS:
+        screen_width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
+        screen_height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
+        
+        flashFrequency = 8.
+        stimSize = (screen_width_deg,screen_height_deg)
+        stepsize = np.diff(np.linspace(1, 0, frames_per_cycle*0.5, endpoint=True))[0]
 
-    # CREATE THE STIMULUS:
-    barTexture = numpy.ones([256,256,3])*barColor;
-    barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
-    barStim.setAutoDraw(False)
+        contrast1 = 1.
+        contrast2 = -1.
+        barTexture = numpy.ones([256,256,3]);
+        barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
+        barStim.setAutoDraw(False)
 
+        # DISPLAY LOOP:
+        win.flip() # first clear everything
+        # time.sleep(0.001) # wait a sec
 
-    # DISPLAY LOOP:
-    win.flip() # first clear everything
-    # time.sleep(0.001) # wait a sec
-
-    FORMAT = '%Y%m%d%H%M%S%f'
-    clock = core.Clock()
+    # clock = core.Clock()
     frame_counter = 0
     # posLinear = startPoint
     # print posLinear
     # print endPoint
-    # FORMAT = '%Y%m%d%H%M%S%f'
-    # datetime.now().strftime(FORMAT)
+    FORMAT = '%Y%m%d%H%M%S%f'
 
+    hits = []
+    print duration
+    clock = core.Clock()
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
+        
+        # if (clock.getTime()*1) % (1.0) < switchFrequency:
+        #     contrast1 = 1.0
+        #     contrast2 = 0.0
+        # else:
+        #     contrast1 = 0.5
+        #     contrast2 = 0.5
+
+        get_contrast = (clock.getTime() % total_time)/ total_time 
+        curr_contrast =  2*(1 - (0.5+get_contrast)) 
+        # if contrast1 == 1.:
+        #     hits.append(clock.getTime())
+
+        if (clock.getTime()*flashFrequency) % (1.0) < 0.5:
+            #barStim.setContrast(contrast1)
+            barStim.setContrast( curr_contrast )
+        else:
+            #barStim.setContrast( -1* contrast1 )
+            barStim.setContrast( -1 * curr_contrast )
+        #print [curr_contrast, -1*curr_contrast]
 
         # if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
-        #     barStim.setContrast(1)
-        #     #barStim.setColor(whiteBar, 'rgb255')
+        #     # barStim.setContrast(1)
+        #     barStim.setColor(whiteBar, 'rgb255')
         # else:
-        #     barStim.setContrast(0)
-        #     #barStim.setColor(blackBar, 'rgb255')
+        #     # barStim.setContrast(0)
+        #     barStim.setColor(blackBar, 'rgb255')
 
-        posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
+        #posLinear = (clock.getTime() % total_time) / total_time * (endPoint-startPoint) + startPoint; #what pos we are at in degrees
         # print posLinear
-        posX = posLinear*math.sin(angle*math.pi/180)+centerPoint[0]
-        posY = posLinear*math.cos(angle*math.pi/180)+centerPoint[1]
-        barStim.setPos([posX,posY])
+        #posX = posLinear*math.sin(angle*math.pi/180)+centerPoint[0]
+        #posY = posLinear*math.cos(angle*math.pi/180)+centerPoint[1]
+        #barStim.setPos([posX,posY])
         barStim.draw()
         win.flip()
-        # dt = datetime.now()
-        # tstamps.append(datetime.now())
-
-        # fdict['reltime'] = round(t*1000) #datetime.now().microsecond
-        # fdict['frame'] = frame_counter
-        # print 'frame #....', frame_counter
-        # fdict['time'] = datetime.now().strftime(FORMAT)
-        # fdict['stimPos'] = [posX,posY]
 
         if acquire_images:
-            # fdict = dict()
-            #for fr_idx in range(int(frame_rate/refresh_rate)):
-                # try:
-                #     fdict['im'].append(camera.capture_wait())
-                # except KeyError:
-                #     fdict['im'] = [camera.capture.wait()]
             im_array = camera.capture_wait()
             camera.queue_frame()
 
-        if save_images:
-            fdict = dict()
-            fdict['im'] = im_array
-            fdict['barWidth'] = barWidth
-            fdict['condNum'] = condType
-            fdict['condName'] = condLabel[int(condType)-1]
-            fdict['frame'] = frame_counter #nframes
-            #print 'frame #....', frame_counter
-            fdict['time'] = datetime.now().strftime(FORMAT)
-            fdict['stimPos'] = [posX,posY]
+            if save_images:
+                fdict = dict()
+                fdict['im'] = im_array
+                fdict['barWidth'] = barWidth
+                fdict['condNum'] = condType
+                fdict['condName'] = 'fullflash' #condLabel[int(condType)-1]
+                fdict['frame'] = frame_counter
+                # print 'frame #....', frame_counter
+                fdict['time'] = datetime.now().strftime(FORMAT)
+                fdict['contrast'] = curr_contrast
 
-            im_queue.put(fdict)
 
-            frame_accumulator += 1
-            #print fr
-            # if save_as_dict:
-            #     fdict['im'] = im_array
-            #     im_queue.put(fdict)
-            # else:
-            #     im_queue.put(im_array)
+                im_queue.put(fdict)
+                # if save_as_dict:
+                #     fdict['im'] = im_array
+                #     im_queue.put(fdict)
+                # else:
+                #     im_queue.put(im_array)
 
 
         if nframes % report_period == 0:
-        #if frame_accumulator % report_period == 0:
             if last_t is not None:
                 print('avg frame rate: %f' % (report_period / (t - last_t)))
             last_t = t
 
+        # if (contrast1+stepsize) < -1:
+        #     contrast1 = -1 * contrast1
+        #     hits.append(clock.getTime())
+        # contrast1 += stepsize
+        # # contrast2 = -1 * contrast1
+
         nframes += 1
         frame_counter += 1
+        flash_count += 1
 
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
             getout = 1
             break  
 
-    print "TOTAL COND TIME: " + str(clock.getTime())
+    #print "TOTAL COND TIME: " + str(clock.getTime())
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
     else:
         continue
+
+    cyc += 1
+
+print hits
 
 win.close() 
 
