@@ -8,10 +8,13 @@ import scipy.signal
 import numpy.fft as fft
 import sys
 
+from libtiff import TIFF
+
+
 sampling_rate = 60.0
 reduce_factor = (4, 4)
 cache_file = True
-target_freq = 0.1
+target_freq = 0.08
 
 imdir = sys.argv[1]
 
@@ -22,9 +25,13 @@ files = [f for f in files if os.path.splitext(f)[1] == '.png']
 #files = files[11981:-1]
 # files = files[0:100]
 print files[0]
-sample = imread(os.path.join(imdir, files[0]))
+#sample = imread(os.path.join(imdir, files[0]))
+tiff = TIFF.open((os.path.join(imdir, files[0])), mode='r')
+sample = tiff.read_image().astype('float')
+print sample.dtype, [sample.max(), sample.min()]
+tiff.close()
 sample = block_reduce(sample, reduce_factor)
-
+# print sample.dtype
 # plt.imshow(sample)
 # plt.show()
 
@@ -54,8 +61,11 @@ cos_ref = np.cos(2 * np.pi * t * target_freq )
 
 print('copying files')
 
+#ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
+tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
+ref_im = tiff.read_image().astype('float')
+tiff.close()
 
-ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
 ref_im_reduced = block_reduce(ref_im, reduce_factor)
 
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
@@ -67,7 +77,11 @@ for i, f in enumerate(files):
 
 	if i % 100 == 0:
 		print('%d images processed...' % i)
-	im = imread(os.path.join(imdir, f)).astype('float')
+	#im = imread(os.path.join(imdir, f)).astype('float')
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	im = tiff.read_image().astype('float')
+	tiff.close()
+
 	im_reduced = block_reduce(im, reduce_factor)
 
 	im_reduced -= np.mean(im_reduced.ravel())
@@ -110,13 +124,12 @@ plt.subplot(2, 2, 4)
 plot = plt.imshow(phase_map)
 plot.set_cmap('spectral')
 plt.colorbar()
-plt.show()
 
 
-figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+figdir = os.path.join(os.path.split(imdir)[0], 'figures')
 if not os.path.exists(figdir):
 	os.makedirs(figdir)
-imname = imdir + '.png'
+imname = os.path.split(imdir)[1] + '_' + str(target_freq) + '.png'
 plt.savefig(figdir + imname)
 
-
+plt.show()
