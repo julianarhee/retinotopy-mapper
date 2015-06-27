@@ -46,11 +46,18 @@ print files[-1]
 #files = files[0:strts[-1]]
 # files = files[0:int(round(len(files)*0.5))]
 
-
+condition = os.path.split(imdir)[1]
 positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
 plist = list(itertools.chain.from_iterable(positions))
 positions = [map(float, i.split(',')) for i in plist]
-find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) > 0)))
+if 'H-Up' in condition:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) < 0)))
+if 'H-Down' in condition:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) > 0)))
+if 'V-Left' in condition:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) < 0)))
+if 'V-Right' in condition:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) > 0)))
 idxs = [i+1 for i in find_cycs]
 
 # strt_idxs.append(0)
@@ -151,7 +158,7 @@ del stack
 nframes_per_cycle = [d.shape[2] for d in D]
 
 xtra = [i for i,d in enumerate(D) if d.shape[2]!=max(nframes_per_cycle)]
-print nframes_per_cycle
+print np.mean(nframes_per_cycle)
 
 # good = 0
 # for i,xt in enumerate(xtra):
