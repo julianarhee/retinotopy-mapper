@@ -60,7 +60,7 @@ idxs = [i+1 for i in find_cycs]
 
 
 #sample = imread(os.path.join(imdir, files[0]))
-tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
 sample = tiff.read_image().astype('float')
 print sample.dtype, [sample.max(), sample.min()]
 tiff.close()
@@ -127,7 +127,7 @@ for i, f in enumerate(files):
 		print('%d images processed...' % i)
 	# print f
 	#im = imread(os.path.join(imdir, f)).astype('float')
-	tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
 	im = tiff.read_image().astype('float')
 	tiff.close()
 
