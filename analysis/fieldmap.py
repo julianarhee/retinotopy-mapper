@@ -11,6 +11,7 @@ from libtiff import TIFF
 from PIL import Image
 import re
 import itertools
+from scipy import ndimage
 
 imdir = sys.argv[1]
 
@@ -22,12 +23,14 @@ parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--freq', action="store", dest="target_freq", default="0.05", help="stimulation frequency")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
+parser.add_option('--sigma', action="store", dest="gauss_kernel", default="4", help="size of Gaussian kernel for smoothing")
+
 (options, args) = parser.parse_args()
 
 headless = options.headless
 target_freq = float(options.target_freq)
 reduce_val = int(options.reduce_val)
-
+gsigma = int(options.gauss_kernel)
 if headless:
 	import matplotlib as mpl
 	mpl.use('Agg')
@@ -151,7 +154,7 @@ for i, f in enumerate(files):
 	# print im.shape
 
 	im_reduced = block_reduce(im, reduce_factor, func=np.mean)
-	stack[:,:,i] = im_reduced
+	stack[:,:,i] = ndimage.gaussian_filter(im_reduced, sigma=gsigma)
 
 
 # # SET FFT PARAMETERS:
@@ -174,6 +177,8 @@ for x in range(sample.shape[0]):
 		# 	print f, x, y, dynrange[x,y]
 
 		pix = scipy.signal.detrend(stack[x, y, :]) # THIS IS BASICALLY MOVING AVG WINDOW...
+		#pix = stack[x,y,:]
+		
 		dynrange[x,y] = np.log2(pix.max() - pix.min())
 
 		#pix = scipy.signal.detrend(pix)
@@ -200,7 +205,8 @@ for x in range(sample.shape[0]):
 		# np.where(freqs == min(freqs, key=lambda x: abs(float(x) - 0.1)))
 		#target_bin = round(target_freq/binwidth) #int(target_freq / binwidth)
 		target_bin = np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
-		DC_bin = np.where(freqs==0.0)[0][0]
+		#DC_bin = np.where(freqs==0.0)[0][0]
+
 		#print target_bin, DC_bin
 
 		if binspread != 0:
@@ -296,17 +302,17 @@ outdir = os.path.join(basepath, 'output', session)
 if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
-fext = 'magnitude_%s_%s.pkl' % (cond, str(reduce_factor))
+fext = 'magnitude_%s_%s_%i.pkl' % (cond, str(reduce_factor), gsigma)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     pkl.dump(mag_map, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
 
-fext = 'phase_%s_%s.pkl' % (cond, str(reduce_factor))
+fext = 'phase_%s_%s_%i.pkl' % (cond, str(reduce_factor), gsigma)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     pkl.dump(phase_map, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
 
-fext = 'dynrange_%s_%s.pkl' % (cond, str(reduce_factor))
+fext = 'dynrange_%s_%s_%i.pkl' % (cond, str(reduce_factor), gsigma)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     pkl.dump(dynrange, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
