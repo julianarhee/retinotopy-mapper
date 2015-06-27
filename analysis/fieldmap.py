@@ -2,35 +2,48 @@ import numpy as np
 import os
 from skimage.measure import block_reduce
 from scipy.misc import imread
-import matplotlib.pylab as plt
 import cPickle as pkl
 import scipy.signal
 import numpy.fft as fft
 import sys
-
-import matplotlib.cm as cm
+import optparse
+from libtiff import TIFF
+from PIL import Image
 import re
 import itertools
 
-import optparse
-from libtiff import TIFF
+imdir = sys.argv[1]
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
     return np.convolve(interval, window, 'valid')
 
+parser = optparse.OptionParser()
+parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
+parser.add_option('--freq', action="store", dest="target_freq", default="0.05", help="stimulation frequency")
+parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
+(options, args) = parser.parse_args()
 
-imdir = sys.argv[1]
+headless = options.headless
+target_freq = float(options.target_freq)
+reduce_val = int(options.reduce_val)
 
-if len(sys.argv) == 3:
-	stimfreq = float(sys.argv[2])
-else:
-	stimfreq = 0.05
+if headless:
+	import matplotlib as mpl
+	mpl.use('Agg')
+import matplotlib.pylab as plt
+import matplotlib.cm as cm
 
-if len(sys.argv) == 4:
-	reduce_val = int(sys.argv[3])
-else:
-	reduce_val = 4
+
+# if len(sys.argv) == 3:
+# 	stimfreq = float(sys.argv[2])
+# else:
+# 	stimfreq = 0.05
+
+# if len(sys.argv) == 4:
+# 	reduce_val = int(sys.argv[3])
+# else:
+# 	reduce_val = 4
 
 
 # crop_fov = 0
@@ -109,7 +122,7 @@ tiff.close()
 sampling_rate = 60. #np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
 reduce_factor = (reduce_val, reduce_val)
 cache_file = True
-target_freq = stimfreq #0.05 #0.1
+#target_freq = stimfreq #0.05 #0.1
 cycle_dur = 1./target_freq #10.
 
 binspread = 0
@@ -182,13 +195,13 @@ for x in range(sample.shape[0]):
 		
 
 		# SET FFT PARAMETERS:
-		freqs = fft.fftfreq(len(mpix), 1 / sampling_rate) # sorted(fft.fftfreq(len(mpix), 1 / sampling_rate))
+		freqs = fft.fftfreq(len(pix), 1 / sampling_rate) # sorted(fft.fftfreq(len(mpix), 1 / sampling_rate))
 		binwidth = freqs[1] - freqs[0] 
 		# np.where(freqs == min(freqs, key=lambda x: abs(float(x) - 0.1)))
 		#target_bin = round(target_freq/binwidth) #int(target_freq / binwidth)
 		target_bin = np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
 		DC_bin = np.where(freqs==0.0)[0][0]
-		print target_bin, DC_bin
+		#print target_bin, DC_bin
 
 		if binspread != 0:
 			#mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
@@ -219,35 +232,55 @@ for x in range(sample.shape[0]):
 		# 	phase_map[x, y] = phase[target_bin]
 
 # PLOT IT:
-plt.subplot(1, 3, 1)
+
+basepath = os.path.split(os.path.split(imdir)[0])[0]
+session = os.path.split(os.path.split(imdir)[0])[1]
+cond = os.path.split(imdir)[1]
+
+plt.subplot(2,2,1) # GREEN LED image
+outdir = os.path.join(basepath, 'output')
+if os.path.exists(outdir):
+	flist = os.listdir(outdir)
+	# GET BLOOD VESSEL IMAGE:
+	ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+	if ims:
+		impath = os.path.join(outdir, ims[0])
+		image = Image.open(impath).convert('L')
+		imarray = np.asarray(image)
+
+		plt.imshow(imarray,cmap=cm.Greys_r)
+	else:
+		print "*** Missing green-LED photo of cortex surface. ***"
+else:
+	spnum = 2
+
+plt.subplot(2, 2, 2)
 fig =  plt.imshow(dynrange)
 plt.title('Dynamic range (bits)')
 plt.colorbar()
 
-plt.subplot(1, 3, 2)
+
+plt.subplot(2, 2, 3)
 # mag_map = mag_map*1E4
 #fig =  plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap=cm.hot)
 # fig = plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 1.0)
 fig = plt.imshow(mag_map, cmap = plt.get_cmap('gray'))#mag_map.max())
-
 plt.title('Magnitude @ %0.3f' % (freqs[round(target_bin)]))
 #fig.set_cmap("hot")
 plt.colorbar()
 
-plt.subplot(1, 3, 3)
+
+plt.subplot(2, 2, 4)
 fig = plt.imshow(phase_map)
 plt.title('Phase (rad) @ %0.3f' % freqs[round(target_bin)])
 fig.set_cmap("spectral")
 plt.colorbar()
 
-session = os.path.split(os.path.split(imdir)[0])[1]
-cond = os.path.split(imdir)[1]
 plt.suptitle(session + ': ' + cond)
 
 # plt.show()
 
 # SAVE FIG
-basepath = os.path.split(os.path.split(imdir)[0])[0]
 figdir = os.path.join(basepath, 'figures', session, 'fieldmap')
 print figdir
 if not os.path.exists(figdir):
@@ -272,3 +305,8 @@ fext = 'phase_%s_%s.pkl' % (cond, str(reduce_factor))
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     pkl.dump(phase_map, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
+
+fext = 'dynrange_%s_%s.pkl' % (cond, str(reduce_factor))
+fname = os.path.join(outdir, fext)
+with open(fname, 'wb') as f:
+    pkl.dump(dynrange, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
