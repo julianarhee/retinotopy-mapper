@@ -203,7 +203,7 @@ for i in range(S.shape[2]):
 	fname = '%s/%0.4i.tif' % (framedir, i)
 	imarray = S[:,:,i]
 	tiff = TIFF.open(fname, mode='w')
-	tiff.write_image(imarary)
+	tiff.write_image(imarray)
 	tiff.close()
 	#img = scipy.misc.toimage(S[:,:,i], high=S[:,:,1].min(), low=S[:,:,1].max())
 	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
