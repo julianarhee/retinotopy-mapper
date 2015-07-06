@@ -1,0 +1,126 @@
+
+import numpy as np
+import os
+from skimage.measure import block_reduce
+from scipy.misc import imread
+import cPickle as pkl
+import scipy.signal
+import numpy.fft as fft
+import sys
+import optparse
+from libtiff import TIFF
+from PIL import Image
+import re
+import itertools
+from scipy import ndimage
+
+def movingaverage(interval, window_size):
+    window = np.ones(int(window_size))/float(window_size)
+    return np.convolve(interval, window, 'valid')
+
+
+parser = optparse.OptionParser()
+parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
+parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
+parser.add_option('--sigma', action="store", dest="gauss_kernel", default="4", help="size of Gaussian kernel for smoothing")
+(options, args) = parser.parse_args()
+
+headless = options.headless
+reduce_factor = (int(options.reduce_val), int(options.reduce_val))
+gsigma = int(options.gauss_kernel)
+if headless:
+	import matplotlib as mpl
+	mpl.use('Agg')
+import matplotlib.pylab as plt
+import matplotlib.cm as cm
+
+outdir = sys.argv[1]
+
+
+# GET BLOOD VESSEL IMAGE:
+ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+print ims
+impath = os.path.join(outdir, ims[0])
+image = Image.open(impath).convert('L')
+imarray = np.asarray(image)
+
+
+# GET DATA STRUCT FILES:
+sessions = [f for f in flist if os.path.splitext(f)[1] != '.png']
+session_path = os.path.join(outdir, sessions[int(which_sesh)]) ## LOOP THIS
+
+files = os.listdir(outdir)
+files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
+dstructs = [f for f in files if 'D' in f]
+
+for f in dstructs:
+	outfile = os.path.join(session_path, f)
+	with open(outfile,'rb') as fp:
+		D[f] = pkl.load(fp)
+# close
+
+
+# MATCH ELEV vs. AZIM conditions:
+fmap = dict()
+for curr_key in D.keys():
+	fmap[curr_key] = [complex(r, i) for (r, i) in zip(D[curr_key]['ft_real'], D[curr_key]['ft_imag'])]
+
+V_keys = [k for k in fmap.keys() if 'V' in k]
+H_keys = [k for k in fmap.keys() if 'H' in k]
+
+elevation_phase = np.angle(fmap[V_keys[0]] / fmap[V_keys[1]])
+azimuth_phase = np.angle(fmap[H_keys[0]] / fmap[H_keys[1]])
+
+freqs = D[V_keys[0]]['freqs']
+target_freq = D[V_keys[0]]['target_freq']
+target_bin = D[V_keys[0]]['target_bin']
+
+
+# PLOT IT ALL:
+
+plt.subplot(3,4,1) # GREEN LED image
+plt.imshow(imarray,cmap=cm.Greys_r)
+
+
+plt.subplot(3, 4, 3) # ABS PHASE -- azimuth
+fig = plt.imshow(azimuth_phase, cmap="spectral")
+plt.colorbar()
+plt.title("azimuth")
+
+plt.subplot(3,4,2) # ABS PHASE -- elevation
+fig = plt.imshow(elevation_phase, cmap="spectral")
+plt.colorbar()
+plt.title("elevation")
+
+
+# GET ALL RELATIVE CONDITIONS:
+
+# PHASE:
+for i,k in enumerate(D.keys()):
+	plt.subplot(3,4,i+4)
+	phase_map = np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
+	fig = plt.imshow(phase_map, cmap=cm.spectral)
+	plt.title(k)
+	plt.colorbar()
+
+# MAG:
+for i,k in enumerate(D.keys()):
+	plt.subplot(3,4,i+8)
+	mag_map = D[k]['mag_map']
+	fig = plt.imshow(phase_map, cmap=cm.Greys_r)
+	plt.title(k)
+	plt.colorbar()
+
+plt.suptitle(session_path)
+
+# SAVE FIG
+outdirs = os.path.join(outdir, 'figures')
+print outdirs
+if not os.path.exists(outdirs):
+	os.makedirs(outdirs)
+imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.svg'
+plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
+
+plt.show()
+
+

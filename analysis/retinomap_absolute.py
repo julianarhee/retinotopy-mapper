@@ -29,6 +29,7 @@ flist = os.listdir(outdir)
 
 # GET BLOOD VESSEL IMAGE:
 ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+print ims
 impath = os.path.join(outdir, ims[0])
 image = Image.open(impath).convert('L')
 imarray = np.asarray(image)
@@ -68,8 +69,9 @@ if not len(fn_vert) == 2:
 	V_phase = 0.
 	V_delay = 0.
 else:
-	V_phase = (V_phasemaps[V_phasemaps.keys()[0]] - V_phasemaps[V_phasemaps.keys()[1]]) / 2.
+	V_phase = (V_phasemaps[V_phasemaps.keys()[0]] - V_phasemaps[V_phasemaps.keys()[1]]) #/ 2.
 	V_delay = (V_phasemaps[V_phasemaps.keys()[0]] + V_phasemaps[V_phasemaps.keys()[1]]) / 2.
+	#V_phase = V_phasemaps[V_phasemaps.keys()[0]] - V_delay
 
 if not len(fn_horiz) == 2:
 	print "*****************************************"
@@ -80,9 +82,9 @@ if not len(fn_horiz) == 2:
 	H_phase = 0.
 	H_delay = 0.
 else:
-	H_phase = (H_phasemaps[H_phasemaps.keys()[0]] - H_phasemaps[H_phasemaps.keys()[1]]) / 2.
-	H_delay = (H_phasemaps[H_phasemaps.keys()[0]] + H_phasemaps[H_phasemaps.keys()[1]]) / 2.
-
+	H_phase = (H_phasemaps[H_phasemaps.keys()[1]] - H_phasemaps[H_phasemaps.keys()[0]]) #/ 2.
+	H_delay = (H_phasemaps[H_phasemaps.keys()[1]] + H_phasemaps[H_phasemaps.keys()[0]]) / 2.
+	#H_phase = H_phasemaps[H_phasemaps.keys()[0]] - H_delay
 
 
 
@@ -247,8 +249,8 @@ outdirs = os.path.join(outdir, 'figures')
 print outdirs
 if not os.path.exists(outdirs):
 	os.makedirs(outdirs)
-imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.png'
-plt.savefig(outdirs + '/' + imname)
+imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.svg'
+plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
 
 plt.show()
 
