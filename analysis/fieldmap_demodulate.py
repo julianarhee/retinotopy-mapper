@@ -2,30 +2,46 @@ import numpy as np
 import os
 from skimage.measure import block_reduce
 from scipy.misc import imread
-import matplotlib.pylab as plt
 import cPickle as pkl
 import scipy.signal
 import numpy.fft as fft
-import sys
-
 from libtiff import TIFF
+import optparse
+import sys
 
 imdir = sys.argv[1]
 
-if len(sys.argv) == 3:
-	stimfreq = float(sys.argv[2])
-else:
-	stimfreq = 0.05
+parser = optparse.OptionParser()
+parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
+parser.add_option('--freq', action="store", dest="target_freq", default="0.05", help="stimulation frequency")
+parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
+(options, args) = parser.parse_args()
 
-if len(sys.argv) == 4:
-	reduce_val = int(sys.argv[3])
-else:
-	reduce_val = 4
+headless = options.headless
+target_freq = float(options.target_freq)
+reduce_val = int(options.reduce_val)
+print target_freq
+
+if headless:
+	import matplotlib as mpl
+	mpl.use('Agg')
+import matplotlib.pylab as plt
+
+
+# if len(sys.argv) == 3:
+# 	stimfreq = float(sys.argv[2])
+# else:
+# 	stimfreq = 0.05
+
+# if len(sys.argv) == 4:
+# 	reduce_val = int(sys.argv[3])
+# else:
+# 	reduce_val = 4
 
 sampling_rate = 60.0
-reduce_factor = (int(reduce_val), int(reduce_val))
+reduce_factor = (reduce_val, reduce_val)
 cache_file = True
-target_freq = stimfreq
+# target_freq = stimfreq
 
 
 files = os.listdir(imdir)
@@ -42,7 +58,7 @@ sample = tiff.read_image().astype('float')
 print sample.dtype, [sample.max(), sample.min()]
 tiff.close()
 
-sample = block_reduce(sample, reduce_factor, func=np.mean)
+sample = block_reduce(sample, reduce_factor) #, func=np.mean)
 
 # plt.imshow(sample)
 # plt.show()
@@ -81,7 +97,7 @@ ref_im = tiff.read_image().astype('float')
 print ref_im.dtype, [sample.max(), sample.min()]
 tiff.close()
 
-ref_im_reduced = block_reduce(ref_im, reduce_factor, func=np.mean)
+ref_im_reduced = block_reduce(ref_im, reduce_factor) #, func=np.mean)
 
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
 
@@ -98,7 +114,7 @@ for i, f in enumerate(files):
 	im = tiff.read_image().astype('float')
 	tiff.close()
 
-	im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+	im_reduced = block_reduce(im, reduce_factor) #, func=np.mean)
 
 	im_reduced -= np.mean(im_reduced.ravel())
 

@@ -10,6 +10,7 @@ import sys
 
 from PIL import Image
 import matplotlib.cm as cm
+from scipy import ndimage
 
 def movingaverage(interval, window_size):
     window= np.ones(int(window_size))/float(window_size)
@@ -36,7 +37,10 @@ imarray = np.asarray(image)
 
 # LOAD SESSIONS:
 sessions = [f for f in flist if os.path.splitext(f)[1] != '.png']
+sessions = [s for s in sessions if '2015' in s]
+print sessions
 session_path = os.path.join(outdir, sessions[int(which_sesh)]) ## LOOP THIS
+print session_path
 
 files = os.listdir(session_path)
 files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
@@ -63,7 +67,10 @@ if not len(fn_vert) == 2:
 	print "*****************************************"
 	print "Missing reverse conditions, session: %s" % os.path.split(session_path)[1]
 	print "-----------------------------------------"
-	print "Only have: %s" % fn_vert[0]
+	if len(fn_vert) == 1:
+		print "Only have: %s" % fn_vert[0]
+	else:
+		print "No VERTICAL bar conditions."
 	print "*****************************************"
 	V_phase = 0.
 	V_delay = 0.
@@ -75,7 +82,10 @@ if not len(fn_horiz) == 2:
 	print "*****************************************"
 	print "Missing reverse conditions, session: %s" % os.path.split(session_path)[1]
 	print "-----------------------------------------"
-	print "Only have: %s" % fn_horiz[0]
+	if len(fn_horiz) == 1:
+		print "Only have: %s" % fn_horiz[0]
+	else:
+		print "No HORIZONTAL bar conditions."
 	print "*****************************************"
 	H_phase = 0.
 	H_delay = 0.
@@ -106,7 +116,10 @@ if not len(fn_vert) == 2:
 	print "*****************************************"
 	print "Missing reverse conditions, session: %s" % os.path.split(session_path)[1]
 	print "-----------------------------------------"
-	print "Only have: %s" % fn_vert[0]
+	if len(fn_vert) == 1:
+		print "Only have: %s" % fn_vert[0]
+	else:
+		print "No VERTICAL bar conditions."
 	print "*****************************************"
 	V_mag = 0.
 	V_delaymag = 0.
@@ -118,7 +131,10 @@ if not len(fn_horiz) == 2:
 	print "*****************************************"
 	print "Missing reverse conditions, session: %s" % os.path.split(session_path)[1]
 	print "-----------------------------------------"
-	print "Only have: %s" % fn_horiz[0]
+	if len(fn_horiz) == 1:
+		print "Only have: %s" % fn_horiz[0]
+	else:
+		print "No HORIZONTAL bar conditions."
 	print "*****************************************"
 	H_mag = 0.
 	H_delaym = 0.
@@ -131,27 +147,43 @@ else:
 
 
 # PLOT IT:
+blursize = 0
+smooth_azimuth = ndimage.gaussian_filter(V_phase, sigma=blursize)
+smooth_elevation = ndimage.gaussian_filter(H_phase, sigma=blursize)
 
-# plt.subplot(1,3,1) # GREEN LED image
-# plt.imshow(imarray,cmap=cm.Greys_r)
+plt.subplot(2,3,1) # GREEN LED image
+plt.imshow(imarray,cmap=cm.Greys_r)
 
+plt.subplot(2, 3, 2) # ABS PHASE -- azimuth
+fig = plt.imshow(smooth_azimuth)
+fig.set_cmap("spectral")
+plt.colorbar()
+plt.title("azimuth")
 
-# plt.subplot(1, 3, 2) # ABS PHASE -- azimuth
-# fig = plt.imshow(V_phase)
-# fig.set_cmap("spectral")
+plt.subplot(2,3,3) # ABS PHASE -- elevation
+fig = plt.imshow(smooth_elevation)
+fig.set_cmap("spectral")
+plt.colorbar()
+plt.title("elevation")
+
+# plt.subplot(2, 3, 4)
+# fig =  plt.imshow(dynrange)
+# plt.title('Dynamic range (bits)')
 # plt.colorbar()
-# plt.title("azimuth")
 
-# plt.subplot(1,3,3) # ABS PHASE -- elevation
-# fig = plt.imshow(H_phase)
-# fig.set_cmap("spectral")
-# plt.colorbar()
-# plt.title("elevation")
+plt.subplot(2,3,5)
+fig = plt.imshow(V_delay)
+plt.title('V-delay')
+plt.colorbar()
 
-# plt.suptitle(session_path)
+plt.subplot(2,3,6)
+fig = plt.imshow(H_delay)
+plt.title('H-delay')
+plt.colorbar()
 
+plt.suptitle(session_path)
 
-# plt.show()
+plt.show()
 
 
 
@@ -160,15 +192,14 @@ else:
 plt.subplot(3,4,1) # GREEN LED image
 plt.imshow(imarray,cmap=cm.Greys_r)
 
-
 plt.subplot(3, 4, 3) # ABS PHASE -- azimuth
-fig = plt.imshow(V_phase)
+fig = plt.imshow(smooth_azimuth)
 fig.set_cmap("spectral")
 plt.colorbar()
 plt.title("azimuth")
 
 plt.subplot(3,4,2) # ABS PHASE -- elevation
-fig = plt.imshow(H_phase)
+fig = plt.imshow(smooth_elevation)
 fig.set_cmap("spectral")
 plt.colorbar()
 plt.title("elevation")
@@ -181,25 +212,38 @@ plt.title("elevation")
 
 
 # PHASE:
+Hphase = H_phasemaps[H_phasemaps.keys()[0]]
+smooth_Hphase = ndimage.gaussian_filter(Hphase, sigma=blursize)
+
+Hphase2 = H_phasemaps[H_phasemaps.keys()[1]]
+smooth_Hphase2 = ndimage.gaussian_filter(Hphase2, sigma=blursize)
+
 plt.subplot(3, 4, 5)
-fig =  plt.imshow(H_phasemaps[H_phasemaps.keys()[0]], cmap=cm.spectral)
+fig =  plt.imshow(smooth_Hphase, cmap=cm.spectral)
 plt.title('Phase (rad): %s' % H_phasemaps.keys()[0])
 plt.colorbar()
 
 plt.subplot(3, 4, 6)
 if H_phase.any():
-	fig =  plt.imshow(H_phasemaps[H_phasemaps.keys()[1]], cmap=cm.spectral)
+	fig =  plt.imshow(smooth_Hphase2, cmap=cm.spectral)
 	plt.title('Phase (rad): %s' % H_phasemaps.keys()[1])
 	plt.colorbar()
 
+Vphase = V_phasemaps[V_phasemaps.keys()[0]]
+smooth_Vphase = ndimage.gaussian_filter(Vphase, sigma=blursize)
+
+Vphase2 = V_phasemaps[V_phasemaps.keys()[1]]
+smooth_Vphase2 = ndimage.gaussian_filter(Vphase2, sigma=blursize)
+
+
 plt.subplot(3, 4, 7)
-fig =  plt.imshow(V_phasemaps[V_phasemaps.keys()[0]], cmap=cm.spectral)
+fig =  plt.imshow(smooth_Vphase, cmap=cm.spectral)
 plt.title('Phase (rad): %s' % V_phasemaps.keys()[0])
 plt.colorbar()
 
 plt.subplot(3, 4, 8)
 if V_phase.any():
-	fig =  plt.imshow(V_phasemaps[V_phasemaps.keys()[1]], cmap=cm.spectral)
+	fig =  plt.imshow(smooth_Vphase2, cmap=cm.spectral)
 	plt.title('Phase (rad): %s' % V_phasemaps.keys()[1])
 	plt.colorbar()
 
@@ -247,8 +291,8 @@ outdirs = os.path.join(outdir, 'figures')
 print outdirs
 if not os.path.exists(outdirs):
 	os.makedirs(outdirs)
-imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.png'
-plt.savefig(outdirs + '/' + imname)
+imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.svg'
+plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
 
 plt.show()
 
