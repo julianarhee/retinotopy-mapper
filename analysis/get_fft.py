@@ -21,7 +21,7 @@ parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--freq', action="store", dest="target_freq", default="0.05", help="stimulation frequency")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
-parser.add_option('--sigma', action="store", dest="gauss_kernel", default="4", help="size of Gaussian kernel for smoothing")
+parser.add_option('--sigma', action="store", dest="gauss_kernel", default="0", help="size of Gaussian kernel for smoothing")
 
 (options, args) = parser.parse_args()
 
@@ -45,60 +45,60 @@ binspread = 0
 
 #stacks = dict()
 #for imdir in imdirs:
-	basepath = os.path.split(os.path.split(imdir)[0])[0]
-	session = os.path.split(os.path.split(imdir)[0])[1]
-	cond = os.path.split(imdir)[1]
+basepath = os.path.split(os.path.split(imdir)[0])[0]
+session = os.path.split(os.path.split(imdir)[0])[1]
+cond = os.path.split(imdir)[1]
 
-	files = os.listdir(imdir)
-	files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
+files = os.listdir(imdir)
+files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
 
-	tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
-	sample = tiff.read_image().astype('float')
-	print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.min()]))
-	print "sample shape: %s" % str(sample.shape)
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+sample = tiff.read_image().astype('float')
+print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.min()]))
+print "sample shape: %s" % str(sample.shape)
+tiff.close()
+
+# FIND CYCLE STARTS:
+positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+plist = list(itertools.chain.from_iterable(positions))
+positions = [map(float, i.split(',')) for i in plist]
+if 'H-Up' in cond:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) < 0)))
+if 'H-Down' in cond:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) > 0)))
+if 'V-Left' in cond:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) < 0)))
+if 'V-Right' in cond:
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) > 0)))
+idxs = [i+1 for i in find_cycs]
+idxs.append(0); idxs.append(len(positions))
+idxs = sorted(idxs)
+nframes_per_cycle = [idxs[i] - idxs[i-1] for i in range(1, len(idxs))]
+
+if options.reduce_val != 0:
+	sample = block_reduce(sample, reduce_factor, func=np.mean)
+
+# READ IN THE FRAMES:
+stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
+print len(files)
+
+print('copying files')
+
+for i, f in enumerate(files):
+
+	if i % 100 == 0:
+		print('%d images processed...' % i)
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	im = tiff.read_image().astype('float')
 	tiff.close()
 
-	# FIND CYCLE STARTS:
-	positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
-	plist = list(itertools.chain.from_iterable(positions))
-	positions = [map(float, i.split(',')) for i in plist]
-	if 'H-Up' in cond:
-		find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) < 0)))
-	if 'H-Down' in cond:
-		find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) > 0)))
-	if 'V-Left' in cond:
-		find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) < 0)))
-	if 'V-Right' in cond:
-		find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[0] for p in positions]) > 0)))
-	idxs = [i+1 for i in find_cycs]
-	idxs.append(0); idxs.append(len(positions))
-	idxs = sorted(idxs)
-	nframes_per_cycle = [idxs[i] - idxs[i-1] for i in range(1, len(idxs))]
+	if options.reduce_val != 0:
+		im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+		stack[:,:,i] = im_reduced #ndimage.gaussian_filter(im_reduced, sigma=gsigma)
+	else:
+		stack[:,:,i] = im
 
-	if reduce_val != 0:
-		sample = block_reduce(sample, reduce_factor, func=np.mean)
-
-	# READ IN THE FRAMES:
-	stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
-	print len(files)
-
-	print('copying files')
-
-	for i, f in enumerate(files):
-
-		if i % 100 == 0:
-			print('%d images processed...' % i)
-		tiff = TIFF.open(os.path.join(imdir, f), mode='r')
-		im = tiff.read_image().astype('float')
-		tiff.close()
-
-		if reduce_val != 0:
-			im_reduced = block_reduce(im, reduce_factor, func=np.mean)
-			stack[:,:,i] = im_reduced #ndimage.gaussian_filter(im_reduced, sigma=gsigma)
-		else:
-			stack[:,:,i] = im
-
-	#stacks[session] = stack
+#stacks[session] = stack
 
 # # SET FFT PARAMETERS:
 freqs = fft.fftfreq(len(stack[0,0,:]), 1 / sampling_rate)
@@ -127,6 +127,7 @@ for x in range(sample.shape[0]):
 		ft_imag[x, y] = curr_ft[target_bin].imag
 		if i % 100 == 0:
 			print ft_real[x, y], ft_imag[x,y]
+		
 		mag_map[x, y] = mag[target_bin]
 		i += 1
 		# # try:
@@ -151,13 +152,13 @@ for x in range(sample.shape[0]):
 		# #phase = np.angle(ft)
 		# #mag_tmp = np.abs(ft) #**2
 
-
+D = dict()
 D['ft_real'] = ft_real #np.array(ft)
 D['ft_imag'] = ft_imag
 D['mag_map'] = mag_map
 #D['stack'] = stack
+#del stack
 D['dynrange'] = dynrange
-del ft, stack
 D['target_freq'] = target_freq
 D['fps'] = sampling_rate
 D['freqs'] = fft.fftfreq(len(pix), 1 / sampling_rate)
@@ -167,11 +168,12 @@ D['nframes'] = nframes_per_cycle
 D['reduce_factor'] = reduce_factor
 
 # SAVE condition info:
-outdir = os.path.join(basepath, 'output', session)
+sessionpath = os.path.split(imdir)[0]
+outdir = os.path.join(sessionpath, 'structs')
 if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
-fext = '%s_%s.pkl' % (cond, str(reduce_factor))
+fext = 'D_%s_%s.pkl' % (cond, str(reduce_factor))
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     pkl.dump(D, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)

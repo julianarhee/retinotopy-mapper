@@ -200,7 +200,7 @@ framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
 if not os.path.exists(framedir):
 	os.makedirs(framedir)
 for i in range(S.shape[2]):
-	fname = '%s/%0.4i.tif' % (framedir, i)
+	fname = '%s/%0.4i.png' % (framedir, i)
 	imarray = S[:,:,i]
 	tiff = TIFF.open(fname, mode='w')
 	tiff.write_image(imarray)

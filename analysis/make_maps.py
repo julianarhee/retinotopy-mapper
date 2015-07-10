@@ -36,44 +36,60 @@ import matplotlib.cm as cm
 
 outdir = sys.argv[1]
 
+###########################
+files = os.listdir(outdir)
 
 # GET BLOOD VESSEL IMAGE:
-ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+ims = [f for f in files if os.path.splitext(f)[1] == '.png']
 print ims
 impath = os.path.join(outdir, ims[0])
 image = Image.open(impath).convert('L')
 imarray = np.asarray(image)
 
-
 # GET DATA STRUCT FILES:
-sessions = [f for f in flist if os.path.splitext(f)[1] != '.png']
-session_path = os.path.join(outdir, sessions[int(which_sesh)]) ## LOOP THIS
+# sessions = [f for f in flist if os.path.splitext(f)[1] != '.png']
+# session_path = os.path.join(outdir, sessions[int(0)]) ## LOOP THIS
 
-files = os.listdir(outdir)
+##########################
+
+#files = os.listdir(outdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
-dstructs = [f for f in files if 'D' in f]
+dstructs = [f for f in files if 'D_' in f and str(reduce_factor) in f]
+print dstructs
 
+D = dict()
 for f in dstructs:
-	outfile = os.path.join(session_path, f)
+	outfile = os.path.join(outdir, f)
 	with open(outfile,'rb') as fp:
 		D[f] = pkl.load(fp)
 # close
 
 
 # MATCH ELEV vs. AZIM conditions:
-fmap = dict()
+ftmap = dict()
+outshape = D[D.keys()[0]]['ft_real'].shape
 for curr_key in D.keys():
-	fmap[curr_key] = [complex(r, i) for (r, i) in zip(D[curr_key]['ft_real'], D[curr_key]['ft_imag'])]
+	reals = D[curr_key]['ft_real'].ravel()
+	imags = D[curr_key]['ft_imag'].ravel()
+	ftmap[curr_key] = [complex(x[0], x[1]) for x in zip(reals, imags)]
+	ftmap[curr_key] = np.reshape(np.array(ftmap[curr_key]), outshape)
 
-V_keys = [k for k in fmap.keys() if 'V' in k]
-H_keys = [k for k in fmap.keys() if 'H' in k]
+V_keys = [k for k in ftmap.keys() if 'V' in k]
+H_keys = [k for k in ftmap.keys() if 'H' in k]
 
-elevation_phase = np.angle(fmap[V_keys[0]] / fmap[V_keys[1]])
-azimuth_phase = np.angle(fmap[H_keys[0]] / fmap[H_keys[1]])
 
-freqs = D[V_keys[0]]['freqs']
-target_freq = D[V_keys[0]]['target_freq']
-target_bin = D[V_keys[0]]['target_bin']
+azimuth_phase = np.angle(ftmap[V_keys[0]] / ftmap[V_keys[1]])
+elevation_phase = np.angle(ftmap[H_keys[0]] / ftmap[H_keys[1]])
+
+
+
+
+
+
+
+# freqs = D[V_keys[0]]['freqs']
+# target_freq = D[V_keys[0]]['target_freq']
+# target_bin = D[V_keys[0]]['target_bin']
 
 
 # PLOT IT ALL:
@@ -81,46 +97,65 @@ target_bin = D[V_keys[0]]['target_bin']
 plt.subplot(3,4,1) # GREEN LED image
 plt.imshow(imarray,cmap=cm.Greys_r)
 
+plt.subplot(3,4,2) # ABS PHASE -- elevation
+fig = plt.imshow(elevation_phase, cmap="spectral")
+plt.colorbar()
+plt.title("elevation")
 
 plt.subplot(3, 4, 3) # ABS PHASE -- azimuth
 fig = plt.imshow(azimuth_phase, cmap="spectral")
 plt.colorbar()
 plt.title("azimuth")
 
-plt.subplot(3,4,2) # ABS PHASE -- elevation
-fig = plt.imshow(elevation_phase, cmap="spectral")
-plt.colorbar()
-plt.title("elevation")
-
 
 # GET ALL RELATIVE CONDITIONS:
 
 # PHASE:
-for i,k in enumerate(D.keys()):
-	plt.subplot(3,4,i+4)
-	phase_map = np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
+for i,k in enumerate(H_keys): #enumerate(ftmap.keys()):
+	plt.subplot(3,4,i+5)
+	phase_map = np.angle(ftmap[k]) #np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
+	#plt.figure()
+	fig = plt.imshow(phase_map, cmap=cm.spectral)
+	plt.title(k)
+	plt.colorbar()
+
+for i,k in enumerate(V_keys): #enumerate(ftmap.keys()):
+	plt.subplot(3,4,i+7)
+	phase_map = np.angle(ftmap[k]) #np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
+	#plt.figure()
 	fig = plt.imshow(phase_map, cmap=cm.spectral)
 	plt.title(k)
 	plt.colorbar()
 
 # MAG:
-for i,k in enumerate(D.keys()):
-	plt.subplot(3,4,i+8)
+for i,k in enumerate(H_keys): #enumerate(D.keys()):
+	plt.subplot(3,4,i+9)
 	mag_map = D[k]['mag_map']
 	fig = plt.imshow(phase_map, cmap=cm.Greys_r)
 	plt.title(k)
 	plt.colorbar()
 
-plt.suptitle(session_path)
+for i,k in enumerate(V_keys): #enumerate(D.keys()):
+	plt.subplot(3,4,i+11)
+	mag_map = D[k]['mag_map']
+	fig = plt.imshow(phase_map, cmap=cm.Greys_r)
+	plt.title(k)
+	plt.colorbar()
+
+#plt.suptitle(session_path)
+sessionpath = os.path.split(outdir)[0]
+plt.suptitle(sessionpath)
+
 
 # SAVE FIG
-outdirs = os.path.join(outdir, 'figures')
+outdirs = os.path.join(sessionpath, 'figures')
+which_sesh = os.path.split(sessionpath)[1]
 print outdirs
 if not os.path.exists(outdirs):
 	os.makedirs(outdirs)
 imname = which_sesh  + '_allmaps_' + str(reduce_factor) + '.svg'
 plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
-
+print outdirs + '/' + imname
 plt.show()
 
 
