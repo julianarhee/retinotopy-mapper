@@ -12,7 +12,13 @@ import matplotlib.cm as cm
 import re
 import itertools
 
-from libtiff import TIFF
+#from libtiff import TIFF
+
+# import PIL.Image as Image
+# import libtiff
+import cv2
+
+#import tifffile as tiff
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
@@ -65,14 +71,22 @@ idxs = [i+1 for i in find_cycs]
 # strt_idxs.append(len(files))
 # idxs = strt_idxs
 
-
+# METHOD 1:
 #sample = imread(os.path.join(imdir, files[0]))
-tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
-sample = tiff.read_image().astype('float')
+
+# METHOD 2:
+# tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+# sample = tiff.read_image().astype('float')
+# print sample.dtype, [sample.max(), sample.min()]
+# tiff.close()
+
+# METHOD 3:
+#sample = tiff.imread(os.path.join(imdir, files[0]))
+sample = cv2.imread(os.path.join(imdir, files[0]), -1)
+print sample.shape
 print sample.dtype, [sample.max(), sample.min()]
-tiff.close()
-
-
+plt.imshow(sample)
+plt.show()
 # # Divide into cycles:
 # chunks = []
 # for i in range(0, len(idxs)-1):
@@ -134,10 +148,13 @@ for i, f in enumerate(files):
 		print('%d images processed...' % i)
 	# print f
 	#im = imread(os.path.join(imdir, f)).astype('float')
-	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
-	im = tiff.read_image().astype('float')
-	tiff.close()
+	
+	# tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	# im = tiff.read_image().astype('float')
+	# tiff.close()
 
+	#im = tiff.imread(os.path.join(imdir, f))
+	im = cv2.imread(os.path.join(imdir, f), -1)
 
 	#im = im[strtX:endX,strtY:endY]
 	# print im.shape
@@ -179,7 +196,6 @@ print np.mean(nframes_per_cycle)
 # plt.title('nframes: %i' % int(nframes_per_cycle[good]))
 
 
-
 # for x in xtra:
 # 	D[x] = D[x][:,:,0:595] 
 
@@ -188,7 +204,7 @@ D = map(lambda x: x[:,:,0:min(nframes_per_cycle)], D)
 meanD = sum(D) / len(D)
 print meanD.shape
 
-S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]))
+S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]), np.uint16)
 for i in range(1,meanD.shape[2]):
 	S[:,:,i-1] = meanD[:,:,i] - meanD[:,:,0]
 
@@ -200,143 +216,16 @@ framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
 if not os.path.exists(framedir):
 	os.makedirs(framedir)
 for i in range(S.shape[2]):
-	fname = '%s/%0.4i.png' % (framedir, i)
+	fname = '%s/%0.4i.tif' % (framedir, i)
 	imarray = S[:,:,i]
-	tiff = TIFF.open(fname, mode='w')
-	tiff.write_image(imarray)
-	tiff.close()
-	#img = scipy.misc.toimage(S[:,:,i], high=S[:,:,1].min(), low=S[:,:,1].max())
+	#tiff = TIFF.open(fname, mode='w')
+	#tiff.imsave(fname, imarray)
+	#tiff.close()
+	#plt.imshow(imarray)
+	#plt.show()
+	cv2.imwrite(fname, imarray)
+
+	#img = scipy.misc.toimage(S[:,:,i], high=imarray.max(), low=imarray.min(), mode='I')
 	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
 	#img.save(fname)
 
-
-
-# # # SET FFT PARAMETERS:
-# # freqs = fft.fftfreq(len(stack[0,0,:]), 1 / sampling_rate)
-# # binwidth = freqs[1] - freqs[0]
-# # target_bin = int(target_freq / binwidth)
-# # window = sampling_rate * cycle_dur * 4
-# window = sampling_rate * cycle_dur * 2
-
-# # FFT:
-# mag_map = np.empty(sample.shape)
-# phase_map = np.empty(sample.shape)
-# dynrange = np.empty(sample.shape)
-# for x in range(sample.shape[0]):
-# 	for y in range(sample.shape[1]):
-
-# 		# try:
-# 		# 	dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
-# 		# except RunTimeWarning:
-# 		# 	print f, x, y, dynrange[x,y]
-
-# 		pix = stack[x, y, :]
-# 		dynrange[x,y] = np.log2(pix.max() - pix.min())
-
-# 		#pix = scipy.signal.detrend(pix)
-
-# 		sig = movingaverage(pix, window)
-# 		mpix = (pix[0:len(sig)] - sig) / sig
-
-# 		# sig = scipy.signal.detrend(sig)
-
-# 		#ft = fft.fft(scipy.signal.detrend(stack[x, y, :]))
-# 		ft = fft.fft(mpix)
-# 		phase = np.angle(ft)
-
-# 		#ftraw = fft.fft(pix[0:len(mpix)])
-# 		mag = np.abs(ft) #**2
-# 		# if mag[target_bin]==0:
-# 		# 	# mag[target_bin]=1E100
-# 		# 	print x, y
-		
-
-# 		# SET FFT PARAMETERS:
-# 		freqs = fft.fftfreq(len(mpix), 1 / sampling_rate) # sorted(fft.fftfreq(len(mpix), 1 / sampling_rate))
-# 		binwidth = freqs[1] - freqs[0] 
-# 		# np.where(freqs == min(freqs, key=lambda x: abs(float(x) - 0.1)))
-# 		target_bin = round(target_freq/binwidth) #int(target_freq / binwidth)
-
-
-# 		if binspread != 0:
-# 			#mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
-# 			mag_map[x, y] = np.mean(mag[target_bin-binspread:target_bin+binspread+1] / mag[0])
-# 			phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
-# 		else:
-# 			#mag_map[x, y] = 20*np.log10(mag[target_bin])
-# 			mag_map[x,y] = mag[target_bin] / mag[0.]
-# 			#mag_map[x,y] = mag[target_bin]
-# 			phase_map[x, y] = phase[target_bin]
-
-
-# 		# if x % int(sample.shape[0] / 4) == 0 or y % int(sample.shape[1] / 4) == 0:
-# 		# 	plt.subplot(2,1,1)
-# 		# 	plt.plot(freqs, mag, '*')
-# 		# 	plt.subplot(2,1,2)
-# 		# 	plt.plot(freqs, phase, '*')
-# 		# 	plt.show()
-
-
-# 		# if binspread != 0:
-# 		# 	mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
-# 		# 	phase_map[x, y] = np.mean(phase[target_bin-binspread:target_bin+binspread])
-# 		# else:
-# 		# 	#mag_map[x, y] = 20*np.log10(mag[target_bin])
-# 		# 	mag_map[x,y] = mag[target_bin]/mag[0.]
-# 		# 	#mag_map[x,y] = mag[target_bin]
-# 		# 	phase_map[x, y] = phase[target_bin]
-
-# # PLOT IT:
-# plt.subplot(1, 3, 1)
-# fig =  plt.imshow(dynrange)
-# plt.title('Dynamic range (bits)')
-# plt.colorbar()
-
-# plt.subplot(1, 3, 2)
-# # mag_map = mag_map*1E4
-# #fig =  plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap=cm.hot)
-# # fig = plt.imshow(np.clip(mag_map, 0, mag_map.max()), cmap = plt.get_cmap('gray'), vmin = 0, vmax = 1.0)
-# fig = plt.imshow(mag_map, cmap = plt.get_cmap('gray'), vmin = 0, vmax = 1)#mag_map.max())
-
-# plt.title('Magnitude @ %0.3f' % (freqs[round(target_bin)]))
-# #fig.set_cmap("hot")
-# plt.colorbar()
-
-# plt.subplot(1, 3, 3)
-# fig = plt.imshow(phase_map)
-# plt.title('Phase (rad) @ %0.3f' % freqs[round(target_bin)])
-# fig.set_cmap("spectral")
-# plt.colorbar()
-
-# session = os.path.split(os.path.split(imdir)[0])[1]
-# cond = os.path.split(imdir)[1]
-# plt.suptitle(session + ': ' + cond)
-
-# # plt.show()
-
-# # SAVE FIG
-# basepath = os.path.split(os.path.split(imdir)[0])[0]
-# figdir = os.path.join(basepath, 'figures', session, 'fieldmap')
-# print figdir
-# if not os.path.exists(figdir):
-# 	os.makedirs(figdir)
-# imname = session + '_' + cond + '_fieldmap' + str(reduce_factor) + '.png'
-# plt.savefig(figdir + '/' + imname)
-
-# plt.show()
-
-
-# # SAVE MAPS:
-# outdir = os.path.join(basepath, 'output', session)
-# if not os.path.exists(outdir):
-# 	os.makedirs(outdir)
-
-# fext = 'magnitude_%s_%s.pkl' % (cond, str(reduce_factor))
-# fname = os.path.join(outdir, fext)
-# with open(fname, 'wb') as f:
-#     pkl.dump(mag_map, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
-
-# fext = 'phase_%s_%s.pkl' % (cond, str(reduce_factor))
-# fname = os.path.join(outdir, fext)
-# with open(fname, 'wb') as f:
-#     pkl.dump(phase_map, f, protocol=pkl.HIGHEST_PROTOCOL) #protocol=pkl.HIGHEST_PROTOCOL)
