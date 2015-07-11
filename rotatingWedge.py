@@ -100,7 +100,7 @@ elif output_format == 'npz':
 else:
     save_as_dict = True
 
-print save_as_dict
+print save_as_png
 
 # Make the output path if it doesn't already exist
 try:
@@ -185,11 +185,11 @@ def save_images_to_disk():
     while currdict is not None:
         if save_as_png:
             # Make the output path if it doesn't already exist
-            currpath = '%s/%s_%s/' % (output_path, currdict['condName'], str(run_num))
+            currpath = '%s/%s_%s_%s/' % (output_path, 'ROT', str(run_num), str(currdict['rotationRate']))
             if not os.path.exists(currpath):
                 os.mkdir(currpath)
 
-            fname = '%s/rot_%s_%s/%i_%i_%i_%ideg.png' % (output_path, str(run_num), str(currdict['rotationRate']), int(currdict['time']), int(n), int(currdict['frame']), int(currdict['stimOri'])))
+            fname = '%s/%s_%s_%s/%i_%i_%i_%sdeg.png' % (output_path, 'ROT', str(run_num), str(currdict['rotationRate']), int(currdict['time']), int(n), int(currdict['frame']), str(currdict['stimOri']))
             #img = img_as_uint(currdict['im'])
             #io.imsave(fname, img)
             #img = scipy.misc.toimage(currdict['im'], cmax=65535, cmin=0, mode='I')
@@ -245,7 +245,7 @@ if save_images:
 
 # #make a window
 # # win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
-# win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
+win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 
 # # SET CONDITIONS:
@@ -282,8 +282,8 @@ print "DUR: ", duration
 # last_t = None
 
 # report_period = 60 # frames
-# frame_rate = 60.000
-# refresh_rate = 60.000
+frame_rate = 60.000
+refresh_rate = 60.000
 
 if acquire_images:
     # Start acquiring
