@@ -24,6 +24,9 @@ import re
 import StringIO
 import scipy.misc
 
+from libtiff import TIFF
+
+
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -183,8 +186,12 @@ def save_images_to_disk():
                 os.mkdir(currpath)
 
             fname = '%s/%s/00%i_%i_%i_%i_%s_%s.png' % (output_path, currdict['condName'], int(currdict['flashRate']), int(currdict['time']), int(currdict['frame']), int(n), str(currdict['barWidth']), str(currdict['contrast1_2']))
-            img = scipy.misc.toimage(currdict['im'], high=65536, low=0, mode='I')
-            img.save(fname)
+            #img = scipy.misc.toimage(currdict['im'], high=65536, low=0, mode='I')
+            #img.save(fname)
+            tiff = TIFF.open(fname, mode='w')
+            tiff.write_image(currdict['im'])
+            tiff.close()
+
             # imsave(fname, currdict['im'])
             # imsave('%s/test%d.png' % (output_path, n), currdict['im'])
         elif save_as_npz:
@@ -247,7 +254,7 @@ print conditionMatrix
 
 
 #input parameters 
-cyc_per_sec = 0.1 # 
+cyc_per_sec = 0.5 # for flashBar, this just makes the run 10sec*numReps (20)
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
 total_length = max([screen_width_cm, screen_height_cm])
