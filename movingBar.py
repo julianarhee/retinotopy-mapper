@@ -453,6 +453,7 @@ for condType in conditionMatrix:
 
     # CREATE THE STIMULUS:
     barTexture = numpy.ones([256,256,3])*barColor;
+    barTexture[:,:,0] = 0. # IS THIS HERE?!
     barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
     barStim.setAutoDraw(False)
 
