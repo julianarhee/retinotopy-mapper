@@ -12,11 +12,11 @@ import matplotlib.cm as cm
 import re
 import itertools
 
-#from libtiff import TIFF
+from libtiff import TIFF
 
-import PIL.Image as Image
+#import PIL.Image as Image
 # import libtiff
-import cv2
+#import cv2
 
 #import tifffile as tiff
 
@@ -36,6 +36,8 @@ if len(sys.argv) > 2:
 files = os.listdir(imdir)
 files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
 print files[-1]
+cutit = int(round(len(files)*0.5))
+files = files[0:cutit]
 
 condition = os.path.split(imdir)[1]
 positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
@@ -61,14 +63,17 @@ find_rights = list(itertools.chain.from_iterable(np.where(np.array([p[1] for p i
 # idxs = strt_idxs
 
 # METHOD 1:
-sample = imread(os.path.join(imdir, files[0])).astype('float')
-
+# sample = imread(os.path.join(imdir, files[0])).astype('float')
+# print sample.dtype
 # METHOD 2:
 # tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
 # sample = tiff.read_image().astype('float')
 # print sample.dtype, [sample.max(), sample.min()]
 # tiff.close()
-
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+sample = tiff.read_image().astype('float')
+tiff.close()
+print sample.dtype
 # METHOD 3:
 #sample = tiff.imread(os.path.join(imdir, files[0]))
 # sample = cv2.imread(os.path.join(imdir, files[0]), -1)
@@ -153,6 +158,7 @@ for i, f in enumerate(files):
 
 L = stack[:,:,find_lefts]
 R = stack[:,:,find_rights]
+del stack
 
 avgL = np.mean(L, axis=2)
 avgR = np.mean(R, axis=2)
@@ -178,10 +184,10 @@ plt.show()
 
 #img = scipy.misc.toimage(currdict['im'], high=np.max(currdict['im']), low=np.min(currdict['im']), mode='I')
 #img.save(fname)
-tiff = TIFF.open(fname, mode='w')
-img = Image.fromarray(imdiff)
-tiff.write_image(img)
-tiff.close()
+# tiff = TIFF.open(fname, mode='w')
+# img = Image.fromarray(imdiff)
+# tiff.write_image(img)
+# tiff.close()
 
 
 # D = []

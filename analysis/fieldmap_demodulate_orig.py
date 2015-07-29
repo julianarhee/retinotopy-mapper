@@ -130,7 +130,7 @@ plt.colorbar()
 figdir = os.path.join(os.path.split(imdir)[0], 'figures')
 if not os.path.exists(figdir):
 	os.makedirs(figdir)
-imname = os.path.split(imdir)[1] + '_' + str(target_freq) + '.png'
+imname = '/' + os.path.split(imdir)[1] + '_' + str(target_freq) + '.png'
 plt.savefig(figdir + imname)
 
 plt.show()
