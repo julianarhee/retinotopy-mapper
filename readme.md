@@ -13,20 +13,20 @@ Setting up the mapper on a new computer or with a new monitor (MAC) with Termina
 
 1.  First, install anaconda! Then, continue in a new conda environment.
 
-```
-conda create -n ENVNAME pip numpy scipy ipython matplotlib
-source activate ENVNAME
-```
+	
+		conda create -n ENVNAME pip numpy scipy ipython matplotlib
+		source activate ENVNAME
+		
 
 2.  Install requirements for the retinomapper after cloning or downloading the repo.
 
-```
-pip install -r requirements.txt
-```
+		
+		pip install -r requirements.txt
+		
 
-Once everything is successfully installed, do the following:
+# After Installing:
 
-1.  Setup the monitor.
+1.  Setup monitor.
 
 		
 		python setupMonitor.py
