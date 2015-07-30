@@ -47,7 +47,9 @@ Setting up the mapper on a new computer or with a new monitor (MAC) with Termina
 		python PROTOCOL.py -h
 		
 
-3.  Imaging data will be ignored with the --no-camera option. To save image data, add the --save-images option. If no pvapi camera is found, the default is the built-in camera on the computer.
+3.  Imaging data will be ignored with the --no-camera option. To save image data, add the --save-images option. If no pvapi camera is found, the default is the built-in camera on the computer. For now, use the png output-format option:
+
+		python PROTOCOL.py --monitor='MONITOR-NAME' --save-images --output-format='png' --output-path='DATA-DIR-NAME'
 
 4.  For more options, their uses, and default settings, go to help.
 
