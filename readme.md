@@ -11,6 +11,15 @@ Yes, it's a bit convoluted
 # Basic Setup
 Setting up the mapper on a new computer or with a new monitor (MAC) with Terminal:
 
+1.  First, install anaconda! Then, continue in a new conda environment.
+
+```
+conda create -n ENVNAME pip numpy scipy ipython matplotlib
+source activate ENVNAME
+```
+
+2.  Install requirements for the retinomapper after cloning or downloading the repo.
+
 ```
 pip install -r requirements.txt
 ```
