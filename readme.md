@@ -9,7 +9,7 @@ fwpy `which psychopyApp.py`
 Yes, it's a bit convoluted
 
 # Basic Setup
-Setting up the mapper on a new computer or with a new monitor (MAC):
+Setting up the mapper on a new computer or with a new monitor (MAC) with Terminal:
 
 ```
 pip install -r requirements.txt
@@ -30,7 +30,7 @@ Once everything is successfully installed, do the following:
 
 		
 		python PROTOCOL.py --monitor='MONITORNAME'
-		`
+		
 
 	If you forget which monitors have been set on the computer, can use the -h flag to get the list of saved monitor configs:
 
