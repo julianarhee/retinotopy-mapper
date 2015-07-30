@@ -1,4 +1,5 @@
-import h5py
+import numpy as np, h5py 
+
 import numpy as np
 import os
 from skimage.measure import block_reduce
@@ -9,7 +10,7 @@ import scipy.signal
 import numpy.fft as fft
 import sys
 
-
+sampling_rate = 60.0
 reduce_factor = (1, 1)
 cache_file = True
 target_freq = 1/24. #0.1
@@ -32,39 +33,12 @@ binspread = 0
 # plt.show()
 
 # datadir = '/Volumes/MAC/Julie'
-# f = h5py.File('/share/scratch2/julianarhee/brains1.mat','r') 
-f = h5py.File('/media/juliana/MAC/Julie/brains1.mat','r') 
-
+f = h5py.File('/share/scratch2/julianarhee/brains1.mat','r') 
 data = f.get('brains')
 # data = np.array(data)
 sample = data[0]
 
-d = data[:, 230:600, 10:440]
-del data
-sample = d[0]
-plt.imshow(sample)
-plt.show()
 
-
-# ARE THERE MISSING FRAMES?
-sampling_rate = 60.0
-idxs = [i for i,x in enumerate(d) if x.any()]
-if idxs:
-	dd = d[idxs]
-	sampling_rate = 30.0
-
-freqs = fft.fftfreq(d.shape[0], 1 / sampling_rate)
-binwidth = freqs[1] - freqs[0]
-
-target_bin = int(target_freq / binwidth)
-
-if dd:
-	del d
-
-ddmean = np.mean(dd, axis=0)
-dmeansub = np.empty(dd.shape)
-for i in range(dd.shape[0]):
-	dd[i] = dd[i] - ddmean
 
 # stack = np.empty((data.shape[1], data.shape[2], data.shape[0]))
 # print len(files)
@@ -87,34 +61,33 @@ for i in range(dd.shape[0]):
 # 	# im_reduced = im
 # 	stack[:,:,i] = im_reduced
 
-# s = data[0].ravel()
+s = data[0].ravel()
 
-# mag_map = np.empty((data.shape[0]))
-# phase_map = np.empty((data.shape[0]))
+mag_map = np.empty((data.shape[0]))
+phase_map = np.empty((data.shape[0]))
 
-# flat = np.empty((len(s), data.shape[0]))
-# for i in range(data.shape[0]):
-# 	print i
-# 	sig = data[i].ravel()
-# 	flat[:,i] = sig
+flat = np.empty((len(s), data.shape[0]))
+for i in range(data.shape[0]):
+	print i
+	sig = data[i].ravel()
+	flat[:,i] = sig
 
-# 	# ft = scipy.fftpack.fft(sig, axis=1)
-# 	ft = fft.fft(sig)
-# 	mag = abs(ft)
-# 	phase = np.angle(ft)
-# 	freqs = fft.fftfreq(len(sig), 1 / sampling_rate)
-# 	binwidth = freqs[1] - freqs[0]
-# 	target_bin = int(target_freq / binwidth)
+	# ft = scipy.fftpack.fft(sig, axis=1)
+	ft = fft.fft(sig)
+	mag = abs(ft)
+	phase = np.angle(ft)
+	freqs = fft.fftfreq(len(sig), 1 / sampling_rate)
+	binwidth = freqs[1] - freqs[0]
+	target_bin = int(target_freq / binwidth)
 
-# 	if binspread != 0:
-# 		mag_map[i] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
-# 		phase_map[i] = np.mean(phase[target_bin-binspread:target_bin+binspread])
-# 	else:
-# 		mag_map[i] = 20*np.log10(mag[target_bin])
-# 		phase_map[i] = phase[target_bin]
+	if binspread != 0:
+		mag_map[i] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))
+		phase_map[i] = np.mean(phase[target_bin-binspread:target_bin+binspread])
+	else:
+		mag_map[i] = 20*np.log10(mag[target_bin])
+		phase_map[i] = phase[target_bin]
 
-# mag_map.reshape()
-
+mag_map.reshape()
 
 
 mag_map = np.empty(sample.shape)
@@ -124,15 +97,20 @@ for x in range(sample.shape[0]):
 	print x
 	for y in range(sample.shape[1]):
 
-		# sig = d[:, x, y]
-		# sig = data[i].ravel()
+		# sig = stack[x, y, :]
+		sig = data[i].ravel()
 
-		# sig = scipy.signal.detrend(d[:, x, y])
+		# sig = scipy.signal.detrend(sig)
 
-		# ft = fft.fft(sig)
-		ft = fft.fft(scipy.signal.detrend(dd[:, x, y]))
+		ft = fft.fft(sig)
 		mag = abs(ft)
 		phase = np.angle(ft)
+
+
+		freqs = fft.fftfreq(len(sig), 1 / sampling_rate)
+		binwidth = freqs[1] - freqs[0]
+
+		target_bin = int(target_freq / binwidth)
 
 		if binspread != 0:
 			mag_map[x, y] = 20*np.log10(np.mean(mag[target_bin-binspread:target_bin+binspread]))

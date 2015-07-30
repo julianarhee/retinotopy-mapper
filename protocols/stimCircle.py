@@ -310,7 +310,7 @@ duration = total_time #total_time*num_seq_reps; #how long to run the same condit
 
 # SET UP ALL THE STIMULI:
 if use_images:
-    stimdir = './stimuli'
+    stimdir = '../stimuli'
     stimset = os.listdir(stimdir)[1]
     stims = os.listdir(os.path.join(stimdir, stimset))
     stims = [s for s in stims if os.path.splitext(s)[1] == '.tif']
@@ -363,7 +363,7 @@ for curr_cond in condMatrix:
 
     # SPECIFICY CONDITION TYPES:
     if curr_cond == '0': # BLANK
-        blankscreen = numpy.ones([256,256,3]);
+        blankscreen = numpy.zeros([256,256,3]);
         #blankscreen[:,:,0] = 0.
         patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
         patch.pos = (0, 0)
