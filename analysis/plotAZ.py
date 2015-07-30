@@ -1,3 +1,15 @@
+#!/usr/bin/env python2
+
+'''
+
+This script analyzes data acquired using driftGabor.py.
+
+Run:  python plotAZ.py /path/to/imaging/directory
+
+It will output change in response to upward drifting gabors at 2 diff locs (normalized to baseline).
+
+'''
+
 import numpy as np
 import os
 from skimage.measure import block_reduce
@@ -120,82 +132,3 @@ fname = '%s/flashbar.png' % os.path.split(imdir)[0]
 plt.savefig(fname)
 
 plt.show()
-
-#img = img_as_uint(currdict['im'])
-#io.imsave(fname, img)
-#img = scipy.misc.toimage(currdict['im'], cmax=65535, cmin=0, mode='I')
-
-#img = scipy.misc.toimage(currdict['im'], high=np.max(currdict['im']), low=np.min(currdict['im']), mode='I')
-#img.save(fname)
-# tiff = TIFF.open(fname, mode='w')
-# img = Image.fromarray(imdiff)
-# tiff.write_image(img)
-# tiff.close()
-
-
-# D = []
-# prev = 0
-# for i in idxs:
-#     D.append(stack[:,:,prev:i])
-#     prev = i
-# D.append(stack[:,:,prev:])
-
-# del stack
-
-# nframes_per_cycle = [d.shape[2] for d in D]
-
-# xtra = [i for i,d in enumerate(D) if d.shape[2]!=max(nframes_per_cycle)]
-# print np.mean(nframes_per_cycle)
-
-# # good = 0
-# # for i,xt in enumerate(xtra):
-# # 	plt.subplot(1, len(xtra)+1, i)
-# # 	currbin = positions[idxs[xt]:idxs[xt+1]]
-# # 	posx = [currbin[x][0] for x in range(len(currbin))]
-# # 	posy = [currbin[x][1] for x in range(len(currbin))]
-# # 	plt.plot(np.diff(posy))
-# # 	plt.title('nframes: %i' % int(nframes_per_cycle[xt]))
-
-# # while not good in xtra:
-# # 	good += 1
-# # plt.subplot(1,len(xtra)+1, i+1)
-# # currbin = positions[idxs[good]:idxs[good+1]]
-# # posx = [currbin[x][0] for x in range(len(currbin))]
-# # posy = [currbin[x][1] for x in range(len(currbin))]
-# # plt.plot(np.diff(posy))
-# # plt.title('nframes: %i' % int(nframes_per_cycle[good]))
-
-
-# # for x in xtra:
-# # 	D[x] = D[x][:,:,0:595] 
-
-# D = map(lambda x: x[:,:,0:min(nframes_per_cycle)], D)
-
-# meanD = sum(D) / len(D)
-# print meanD.shape
-
-# S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]), np.uint16)
-# for i in range(1,meanD.shape[2]):
-# 	S[:,:,i-1] = meanD[:,:,i] - meanD[:,:,0]
-
-# del D
-
-# # os.path.split(imdir)[0]
-# condition = os.path.split(imdir)[1]
-# framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
-# if not os.path.exists(framedir):
-# 	os.makedirs(framedir)
-# for i in range(S.shape[2]):
-# 	fname = '%s/%0.4i.tif' % (framedir, i)
-# 	imarray = S[:,:,i]
-# 	#tiff = TIFF.open(fname, mode='w')
-# 	#tiff.imsave(fname, imarray)
-# 	#tiff.close()
-# 	#plt.imshow(imarray)
-# 	#plt.show()
-# 	cv2.imwrite(fname, imarray)
-
-	#img = scipy.misc.toimage(S[:,:,i], high=imarray.max(), low=imarray.min(), mode='I')
-	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
-	#img.save(fname)
-
