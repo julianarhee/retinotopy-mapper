@@ -1,6 +1,10 @@
 lxml
 pandas
 psychopy
+mercurial
 hg+https://bitbucket.org/pygame/pygame
 pyopengl
 pyglet
+Image
+libtiff
+ski

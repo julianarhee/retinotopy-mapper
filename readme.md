@@ -8,7 +8,7 @@ fwpy `which psychopyApp.py`
 
 Yes, it's a bit convoluted
 
-Setting up the mapper on a new computer or with a new monitor:
+Setting up the mapper on a new computer or with a new monitor (MAC):
 
 ```
 pip install -r requirements.txt
@@ -35,3 +35,16 @@ python PROTOCOL.py -h
 ```
 
 3.  Imaging data will automatically be recorded, unless you specify the --no-camera option. If no pvapi camera is found, the default is the built-in camera on the computer.
+
+
+Tips and Troubleshooting:
+
+1. Error with 'gcc' during pygame install:
+```
+export CC='/usr/bin/gcc' 
+```
+
+2. Import error with 'cv2' module:
+```
+conda install opencv
+```
