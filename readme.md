@@ -23,9 +23,10 @@ Once everything is successfully installed, do the following:
 		python setupMonitor.py
 		```
 
-This will prompt you for information about the monitor. Input the info for each question directly in the command line.
+	This will prompt you for information about the monitor. Input the info for each question directly in the command line.
+	You will be prompted to save at the end.
 
-2.  Run your stimulus protocol with your chosen monitor.
+2.  Run a stimulus protocol with the selected monitor.
 
 		```
 		python PROTOCOL.py --monitor='MONITORNAME'
@@ -37,8 +38,13 @@ This will prompt you for information about the monitor. Input the info for each 
 		python PROTOCOL.py -h
 		```
 
-3.  Imaging data will automatically be recorded, unless you specify the --no-camera option. If no pvapi camera is found, the default is the built-in camera on the computer.
+3.  Imaging data will be ignored with the --no-camera option. To save image data, add the --save-images option. If no pvapi camera is found, the default is the built-in camera on the computer.
 
+4.  For more options, their uses, and default settings, go to help.
+
+		```
+		python PROTOCOL.py -h
+		```
 
 # Tips and Troubleshooting:
 
