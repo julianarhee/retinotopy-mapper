@@ -182,7 +182,7 @@ class Camera:
             self.handle_error(result)
         # Set the frame trigger mode
 
-        result = self.attr_float32_set('FrameRate', 120.000)
+        result = self.attr_float32_set('FrameRate', 300.000)
         if result != e.ePvErrSuccess:
             self.handle_error(result)
 

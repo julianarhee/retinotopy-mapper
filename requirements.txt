@@ -1,6 +1,6 @@
 lxml
 pandas
 psychopy
-hg+https://bitbucket.org/pygame/pygame
+#hg+https://bitbucket.org/pygame/pygame
 pyopengl
 pyglet
