@@ -40,7 +40,7 @@ parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tiff', 'npz'], default='tiff', help="out file format, tiff or npz [default: tiff]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tif', 'npz'], default='tif', help="out file format, tif or npz [default: tif]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -70,8 +70,8 @@ if not acquire_images:
 
 save_as_png = False
 save_as_npz = False
-if output_format == 'tiff':
-    save_as_tiff = True
+if output_format == 'tif':
+    save_as_tif = True
 elif output_format == 'npz':
     save_as_npz = True
     
@@ -97,8 +97,8 @@ except OSError, e:
         raise e
     pass
 
-dataOutputPath=subjectPath+'Surface/'
-
+#dataOutputPath=subjectPath+'Surface/'
+dataOutputPath = os.path.join(output_path, tStamp+'_Surface')
 
 
 try:
@@ -180,8 +180,8 @@ def save_images_to_disk():
 	n = 0
 	currdict = im_queue.get()
 	while currdict is not None:
-		if save_as_tiff:
-			fname = '%s/frame%i.tiff' % (dataOutputPath,int(currdict['frame']))
+		if save_as_tif:
+			fname = '%s/frame%i.tif' % (dataOutputPath,int(currdict['frame']))
 			tiff = TIFF.open(fname, mode='w')
 			tiff.write_image(currdict['im'])
 			tiff.close()
@@ -189,7 +189,7 @@ def save_images_to_disk():
 		elif save_as_npz:
 			np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
 		else:
-			fname = '%s/frame%i.tiff' % (dataOutputPath,int(currdict['frame']),)
+			fname = '%s/frame%i.tif' % (dataOutputPath,int(currdict['frame']),)
 			with open(fname, 'wb') as f:
 				pkl.dump(currdict, f, protocol=pkl.HIGHEST_PROTOCOL)
 			

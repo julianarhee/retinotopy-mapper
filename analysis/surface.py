@@ -1,0 +1,42 @@
+import numpy as np
+import os
+from skimage.measure import block_reduce
+from scipy.misc import imread
+import matplotlib.pylab as plt
+import cPickle as pkl
+import scipy.signal
+import numpy.fft as fft
+import sys
+
+import matplotlib.cm as cm
+import re
+import itertools
+
+from libtiff import TIFF
+
+import PIL.Image as Image
+import libtiff
+
+
+imdir = sys.argv[1]
+outdir = os.path.join(os.path.split(imdir)[0], 'figures')
+if not os.path.exists(outdir):
+	os.makedirs(outdir)
+
+cond = 'Surface'
+ext = '.tiff'
+files = os.listdir(os.path.join(imdir, cond))
+print files
+files = sorted([f for f in files if os.path.splitext(f)[1] == ext])
+
+tiff = TIFF.open(os.path.join(imdir, cond, files[0]), mode='r')
+im = tiff.read_image().astype('float')
+tiff.close()
+
+plt.imshow(im, cmap = plt.get_cmap('gray'))
+
+fname = '%s/surface_%s.png' % (outdir, os.path.split(os.path.split(imdir)[0])[1])
+print fname
+plt.savefig(fname)
+
+plt.show()
