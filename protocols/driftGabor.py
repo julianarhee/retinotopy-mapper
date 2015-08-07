@@ -239,13 +239,14 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 1 #20 # 8 how many times to run each condition
+num_cond_reps = 5 #20 # 8 how many times to run each condition
 #num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 conditionTypes = ['1', '2']
 condLabel = ['blank', 'gab-left', 'gab-right'] #['V-Left','V-Right','H-Down','H-Up']
-#conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
-conditionMatrix = ['0',' 1', '2']
+conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+#conditionMatrix = ['0',' 1', '2']
+
 #conditionMatrix = []
 # for i in conditionTypes:
 #     conditionMatrix.append([np.tile(i, num_cond_reps)])
@@ -255,10 +256,13 @@ conditionMatrix = ['0',' 1', '2']
 
 #conditionMatrix = [int(i) for i in conditionMatrix]
 
-# blanks = np.zeros((1,len(conditionMatrix)))[0]
-# blanks = [str(int(i)) for i in blanks]
-# fullmat = [iter(blanks), iter(conditionMatrix)]
-# conditionMatrix = list(it.next() for it in itertools.cycle(fullmat))
+#blanks = np.zeros((1,len(conditionMatrix)))[0]
+#blanks = [str(int(i)) for i in blanks]
+#fullmat = [iter(blanks), iter(conditionMatrix)]
+#conditionMatrix = list(it.next() for it in itertools.cycle(fullmat))
+#conditionMatrix.append('0')
+conditionMatrix.insert(0, '0')
+conditionMatrix.append('0')
 print "COND:", conditionMatrix
 
 
@@ -274,7 +278,11 @@ print total_length
 
 #time parameters
 fps = 60.
-total_time = 120.0 #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
+#total_time = 120.0 #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
+dur_stimulus = 5.0
+dur_blank = 15.0
+total_time = dur_stimulus + dur_blank # length of each trial
+
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 
@@ -312,10 +320,10 @@ for condType in conditionMatrix:
 
     # SPECIFICY CONDITION TYPES:
     if condLabel[int(condType)] == 'gab-left':
-        patch.pos = (0 - screen_width_deg*0, 0 + screen_height_deg*0.20)
+        patch.pos = (0 - screen_width_deg*0.75, 0 + screen_height_deg*0.15)
     elif condLabel[int(condType)] == 'gab-right':
-        patch.pos = (0 + screen_width_deg*0.25, 0 + screen_height_deg*0.20)
-    elif condType == '0': # BLANK
+        patch.pos = (0 + screen_width_deg*0, 0 + screen_height_deg*0.15)
+    elif condType == 'blank': # BLANK
         patch.pos = (0, 0)
 
     # DISPLAY LOOP:
@@ -332,12 +340,48 @@ for condType in conditionMatrix:
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
         
-        patch.phase = 1 - clock.getTime() * driftFrequency
-        if int(condType) > 0:
-            patch.draw()
-            win.flip()
-        else:
-            win.flip()
+        while clock.getTime <= dur_stimulus:
+            patch.phase = 1 - clock.getTime() * driftFrequency
+            if int(condType) > 0:
+                patch.draw()
+                win.flip()
+            else:
+                win.flip()
+
+            if acquire_images:
+                im_array = camera.capture_wait()
+                camera.queue_frame()
+
+                if save_images:
+                    fdict = dict()
+                    fdict['im'] = im_array
+                    fdict['size'] = patch.size[0]
+                    fdict['tf'] = driftFrequency
+                    fdict['sf'] = patch.sf[0]
+                    fdict['ori'] = patch.ori
+                    fdict['condName'] = condLabel[int(condType)]#condLabel[int(condType)-1]
+                    fdict['frame'] = frame_counter
+                    fdict['time'] = datetime.now().strftime(FORMAT)
+                    fdict['pos'] = patch.pos
+
+                    im_queue.put(fdict)
+
+            if nframes % report_period == 0:
+                if last_t is not None:
+                    print('avg frame rate: %f' % (report_period / (t - last_t)))
+                last_t = t
+
+            nframes += 1
+            frame_counter += 1
+            flash_count += 1
+
+            # Break out of the while loop if these keys are registered
+            if event.getKeys(keyList=['escape', 'q']):
+                getout = 1
+                break  
+
+
+        win.flip()
 
         if acquire_images:
             im_array = camera.capture_wait()
@@ -346,23 +390,16 @@ for condType in conditionMatrix:
             if save_images:
                 fdict = dict()
                 fdict['im'] = im_array
-                fdict['size'] = patch.size[0]
-                fdict['tf'] = driftFrequency
-                fdict['sf'] = patch.sf[0]
-                fdict['ori'] = patch.ori
+                fdict['size'] = 'x'
+                fdict['tf'] = 'x'
+                fdict['sf'] = 'x'
+                fdict['ori'] = 'x'
                 fdict['condName'] = condLabel[int(condType)]#condLabel[int(condType)-1]
                 fdict['frame'] = frame_counter
-                # print 'frame #....', frame_counter
                 fdict['time'] = datetime.now().strftime(FORMAT)
-                fdict['pos'] = patch.pos
+                fdict['pos'] = 'x'
 
                 im_queue.put(fdict)
-                # if save_as_dict:
-                #     fdict['im'] = im_array
-                #     im_queue.put(fdict)
-                # else:
-                #     im_queue.put(im_array)
-
 
         if nframes % report_period == 0:
             if last_t is not None:
@@ -377,6 +414,7 @@ for condType in conditionMatrix:
         if event.getKeys(keyList=['escape', 'q']):
             getout = 1
             break  
+
 
     #print "TOTAL COND TIME: " + str(clock.getTime())
 

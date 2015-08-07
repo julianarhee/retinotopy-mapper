@@ -27,6 +27,10 @@ import itertools
 from libtiff import TIFF
 
 imdir = sys.argv[1]
+outdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
+if not os.path.exists(outdir):
+	os.makedirs(outdir)
+
 reduce_factor = (2,2)
 reduceit = 0
 
@@ -128,8 +132,10 @@ plt.imshow(imdiff, cmap = plt.get_cmap('gray'))
 plt.title('plain diff')
 plt.colorbar()
 
+plt.suptitle(os.path.split(os.path.split(imdir)[0])[1])
 
-fname = '%s/flashbar.png' % os.path.split(imdir)[0]
+fname = '%s/flashbar_%s.png' % (outdir, os.path.split(os.path.split(imdir)[0])[1])
+print fname
 plt.savefig(fname)
 
 plt.show()
