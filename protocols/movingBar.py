@@ -305,7 +305,7 @@ num_cond_reps = 20 #20 # 8 how many times to run each condition
 num_seq_reps = 1 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 # can either run 1 cycle many times, or repmat:
-conditionTypes = ['2']
+conditionTypes = ['4']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -506,50 +506,52 @@ for condType in conditionMatrix:
         barStim.setPos([posX,posY])
         barStim.draw()
         win.flip()
-	lastT = clock.getTime()
+        lastT = clock.getTime()
 
-	fdict = dict()
-	#fdict['im'] = []
+        fdict = dict()
+    	#fdict['im'] = []
+
         if acquire_images:
             #fdict = dict()
-#	   while clock.getTime() - lastT + 1./refresh_rate <= 1./refresh_rate:
-#		fdict = dict()
-#		fdict['im'] = camera.capture_wait() #append(camera.capture_wait())
-#		camera.queue_frame()
-#		count_frames += 1
+    #	   while clock.getTime() - lastT + 1./refresh_rate <= 1./refresh_rate:
+    #		fdict = dict()
+    #		fdict['im'] = camera.capture_wait() #append(camera.capture_wait())
+    #		camera.queue_frame()
+    #		count_frames += 1
 
-	   while (clock.getTime() - lastT + (1./frame_rate)) <= (1./refresh_rate):
-           #for fr_idx in range(int(frame_rate/refresh_rate)):
-		#count_frames += 1
-		#print clock.getTime() - lastT
-		fdict['im'] = camera.capture_wait() #.append(camera.capture_wait())
-		camera.queue_frame()
+            while (clock.getTime() - lastT + (1./frame_rate)) <= (1./refresh_rate):
+            #for fr_idx in range(int(frame_rate/refresh_rate)):
+            #count_frames += 1
+            #print clock.getTime() - lastT
+                fdict['im'] = camera.capture_wait() #.append(camera.capture_wait())
+                camera.queue_frame()
 
-#                try:
-#                    fdict['im'].append(camera.capture_wait())
-#                except KeyError:
-#                    fdict['im'] = [camera.capture_wait()]
-#            #im_array = #camera.capture_wait()
-#            camera.queue_frame()
-		#print count_frames
+                #                try:
+                #                    fdict['im'].append(camera.capture_wait())
+                #                except KeyError:
+                #                    fdict['im'] = [camera.capture_wait()]
+                #            #im_array = #camera.capture_wait()
+                #            camera.queue_frame()
+                #print count_frames
 
-		if save_images:
-		    #fdict = dict()
-		    #fdict['im'] = im_array
-		    fdict['barWidth'] = barWidth
-		    fdict['condNum'] = condType
-		    fdict['condName'] = condLabel[int(condType)-1]
-		    fdict['frame'] = frame_counter #nframes
-		    fdict['frame_count'] = count_frames
-		    #print 'frame #....', frame_counter
-		    fdict['time'] = datetime.now().strftime(FORMAT)
-		    fdict['stimPos'] = [posX,posY]
+                if save_images:
+                    #fdict = dict()
+                    #fdict['im'] = im_array
+                    fdict['barWidth'] = barWidth
+                    fdict['condNum'] = condType
+                    fdict['condName'] = condLabel[int(condType)-1]
+                    fdict['frame'] = frame_counter #nframes
+                    fdict['frame_count'] = count_frames
+                    #print 'frame #....', frame_counter
+                    fdict['time'] = datetime.now().strftime(FORMAT)
+                    fdict['stimPos'] = [posX,posY]
 
-		    im_queue.put(fdict)
+                    im_queue.put(fdict)
 
-		count_frames += 1
+                    frame_accumulator += 1
 
-            	frame_accumulator += 1
+                count_frames += 1
+
             #print fr
             # if save_as_dict:
             #     fdict['im'] = im_array
@@ -559,11 +561,11 @@ for condType in conditionMatrix:
 
 
 
-		if count_frames % report_period == 0:
-		#if frame_accumulator % report_period == 0:
-		    if last_t is not None:
-		        print('avg frame rate: %f' % (report_period / (t - last_t)))
-		    last_t = t
+        #if count_frames % report_period == 0:
+        if frame_accumulator % report_period == 0:
+            if last_t is not None:
+                print('avg frame rate: %f' % (report_period / (t - last_t)))
+            last_t = t
 
         nframes += 1
         frame_counter += 1

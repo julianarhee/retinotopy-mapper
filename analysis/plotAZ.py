@@ -12,7 +12,7 @@ It will output change in response to upward drifting gabors at 2 diff locs (norm
 
 import numpy as np
 import os
-from skimage.measure import block_reduce
+#from skimage.measure import block_reduce
 from scipy.misc import imread
 import matplotlib.pylab as plt
 import cPickle as pkl
@@ -28,7 +28,7 @@ from libtiff import TIFF
 
 imdir = sys.argv[1]
 reduce_factor = (2,2)
-reduceit = 1
+reduceit = 0
 
 crop_fov = 0
 if len(sys.argv) > 2:
@@ -37,12 +37,13 @@ if len(sys.argv) > 2:
 	crop_fov = 1
 
 conditions = os.listdir(imdir)
-conditions = [c for c in conditions if not 'png' in c]
+conditions = [c for c in conditions if not 'tif' in c]
+print conditions
 D = dict()
 for cond in conditions:
 	print cond
 	files = os.listdir(os.path.join(imdir, cond))
-	files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
+	files = sorted([f for f in files if os.path.splitext(f)[1] == '.tif'])
 	strtidxs = [i for i, item in enumerate(files) if re.search('_0_', item)]
 	strtidxs.append(len(files))
 
