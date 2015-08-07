@@ -506,6 +506,7 @@ for condType in conditionMatrix:
         barStim.setPos([posX,posY])
         barStim.draw()
         win.flip()
+
         lastT = clock.getTime()
 
         fdict = dict()
@@ -518,6 +519,7 @@ for condType in conditionMatrix:
     #		fdict['im'] = camera.capture_wait() #append(camera.capture_wait())
     #		camera.queue_frame()
     #		count_frames += 1
+
 
             while (clock.getTime() - lastT + (1./frame_rate)) <= (1./refresh_rate):
             #for fr_idx in range(int(frame_rate/refresh_rate)):
