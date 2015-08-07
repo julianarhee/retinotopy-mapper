@@ -12,12 +12,12 @@ from libtiff import TIFF
 sampling_rate = 60.0
 reduce_factor = (4, 4)
 cache_file = True
-target_freq = 0.1
+target_freq = 0.08
 
 imdir = sys.argv[1]
 
 files = os.listdir(imdir)
-files = [f for f in files if os.path.splitext(f)[1] == '.png']
+files = sorted([f for f in files if os.path.splitext(f)[1] == '.tif'])
 
 #files = sorted([f for f in files if os.path.isfiles(os.path.join(imdir, f))])
 #files = files[11981:-1]
@@ -71,7 +71,7 @@ ref_im_reduced = block_reduce(ref_im, reduce_factor)
 
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
 
-for i, f in enumerate(files):
+for i, f in enumerate(sorted(files)):
 
 	# if i > 20:
 	# 	break

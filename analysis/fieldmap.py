@@ -56,10 +56,11 @@ import matplotlib.cm as cm
 # 	crop_fov = 1
 
 files = os.listdir(imdir)
-files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
+files = sorted([f for f in files if os.path.splitext(f)[1] == '.tif'])
 #files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
 #files = files[0:11982]
 #files = files[11982:-1]
+print files[0]
 print files[-1]
 # FIND CYCLE STARTS:
 # This will depend on the file-saving name -- if 0'ed for frame # with each cycle, can just look for 0 in the fn
@@ -140,7 +141,7 @@ print len(files)
 
 print('copying files')
 
-for i, f in enumerate(files):
+for i, f in enumerate(sorted(files)):
 
 	if i % 100 == 0:
 		print('%d images processed...' % i)

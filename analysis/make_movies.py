@@ -12,11 +12,18 @@ import matplotlib.cm as cm
 import re
 import itertools
 
-#from libtiff import TIFF
+from libtiff import TIFF
 
-# import PIL.Image as Image
-# import libtiff
-import cv2
+import PIL.Image as Image
+import libtiff
+
+# import matplotlib
+# matplotlib.use("Agg")
+# import matplotlib.pyplot as plt
+# import matplotlib.animation as manimation
+
+
+#import cv2
 
 #import tifffile as tiff
 
@@ -34,7 +41,7 @@ if len(sys.argv) > 2:
 	crop_fov = 1
 
 files = os.listdir(imdir)
-files = sorted([f for f in files if os.path.splitext(f)[1] == '.png'])
+files = sorted([f for f in files if os.path.splitext(f)[1] == '.tif'])
 print files[-1]
 
 # FIND CYCLE STARTS:
@@ -75,18 +82,20 @@ idxs = [i+1 for i in find_cycs]
 #sample = imread(os.path.join(imdir, files[0]))
 
 # METHOD 2:
-# tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
-# sample = tiff.read_image().astype('float')
-# print sample.dtype, [sample.max(), sample.min()]
-# tiff.close()
+tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+sample = tiff.read_image().astype('float')
+print sample.dtype, [sample.max(), sample.min()]
+tiff.close()
 
 # METHOD 3:
 #sample = tiff.imread(os.path.join(imdir, files[0]))
-sample = cv2.imread(os.path.join(imdir, files[0]), -1)
-print sample.shape
-print sample.dtype, [sample.max(), sample.min()]
-plt.imshow(sample)
-plt.show()
+
+# sample = cv2.imread(os.path.join(imdir, files[0]), -1)
+# print sample.shape
+# print sample.dtype, [sample.max(), sample.min()]
+# plt.imshow(sample)
+# plt.show()
+
 # # Divide into cycles:
 # chunks = []
 # for i in range(0, len(idxs)-1):
@@ -149,12 +158,12 @@ for i, f in enumerate(files):
 	# print f
 	#im = imread(os.path.join(imdir, f)).astype('float')
 	
-	# tiff = TIFF.open(os.path.join(imdir, f), mode='r')
-	# im = tiff.read_image().astype('float')
-	# tiff.close()
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	im = tiff.read_image().astype('float')
+	tiff.close()
 
 	#im = tiff.imread(os.path.join(imdir, f))
-	im = cv2.imread(os.path.join(imdir, f), -1)
+	#im = cv2.imread(os.path.join(imdir, f), -1)
 
 	#im = im[strtX:endX,strtY:endY]
 	# print im.shape
@@ -174,7 +183,7 @@ del stack
 
 nframes_per_cycle = [d.shape[2] for d in D]
 
-xtra = [i for i,d in enumerate(D) if d.shape[2]!=max(nframes_per_cycle)]
+#xtra = [i for i,d in enumerate(D) if d.shape[2]!=max(nframes_per_cycle)]
 print np.mean(nframes_per_cycle)
 
 # good = 0
@@ -204,28 +213,62 @@ D = map(lambda x: x[:,:,0:min(nframes_per_cycle)], D)
 meanD = sum(D) / len(D)
 print meanD.shape
 
-S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]), np.uint16)
-for i in range(1,meanD.shape[2]):
-	S[:,:,i-1] = meanD[:,:,i] - meanD[:,:,0]
+# NORMALIZE with min=0, max=1
+M = (meanD - meanD.min()) / (meanD.max() - meanD.min())
 
-del D
+# SUBTRACT FIRST FRAME FROM EACH:
+# S = np.empty((meanD.shape[0], meanD.shape[1], meanD.shape[2]), np.uint16)
+# for i in range(1,meanD.shape[2]):
+# 	S[:,:,i-1] = meanD[:,:,i] - meanD[:,:,0]
+
+# del D
+
 
 # os.path.split(imdir)[0]
 condition = os.path.split(imdir)[1]
-framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
+framedir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'processed', condition)
 if not os.path.exists(framedir):
 	os.makedirs(framedir)
-for i in range(S.shape[2]):
-	fname = '%s/%0.4i.tif' % (framedir, i)
-	imarray = S[:,:,i]
-	#tiff = TIFF.open(fname, mode='w')
-	#tiff.imsave(fname, imarray)
-	#tiff.close()
-	#plt.imshow(imarray)
-	#plt.show()
-	cv2.imwrite(fname, imarray)
 
-	#img = scipy.misc.toimage(S[:,:,i], high=imarray.max(), low=imarray.min(), mode='I')
-	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
-	#img.save(fname)
+print framedir
+for i in range(M.shape[2]):
+	fname = '%s/%0.4i.png' % (framedir, i)
+	#image = Image.fromarray(np.uint8(M[:,:,i]*255))
+	image = Image.fromarray(M[:,:,i])
+	tiff = TIFF.open(fname, mode='w')
+	tiff.write_image(image)
+	tiff.close()
+
+# FFMpegWriter = manimation.writers['ffmpeg']
+# metadata = dict(title='Movie Test', artist='Matplotlib',
+#         comment='Movie support!')
+# writer = FFMpegWriter(fps=15, metadata=metadata)
+
+# fig = plt.figure()
+# l, = plt.plot([], [], 'k-o')
+
+# plt.xlim(-5, 5)
+# plt.ylim(-5, 5)
+
+# x0,y0 = 0, 0
+
+# frames = os.listdir(framedir)
+
+# with writer.saving(fig, "writer_test.mp4", 100):
+# 	for i in frames:
+# 		writer.grab_frame()
+
+# # for i in range(S.shape[2]):
+# # 	fname = '%s/%0.4i.tif' % (framedir, i)
+# # 	imarray = S[:,:,i]
+# # 	#tiff = TIFF.open(fname, mode='w')
+# # 	#tiff.imsave(fname, imarray)
+# # 	#tiff.close()
+# # 	#plt.imshow(imarray)
+# # 	#plt.show()
+# # 	cv2.imwrite(fname, imarray)
+
+# # 	#img = scipy.misc.toimage(S[:,:,i], high=imarray.max(), low=imarray.min(), mode='I')
+# # 	#img = scipy.misc.toimage(S[:,:,i], high=65536, low=0, mode='I')
+# # 	#img.save(fname)
 
