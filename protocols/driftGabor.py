@@ -58,7 +58,7 @@ parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz', 'pkl'], default='pkl', help="out file format, png | npz | pkl [default: png]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tif', 'png', 'npz', 'pkl'], default='tif', help="out file format, tif | png | npz | pkl [default: png]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -90,8 +90,11 @@ if not acquire_images:
 save_as_png = False
 save_as_npz = False
 save_as_dict = False
+save_as_tif = False
 if output_format == 'png':
     save_as_png = True
+elif output_format == 'tif':
+    save_as_tif = True
 elif output_format == 'npz':
     save_as_npz = True
 else:
@@ -191,6 +194,12 @@ def save_images_to_disk():
             tiff.write_image(currdict['im'])
             tiff.close()
 
+        elif save_as_tif:
+            fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']))
+            tiff = TIFF.open(fname, mode='w')
+            tiff.write_image(currdict['im'])
+            tiff.close()
+
         elif save_as_npz:
             np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
         
@@ -230,12 +239,13 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 4 #20 # 8 how many times to run each condition
+num_cond_reps = 1 #20 # 8 how many times to run each condition
 #num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 conditionTypes = ['1', '2']
 condLabel = ['blank', 'gab-left', 'gab-right'] #['V-Left','V-Right','H-Down','H-Up']
-conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+#conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
+conditionMatrix = ['0',' 1', '2']
 #conditionMatrix = []
 # for i in conditionTypes:
 #     conditionMatrix.append([np.tile(i, num_cond_reps)])
@@ -244,10 +254,11 @@ conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len
 #conditionMatrix = random.shuffle(conditionMatrix)
 
 #conditionMatrix = [int(i) for i in conditionMatrix]
-blanks = np.zeros((1,len(conditionMatrix)))[0]
-blanks = [str(int(i)) for i in blanks]
-fullmat = [iter(blanks), iter(conditionMatrix)]
-conditionMatrix = list(it.next() for it in itertools.cycle(fullmat))
+
+# blanks = np.zeros((1,len(conditionMatrix)))[0]
+# blanks = [str(int(i)) for i in blanks]
+# fullmat = [iter(blanks), iter(conditionMatrix)]
+# conditionMatrix = list(it.next() for it in itertools.cycle(fullmat))
 print "COND:", conditionMatrix
 
 
@@ -263,7 +274,7 @@ print total_length
 
 #time parameters
 fps = 60.
-total_time = 5.0#total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
+total_time = 120.0 #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 
@@ -273,7 +284,7 @@ duration = total_time #total_time*num_seq_reps; #how long to run the same condit
 patch = visual.GratingStim(win=win, tex='sin', mask='gauss', units='deg') #gives a 'Gabor'
 patch.sf = 0.08
 patch.ori = 90 # horizontal is 90, vertical is 0
-patch.size = (30, 30)
+patch.size = (60, 60)
 patch.setAutoDraw(False)
 driftFrequency = 4.0 # drifting frequency in Hz
 
@@ -300,11 +311,11 @@ for condType in conditionMatrix:
     print condLabel[int(condType)]
 
     # SPECIFICY CONDITION TYPES:
-    if condType == '1':
-        patch.pos = (0 - screen_width_deg*0.25, 0 + screen_height_deg*0.20)
-    elif condType =='2':
+    if condLabel[int(condType)] == 'gab-left':
+        patch.pos = (0 - screen_width_deg*0, 0 + screen_height_deg*0.20)
+    elif condLabel[int(condType)] == 'gab-right':
         patch.pos = (0 + screen_width_deg*0.25, 0 + screen_height_deg*0.20)
-    else: # BLANK
+    elif condType == '0': # BLANK
         patch.pos = (0, 0)
 
     # DISPLAY LOOP:
