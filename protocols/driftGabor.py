@@ -66,6 +66,8 @@ parser.add_option('--debug-window', action="store_false", dest="fullscreen", hel
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
+parser.add_option('--type', action="store", dest="imtype", default="auto", help="auto | gcamp")
+
 (options, args) = parser.parse_args()
 
 acquire_images = options.acquire_images
@@ -83,6 +85,10 @@ use_pvapi = options.use_pvapi
 
 print winsize
 print output_format
+
+imtype = options.imtype
+if imtype == 'gcamp':
+    print "shorter trials for GCAMP selected"
 
 if not acquire_images:
     save_images = False
@@ -273,7 +279,7 @@ conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len
 #fullmat = [iter(blanks), iter(conditionMatrix)]
 #conditionMatrix = list(it.next() for it in itertools.cycle(fullmat))
 #conditionMatrix.append('0')
-#conditionMatrix.insert(0, '0')
+conditionMatrix.insert(0, '0')
 conditionMatrix.append('0')
 print "COND:", conditionMatrix
 
@@ -291,8 +297,13 @@ print total_length
 #time parameters
 fps = 60.
 #total_time = 120.0 #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
-dur_stimulus = 5.0
-dur_blank = 15.0
+if imtype=='auto':
+    dur_stimulus = 5.0
+    dur_blank = 15.0
+else:
+    dur_stimulus = 5.0
+    dur_blank = 5.0
+
 total_time = dur_stimulus + dur_blank # length of each trial
 
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
