@@ -364,7 +364,7 @@ flash_count = 0
 last_t = None
 
 report_period = 60 # frames
-frame_rate = 180.000
+frame_rate = 60.000
 refresh_rate = 60.000
 
 if acquire_images:
@@ -511,7 +511,6 @@ for condType in conditionMatrix:
 
         fdict = dict()
     	#fdict['im'] = []
-
         if acquire_images:
             #fdict = dict()
     #	   while clock.getTime() - lastT + 1./refresh_rate <= 1./refresh_rate:
@@ -521,7 +520,7 @@ for condType in conditionMatrix:
     #		count_frames += 1
 
 
-            while (clock.getTime() - lastT + (1./frame_rate)) <= (1./refresh_rate):
+            while (clock.getTime() - lastT + (1./frame_rate)) < 0.017: #(1./refresh_rate):
             #for fr_idx in range(int(frame_rate/refresh_rate)):
             #count_frames += 1
             #print clock.getTime() - lastT
@@ -564,9 +563,9 @@ for condType in conditionMatrix:
 
 
         #if count_frames % report_period == 0:
-        if frame_accumulator % report_period == 0:
+        if count_frames % report_period == 0:
             if last_t is not None:
-                print('avg frame rate: %f' % (report_period / (t - last_t)))
+                print('avg frame rate: %f, %s' % ((report_period / (t - last_t)), str(t-last_t)))
             last_t = t
 
         nframes += 1

@@ -66,6 +66,8 @@ parser.add_option('--debug-window', action="store_false", dest="fullscreen", hel
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
+parser.add_option('--type', action="store", dest="imtype", default="auto", help="auto | gcamp")
+
 (options, args) = parser.parse_args()
 
 acquire_images = options.acquire_images
@@ -83,6 +85,10 @@ use_pvapi = options.use_pvapi
 
 print winsize
 print output_format
+
+imtype = options.imtype
+if imtype == 'gcamp':
+    print "shorter trials for GCAMP selected"
 
 if not acquire_images:
     save_images = False
@@ -182,20 +188,28 @@ def save_images_to_disk():
 
     currdict = im_queue.get()
 
+    # currpath = '%s/%s' % (output_path, currdict['condName'])
+    # if not os.path.exists(currpath):
+    #     os.mkdir(currpath)
+
     while currdict is not None:
         # Make the output path if it doesn't already exist
-        currpath = '%s/%s/' % (output_path, currdict['condName'])
+        currpath = '%s/%s' % (output_path, currdict['condName'])
         if not os.path.exists(currpath):
             os.mkdir(currpath)
 
+        subpath = '%s/trial%i' % (currpath, int(currdict['cyc']))
+        if not os.path.exists(subpath):
+            os.mkdir(subpath)
+
         if save_as_png:
-            fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_%s.png' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']))
+            fname = '%s/%i_%i_%i_SZ%s_SF%s_TF%s_%s_stim%s.png' % (subpath, int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['stim']))
             tiff = TIFF.open(fname, mode='w')
             tiff.write_image(currdict['im'])
             tiff.close()
 
         elif save_as_tif:
-            fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']))
+            fname = '%s/%i_%i_%i_SZ%s_SF%s_TF%s_%s_stim%s.tif' % (subpath, int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['stim']))
             tiff = TIFF.open(fname, mode='w')
             tiff.write_image(currdict['im'])
             tiff.close()
@@ -228,10 +242,14 @@ if save_images:
     disk_writer.daemon = True
     disk_writer.start()
 
+FORMAT = '%Y%m%d%H%M%S%f'
 
 # -------------------------------------------------------------
 # Psychopy stuff here (just lifted from a demo)
 # -------------------------------------------------------------
+expdict = dict()
+
+strt_timestamp = datetime.now().strftime(FORMAT)
 
 globalClock = core.Clock()
 
@@ -279,8 +297,13 @@ print total_length
 #time parameters
 fps = 60.
 #total_time = 120.0 #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
-dur_stimulus = 5.0
-dur_blank = 15.0
+if imtype=='auto':
+    dur_stimulus = 5.0
+    dur_blank = 15.0
+else:
+    dur_stimulus = 5.0
+    dur_blank = 5.0
+
 total_time = dur_stimulus + dur_blank # length of each trial
 
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
@@ -292,7 +315,7 @@ duration = total_time #total_time*num_seq_reps; #how long to run the same condit
 patch = visual.GratingStim(win=win, tex='sin', mask='gauss', units='deg') #gives a 'Gabor'
 patch.sf = 0.08
 patch.ori = 90 # horizontal is 90, vertical is 0
-patch.size = (60, 60)
+patch.size = (30, 30)
 patch.setAutoDraw(False)
 driftFrequency = 4.0 # drifting frequency in Hz
 
@@ -315,16 +338,21 @@ if acquire_images:
 getout = 0
 cyc = 1
 for condType in conditionMatrix:
-    #print condType
+    print cyc
     print condLabel[int(condType)]
 
     # SPECIFICY CONDITION TYPES:
     if condLabel[int(condType)] == 'gab-left':
-        patch.pos = (0 - screen_width_deg*0.75, 0 + screen_height_deg*0.15)
+        patch.pos = (0 - screen_width_deg*0.5, 0 + screen_height_deg*0.15)
+        stim = 1
     elif condLabel[int(condType)] == 'gab-right':
         patch.pos = (0 + screen_width_deg*0, 0 + screen_height_deg*0.15)
+        stim = 1
     elif condType == 'blank': # BLANK
-        patch.pos = (0, 0)
+        #patch.pos = (0, 0)
+        patch.tex = np.zeros(patch.size)
+        patch.mask = None
+        stim = -1
 
     # DISPLAY LOOP:
     win.flip() # first clear everything
@@ -332,55 +360,27 @@ for condType in conditionMatrix:
 
     # clock = core.Clock()
     frame_counter = 0
-    FORMAT = '%Y%m%d%H%M%S%f'
-
 
     print "DUR:", duration
     clock = core.Clock()
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
-        
-        while clock.getTime <= dur_stimulus:
-            patch.phase = 1 - clock.getTime() * driftFrequency
-            if int(condType) > 0:
-                patch.draw()
-                win.flip()
-            else:
-                win.flip()
 
-            if acquire_images:
-                im_array = camera.capture_wait()
-                camera.queue_frame()
+        patch.phase = 1 - clock.getTime() * driftFrequency
+        # if int(condType) > 0:
 
-                if save_images:
-                    fdict = dict()
-                    fdict['im'] = im_array
-                    fdict['size'] = patch.size[0]
-                    fdict['tf'] = driftFrequency
-                    fdict['sf'] = patch.sf[0]
-                    fdict['ori'] = patch.ori
-                    fdict['condName'] = condLabel[int(condType)]#condLabel[int(condType)-1]
-                    fdict['frame'] = frame_counter
-                    fdict['time'] = datetime.now().strftime(FORMAT)
-                    fdict['pos'] = patch.pos
+        if clock.getTime() > dur_stimulus:
+            patch.tex = np.zeros((256, 256))
+            #patch.mask = None
+            stim = 0
+        else:
+            patch.tex = 'sin'
+            #patch.mask = 'gauss'
+            stim = 1
+            #t = globalClock.getTime()
+            #patch.phase = 1 - clock.getTime() * driftFrequency
 
-                    im_queue.put(fdict)
-
-            if nframes % report_period == 0:
-                if last_t is not None:
-                    print('avg frame rate: %f' % (report_period / (t - last_t)))
-                last_t = t
-
-            nframes += 1
-            frame_counter += 1
-            flash_count += 1
-
-            # Break out of the while loop if these keys are registered
-            if event.getKeys(keyList=['escape', 'q']):
-                getout = 1
-                break  
-
-
+        patch.draw()
         win.flip()
 
         if acquire_images:
@@ -390,15 +390,16 @@ for condType in conditionMatrix:
             if save_images:
                 fdict = dict()
                 fdict['im'] = im_array
-                fdict['size'] = 'x'
-                fdict['tf'] = 'x'
-                fdict['sf'] = 'x'
-                fdict['ori'] = 'x'
+                fdict['size'] = patch.size[0]
+                fdict['tf'] = driftFrequency
+                fdict['sf'] = patch.sf[0]
+                fdict['ori'] = patch.ori
                 fdict['condName'] = condLabel[int(condType)]#condLabel[int(condType)-1]
                 fdict['frame'] = frame_counter
                 fdict['time'] = datetime.now().strftime(FORMAT)
-                fdict['pos'] = 'x'
-
+                fdict['pos'] = patch.pos
+                fdict['stim'] = stim
+                fdict['cyc'] = cyc
                 im_queue.put(fdict)
 
         if nframes % report_period == 0:
@@ -415,16 +416,13 @@ for condType in conditionMatrix:
             getout = 1
             break  
 
-
-    #print "TOTAL COND TIME: " + str(clock.getTime())
+    cyc += 1
 
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
     else:
         continue
-
-    cyc += 1
 
 win.close() 
 
@@ -473,5 +471,14 @@ if save_images:
     # disk_writer.terminate()
     disk_writer.join()
     print('Disk writer terminated')
+
+expdict['condMat'] = conditionMatrix
+expdict['start_time'] = strt_timestamp
+expdict['end_time'] = datetime.now().strftime(FORMAT)
+
+metaname = os.path.join(os.path.split(output_path)[0], 'session_'+os.path.split(output_path)[1]+'.pkl')
+with open(metaname, 'wb') as f:
+    pkl.dump(expdict, f, protocol=pkl.HIGHEST_PROTOCOL)
+
     
 
