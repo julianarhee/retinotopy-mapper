@@ -257,7 +257,7 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 5 #20 # 8 how many times to run each condition
+num_cond_reps = 30 #20 # 8 how many times to run each condition
 #num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 conditionTypes = ['1', '2']
@@ -315,7 +315,7 @@ duration = total_time #total_time*num_seq_reps; #how long to run the same condit
 patch = visual.GratingStim(win=win, tex='sin', mask='gauss', units='deg') #gives a 'Gabor'
 patch.sf = 0.08
 patch.ori = 90 # horizontal is 90, vertical is 0
-patch.size = (30, 30)
+patch.size = (60, 60)
 patch.setAutoDraw(False)
 driftFrequency = 4.0 # drifting frequency in Hz
 
@@ -343,7 +343,7 @@ for condType in conditionMatrix:
 
     # SPECIFICY CONDITION TYPES:
     if condLabel[int(condType)] == 'gab-left':
-        patch.pos = (0 - screen_width_deg*0.5, 0 + screen_height_deg*0.15)
+        patch.pos = (0 - screen_width_deg*0.25, 0 + screen_height_deg*0.15)
         stim = 1
     elif condLabel[int(condType)] == 'gab-right':
         patch.pos = (0 + screen_width_deg*0, 0 + screen_height_deg*0.15)
