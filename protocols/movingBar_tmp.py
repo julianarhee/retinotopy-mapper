@@ -59,7 +59,7 @@ parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz', 'pkl'], default='pkl', help="out file format, png | npz | pkl [default: png]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tif', 'png', 'npz', 'pkl'], default='tif', help="out file format, tif | png | npz | pkl [default: png]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -90,11 +90,14 @@ print output_format
 if not acquire_images:
     save_images = False
 
+save_as_tif = False
 save_as_png = False
 save_as_npz = False
 save_as_dict = False
 if output_format == 'png':
     save_as_png = True
+if output_format == 'tif':
+    save_as_tif = True
 elif output_format == 'npz':
     save_as_npz = True
 else:
@@ -191,6 +194,14 @@ def save_images_to_disk():
         if save_as_png:
 
             fname = '%s/%s_%s/00%i_%i_%i_%i_%ideg_%s.png' % (output_path, currdict['condName'], str(run_num), int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['stimPos']))
+
+            tiff = TIFF.open(fname, mode='w')
+            tiff.write_image(currdict['im'])
+            tiff.close()
+
+        elif save_as_tif:
+
+            fname = '%s/%s_%s/00%i_%i_%i_%i_%ideg_%s.tif' % (output_path, currdict['condName'], str(run_num), int(currdict['condNum']), int(currdict['time']), int(currdict['frame']), int(n), int(currdict['barWidth']), str(currdict['stimPos']))
 
             tiff = TIFF.open(fname, mode='w')
             tiff.write_image(currdict['im'])

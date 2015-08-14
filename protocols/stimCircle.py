@@ -105,7 +105,7 @@ parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
 parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/frames", help="out path directory [default: /tmp/frames]")
-parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['png', 'npz', 'pkl'], default='pkl', help="out file format, png | npz | pkl [default: png]")
+parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tif', 'png', 'npz', 'pkl'], default='tif', help="out file format, tif | png | npz | pkl [default: tif]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
 parser.add_option('--fullscreen', action="store_true", dest="fullscreen", default=True, help="display full screen [defaut: True]")
@@ -137,11 +137,14 @@ print output_format
 if not acquire_images:
     save_images = False
 
+save_as_tif = False
 save_as_png = False
 save_as_npz = False
 save_as_dict = False
 if output_format == 'png':
     save_as_png = True
+elif output_format == 'tif':
+    save_as_tif = True
 elif output_format == 'npz':
     save_as_npz = True
 else:
@@ -240,6 +243,12 @@ def save_images_to_disk():
             tiff.write_image(currdict['im'])
             tiff.close()
 
+        elif save_as_tif:
+            fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
+            tiff = TIFF.open(fname, mode='w')
+            tiff.write_image(currdict['im'])
+            tiff.close()
+
         elif save_as_npz:
             np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
         
@@ -302,7 +311,7 @@ print "height", screen_height_cm, screen_height_deg
 
 # TIMING PARAMETERS:
 fps = 60.
-cyc_per_sec = 0.1 # cycle freq in Hz
+cyc_per_sec = 0.05 # cycle freq in Hz
 total_time = 1./cyc_per_sec #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
@@ -311,7 +320,7 @@ duration = total_time #total_time*num_seq_reps; #how long to run the same condit
 # SET UP ALL THE STIMULI:
 if use_images:
     stimdir = '../stimuli'
-    stimset = os.listdir(stimdir)[1]
+    stimset = os.listdir(stimdir)[0]
     print stimset
     stims = os.listdir(os.path.join(stimdir, stimset))
     stims = [s for s in stims if os.path.splitext(s)[1] == '.tif']
@@ -340,6 +349,7 @@ if use_images:
         texture.sf = None
         texture.setAutoDraw(False)
         textures.append(texture)
+    driftFrequency = 0.0 
 
 t=0
 nframes = 0.
@@ -367,11 +377,14 @@ for curr_cond in condMatrix:
         blankscreen = numpy.zeros([256,256,3]);
         #blankscreen[:,:,0] = 0.
         patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
+        patch.sf = None
         patch.pos = (0, 0)
         
     elif curr_cond == '1': # STIMULUS
         if use_images: # USE SCENE STIMULI
             patch = textures[0]
+            patch.sf = None
+            patch.ori = 0.00
         else: # USE GABORS
             patch = visual.GratingStim(win=win, tex='sin', mask='raisedCos', size=patch_size, units='deg') #gives a 'Gabor'
             patch.sf = 0.08
@@ -400,6 +413,7 @@ for curr_cond in condMatrix:
                 sidx += 1
                 if use_images:
                     patch = textures[stimIdxs[sidx]]
+                    patch.sf = None
                 else:
                     patch.ori = stims[stimIdxs[sidx]]
 
