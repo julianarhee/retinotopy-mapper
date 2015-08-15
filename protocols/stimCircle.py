@@ -338,7 +338,7 @@ path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension 
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
 driftFrequency = 4.0 # drifting frequency in Hz
-patch_size = (15, 15)
+patch_size = (45, 45)
 dwell_time = duration * cyc_per_sec
 
 if use_images:
