@@ -297,7 +297,7 @@ condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': 1, '1': num_cond_reps}
+num_cycles = {'0': num_cond_reps, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -331,7 +331,7 @@ else:
 
 tmp_stimIdxs = [i for i in range(len(stims))]
 random.shuffle(tmp_stimIdxs)
-stimIdxs = flatten(np.tile(tmp_stimIdxs, num_cond_reps+1))
+stimIdxs = flatten(np.tile(tmp_stimIdxs, num_cond_reps*2))
 random.shuffle(stimIdxs)
 
 # SPECIFY TRAVEL PARAMETERS:
@@ -339,7 +339,7 @@ path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension 
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
 driftFrequency = 4.0 # drifting frequency in Hz
-patch_size = (15, 15)
+patch_size = (45, 45)
 dwell_time = duration * cyc_per_sec
 
 if use_images:
@@ -419,7 +419,7 @@ for curr_cond in condMatrix:
                     patch.ori = stims[stimIdxs[sidx]]
 
             path_pos = ( ( clock.getTime() % duration ) / duration) * 360
-            patch.pos = pol2cart(-1*path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+            patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
 
         patch.draw()
         win.flip()
