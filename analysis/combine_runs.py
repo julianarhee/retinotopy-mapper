@@ -190,8 +190,8 @@ for cond in D.keys():
 	# writer = cv2.cv.CreateVideoWriter('out.avi', fourcc, fps, (W, H), 1)
 
 	for i in range(F):
-		oldmin = avg_stacks[cond][:,:,i] #-2**15 #np.finfo('float64').min
-		oldmax = avg_stacks[cond][:,:,i] # 2**15 - 1 #np.finfo('float64').max
+		oldmin = avg_stacks[cond].min() #-2**15 #np.finfo('float64').min
+		oldmax = avg_stacks[cond].max() # 2**15 - 1 #np.finfo('float64').max
 		oldrange = oldmax - oldmin
 		newmin = 0
 		newmax = 255
