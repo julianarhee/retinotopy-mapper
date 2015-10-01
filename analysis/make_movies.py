@@ -226,7 +226,7 @@ M = (meanD - meanD.min()) / (meanD.max() - meanD.min())
 
 # os.path.split(imdir)[0]
 condition = os.path.split(imdir)[1]
-framedir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'processed', condition)
+framedir = os.path.join(os.path.split(imdir)[0], 'processed', condition)
 if not os.path.exists(framedir):
 	os.makedirs(framedir)
 

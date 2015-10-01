@@ -24,9 +24,9 @@ if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
 cond = 'Surface'
-ext = '.tiff'
+ext = '.tif'
 files = os.listdir(os.path.join(imdir, cond))
-print files
+print files, cond
 files = sorted([f for f in files if os.path.splitext(f)[1] == ext])
 
 tiff = TIFF.open(os.path.join(imdir, cond, files[0]), mode='r')
@@ -35,8 +35,14 @@ tiff.close()
 
 plt.imshow(im, cmap = plt.get_cmap('gray'))
 
-fname = '%s/surface_%s.png' % (outdir, os.path.split(os.path.split(imdir)[0])[1])
+fname = '%s/surface_%s.tif' % (outdir, os.path.split(os.path.split(imdir)[0])[1])
+print outdir
+
+tiff = TIFF.open(fname, mode='w')
+tiff.write_image(im)
+tiff.close()
+
 print fname
-plt.savefig(fname)
+# plt.savefig(fname)
 
 plt.show()

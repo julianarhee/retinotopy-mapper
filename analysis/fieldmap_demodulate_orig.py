@@ -12,7 +12,7 @@ from libtiff import TIFF
 sampling_rate = 60.0
 reduce_factor = (4, 4)
 cache_file = True
-target_freq = 0.08
+target_freq = 0.3
 
 imdir = sys.argv[1]
 

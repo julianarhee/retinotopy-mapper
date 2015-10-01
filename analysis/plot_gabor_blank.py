@@ -25,6 +25,7 @@ import re
 import itertools
 
 from libtiff import TIFF
+from skimage.measure import block_reduce
 
 
 def atoi(text):
@@ -40,6 +41,7 @@ outdir = os.path.join(os.path.split(imdir)[0], 'figures')
 if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
+
 # if itype=='gcamp':
 # 	cond_start = 0
 # 	cond_endend = 3 # number of seconds for stimulus ON
@@ -53,7 +55,7 @@ if not os.path.exists(outdir):
 
 
 reduce_factor = (2,2)
-reduceit = 0
+reduceit = 1
 fps = 60.0
 
 if imtype=='auto':
@@ -103,10 +105,10 @@ for cond in conditions:
 
 			tiff = TIFF.open(os.path.join(imdir, cond, t, f), mode='r')
 			im = tiff.read_image().astype('float')
-			tiff.close()
-
 			if reduceit:
 				im = block_reduce(im, reduce_factor, func=np.mean)
+
+			tiff.close()
 
 			stack[:,:,i] = im
 
@@ -129,6 +131,8 @@ for k in D.keys():
 		normD[:, :, i-1] = norm_frame
 
 	N[k] = np.mean(normD, axis=2)
+
+del D
 
 leftmap = N['gab-left']
 rightmap = N['gab-right']
