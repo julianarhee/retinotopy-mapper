@@ -249,10 +249,10 @@ win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monit
 
 # SET CONDITIONS:
 num_cond_reps = 1 #20 # 8 how many times to run each condition
-num_seq_reps = 20 # how many times to do the cycle of 1 condition
+num_seq_reps = 5 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 # can either run 1 cycle many times, or repmat:
-conditionTypes = ['2']
+conditionTypes = ['1']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -264,7 +264,7 @@ conditionMatrix = sorted(list(itertools.chain(*conditionMatrix)), key=natural_ke
 
 
 #input parameters 
-cyc_per_sec = 0.3 # 
+cyc_per_sec = 0.30 # 
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
 total_length = max([screen_width_cm, screen_height_cm])
@@ -282,11 +282,11 @@ distance = monitors.Monitor(whichMonitor).getDistance()
 duration = total_time*num_seq_reps; #how long to run the same condition for (seconds)
 
 #flashing parameters
-flashPeriod = 1. #0.2#0.2 #amount of time it takes for a full cycle (on + off)
-dutyCycle = 1. #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+flashPeriod = 1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
+dutyCycle = 1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
 # SPECIFY STIM PARAMETERS
-barColor = -1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
+barColor = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
 barWidth = 1 # bar width in degrees 
 
 #blackBar = (0,0,0)
@@ -401,6 +401,8 @@ for condType in conditionMatrix:
         endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint - barWidth*0.5))
         dist = endPoint - startPoint
         print "DIST: ", dist
+        print "START: ", startPoint
+        print "END: ", endPoint
         cyc = 0
 
     # 1. bar moves to this far from centerPoint (in degrees)
@@ -408,7 +410,7 @@ for condType in conditionMatrix:
 
     # CREATE THE STIMULUS:
     barTexture = numpy.ones([256,256,3])*barColor;
-    #barTexture[:,:,0] = 0. # IS THIS HERE?!
+    # barTexture[:,:,0] = 0. # IS THIS HERE?!
     barStim = visual.PatchStim(win=win,tex=barTexture,mask='none',units='deg',pos=centerPoint,size=stimSize,ori=angle)
     barStim.setAutoDraw(False)
 
