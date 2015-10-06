@@ -100,8 +100,10 @@ if headless:
 
 # GET PATH INFO:
 outdir = sys.argv[1]
-# files = os.listdir(outdir)
-# files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
+
+# safe guard, in case i forget to include 'backward' condition in options:
+if not backward and 'CW' in outdir:
+    backward = True
 
 rundir = os.path.split(outdir)[0]
 sessiondir = os.path.split(rundir)[0]
@@ -342,9 +344,9 @@ print outdirs + '/' + imname
 
 # Save as SVG format
 if reverse:
-    imname = which_sesh  + '_MAGmasked_REV_' + str(reduce_factor) + '_' +  key + '_' + 'thresh' + str(threshold) + '.png'
+    imname = which_sesh  + '_MAGmasked_REV_' + str(reduce_factor) + '_' +  key + '_' + 'thresh' + str(threshold) + '.svg'
 else:
-    imname = which_sesh  + '_MAGmasked_' + str(reduce_factor) + '_' +  key + '_' + 'thresh' + str(threshold) + '.png'
+    imname = which_sesh  + '_MAGmasked_' + str(reduce_factor) + '_' +  key + '_' + 'thresh' + str(threshold) + '.svg'
 
 plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
 print outdirs + '/' + imname

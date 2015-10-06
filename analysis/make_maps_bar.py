@@ -203,11 +203,11 @@ if bar:
 		# V_keys = [k for k in ftmap.keys() if 'V' in k and '_'+run_num in k]
 		# H_keys = [k for k in ftmap.keys() if 'H' in k and '_'+run_num in k]
 
-	azimuth_phase = (np.angle(ftmap[V_keys[0]]) + np.angle(ftmap[V_keys[1]])) / 2. #* (180./math.pi)
-	elevation_phase = (np.angle(ftmap[H_keys[0]]) + np.angle(ftmap[H_keys[1]])) / 2.  #* (180./math.pi)
+	# azimuth_phase = (np.angle(ftmap[V_keys[0]]) + np.angle(ftmap[V_keys[1]])) / 2. #* (180./math.pi)
+	# elevation_phase = (np.angle(ftmap[H_keys[0]]) + np.angle(ftmap[H_keys[1]])) / 2.  #* (180./math.pi)
 
-	#azimuth_phase = np.angle(ftmap[V_keys[0]] / ftmap[V_keys[1]]) #* (180./math.pi)
-	#elevation_phase = np.angle(ftmap[H_keys[0]] / ftmap[H_keys[1]]) #* (180./math.pi)
+	azimuth_phase = np.angle(ftmap[V_keys[0]] / ftmap[V_keys[1]]) #* (180./math.pi)
+	elevation_phase = np.angle(ftmap[H_keys[0]] / ftmap[H_keys[1]]) #* (180./math.pi)
 	
 	# azimuth_phase = 2 * (np.angle(ftmap[V_keys[0]]) - np.angle(ftmap[V_keys[1]])) #* (180./math.pi)
 	# elevation_phase = 2 * (np.angle(ftmap[H_keys[0]]) - np.angle(ftmap[H_keys[1]])) #* (180./math.pi)
@@ -243,7 +243,9 @@ plt.imshow(imarray,cmap=cm.Greys_r)
 
 plt.subplot(1,3,2) # ABS PHASE -- elevation
 fig = plt.imshow(elevation_phase, cmap="spectral", vmin=-1*math.pi, vmax=math.pi)
-plt.colorbar()
+# plt.colorbar()
+cbar = plt.colorbar(fig) 
+cbar.ax.invert_yaxis() 
 plt.title(eltitle)
 
 plt.subplot(1,3,3) # ABS PHASE -- azimuth
@@ -285,8 +287,10 @@ if bar:
 
 	plt.subplot(3,4,2) # ABS PHASE -- elevation
 	fig = plt.imshow(elevation_phase, cmap=maptype, vmin=-1*math.pi, vmax=math.pi)
-	plt.colorbar()
+	cbar = plt.colorbar(fig) 
+	cbar.ax.invert_yaxis() 
 	plt.title(eltitle)
+
 
 	plt.subplot(3, 4, 3) # ABS PHASE -- azimuth
 	fig = plt.imshow(azimuth_phase, cmap=maptype, vmin=-1*math.pi, vmax=math.pi)
@@ -302,7 +306,12 @@ if bar:
 		#plt.figure()
 		fig = plt.imshow(phase_map, cmap=maptype, vmin=-1*math.pi, vmax=math.pi)
 		plt.title(k)
-		plt.colorbar()
+		
+		if 'Up' in k:
+			cbar = plt.colorbar(fig) 
+			cbar.ax.invert_yaxis()
+		else:
+			plt.colorbar() 
 
 	for i,k in enumerate(V_keys): #enumerate(ftmap.keys()):
 		plt.subplot(3,4,i+7)
@@ -310,7 +319,12 @@ if bar:
 		#plt.figure()
 		fig = plt.imshow(phase_map, cmap=maptype, vmin=-1*math.pi, vmax=math.pi)
 		plt.title(k)
-		plt.colorbar()
+
+		if 'Right' in k:
+			cbar = plt.colorbar(fig) 
+			cbar.ax.invert_yaxis()
+		else:
+			plt.colorbar() 
 
 	# MAG:
 	for i,k in enumerate(H_keys): #enumerate(D.keys()):
@@ -348,7 +362,7 @@ if bar:
 	if custom_keys:
 		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '_U' + up_key + '_D' + down_key + '_L' + left_key + '_R' + right_key + '.svg'
 	else:
-		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + 'svg'
+		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '.svg'
 
 	plt.savefig(outdirs + '/' + imname, format='svg', dpi=1200)
 #	print outdirs + '/' + imname
@@ -357,7 +371,7 @@ if bar:
 	if custom_keys:
 		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '_U' + up_key + '_D' + down_key + '_L' + left_key + '_R' + right_key + '.png'
 	else:
-		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + 'png'
+		imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '.png'
 
 	plt.savefig(outdirs + '/' + imname, format='png')
 	print outdirs + '/' + imname
