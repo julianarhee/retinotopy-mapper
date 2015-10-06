@@ -288,16 +288,16 @@ allow = string.letters + string.digits + '-'
 globalClock = core.Clock()
 
 # make a window
-win = visual.Window(fullscr=fullscreen, size=winsize, units='deg', monitor=whichMonitor)
+win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 30 #20 # 8 how many times to run each condition
+num_cond_reps = 20 #20 # 8 how many times to run each condition
 condTypes = flatten(['0', list(np.tile('1', num_cond_reps))])
 condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': 1, '1': num_cond_reps}
+num_cycles = {'0': num_cond_reps, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -311,7 +311,7 @@ print "height", screen_height_cm, screen_height_deg
 
 # TIMING PARAMETERS:
 fps = 60.
-cyc_per_sec = 0.05 # cycle freq in Hz
+cyc_per_sec = 0.3 # cycle freq in Hz
 total_time = 1./cyc_per_sec #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
@@ -331,7 +331,7 @@ else:
 
 tmp_stimIdxs = [i for i in range(len(stims))]
 random.shuffle(tmp_stimIdxs)
-stimIdxs = flatten(np.tile(tmp_stimIdxs, num_cond_reps+1))
+stimIdxs = flatten(np.tile(tmp_stimIdxs, num_cond_reps*2))
 random.shuffle(stimIdxs)
 
 # SPECIFY TRAVEL PARAMETERS:
@@ -339,7 +339,7 @@ path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension 
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
 driftFrequency = 4.0 # drifting frequency in Hz
-patch_size = (15, 15)
+patch_size = (45, 45)
 dwell_time = duration * cyc_per_sec
 
 if use_images:
@@ -375,7 +375,7 @@ for curr_cond in condMatrix:
 
     # SPECIFICY CONDITION TYPES:
     if curr_cond == '0': # BLANK
-        blankscreen = numpy.zeros([256,256,3]);
+        blankscreen = numpy.ones([256,256,3])*-1;
         #blankscreen[:,:,0] = 0.
         patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
         patch.sf = None
@@ -418,8 +418,8 @@ for curr_cond in condMatrix:
                 else:
                     patch.ori = stims[stimIdxs[sidx]]
 
-            path_pos = ( ( clock.getTime() % duration ) / duration) * 360
-            patch.pos = pol2cart(-1*path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+            path_pos = 1* ( ( clock.getTime() % duration ) / duration) * 360
+            patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
 
         patch.draw()
         win.flip()
