@@ -80,7 +80,7 @@ elif output_format == 'npz':
 # Make the output path if it doesn't already exist
 dateFormat = '%Y%m%d%H%M%S%f'
 tStamp=datetime.now().strftime(dateFormat)
-subjectPath=output_path+'/'+subjectID+'_'+tStamp+'/'
+subjectPath=output_path+'/'+'surface'+'_'+tStamp+'/'
 
 try:
     os.mkdir(output_path)
