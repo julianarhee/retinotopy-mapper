@@ -80,7 +80,7 @@ elif output_format == 'npz':
 # Make the output path if it doesn't already exist
 dateFormat = '%Y%m%d%H%M%S%f'
 tStamp=datetime.now().strftime(dateFormat)
-subjectPath=output_path+'/'+'surface'+'_'+tStamp+'/'
+# subjectPath=output_path+'/'+'surface'+'_'+tStamp+'/'
 
 try:
     os.mkdir(output_path)
@@ -90,15 +90,16 @@ except OSError, e:
     pass
 
 
-try:
-    os.mkdir(subjectPath)
-except OSError, e:
-    if e.errno != errno.EEXIST:
-        raise e
-    pass
+# try:
+#     os.mkdir(subjectPath)
+# except OSError, e:
+#     if e.errno != errno.EEXIST:
+#         raise e
+#     pass
 
 #dataOutputPath=subjectPath+'Surface/'
-dataOutputPath = os.path.join(output_path, tStamp+'_Surface')
+# dataOutputPath = os.path.join(output_path, tStamp+'_Surface')
+dataOutputPath = os.path.join(output_path, 'Surface')
 
 
 try:
