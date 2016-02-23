@@ -24,6 +24,8 @@ import re
 import StringIO
 import scipy.misc
 
+from serial import Serial
+
 #from skimage import io, exposure, img_as_uint
 #io.use_plugin('freeimage')
 
@@ -52,6 +54,7 @@ def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
     return sample_seqgithub
 
 
+ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
 
 monitor_list = monitors.getAllMonitors()
 
@@ -249,10 +252,10 @@ win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monit
 
 # SET CONDITIONS:
 num_cond_reps = 1 #20 # 8 how many times to run each condition
-num_seq_reps = 5 # how many times to do the cycle of 1 condition
+num_seq_reps = 20 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 # can either run 1 cycle many times, or repmat:
-conditionTypes = ['1']
+conditionTypes = ['2']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -264,10 +267,11 @@ conditionMatrix = sorted(list(itertools.chain(*conditionMatrix)), key=natural_ke
 
 
 #input parameters 
-cyc_per_sec = 0.30 # 
+cyc_per_sec = 0.13 # 
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
 total_length = max([screen_width_cm, screen_height_cm])
+print "LENGTH:  ", total_length
 #print screen_width_cm
 #print screen_height_cm
 #print total_length
@@ -303,6 +307,7 @@ print "DUR: ", duration
 #     while bytes: #burn up any old bits that might be lying around in the serial buffer
 #         bytes = ser.read() 
 
+ser.write('1')#TRIGGER
 
 t=0
 nframes = 0.
@@ -318,8 +323,10 @@ if acquire_images:
     # Start acquiring
     win.flip()
     time.sleep(0.002)
-    camera.capture_start(frame_rate)
+    # camera.capture_start(frame_rate)
+    camera.capture_start()
     camera.queue_frame()
+
 
 
 # #wait for serial
@@ -365,13 +372,13 @@ for condType in conditionMatrix:
             longside = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor)) #screen_height_cm
             # travelDist = screen_width_cm*0.5 # Half the travel distance (magnitude, no sign)
             width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
-            travelDist = width_deg*0.5
+            travelDist = (width_deg*0.5)
         else:
             angle = 0
             longside = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor)) #screen_width_cm
             # travelDist = screen_height_cm*0.5 # Half the travel distance (magnitude, no sign)
             height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
-            travelDist = height_deg*0.5
+            travelDist = (height_deg*0.5)
 
         # uStartPoint = tools.monitorunittools.cm2deg(travelDist, monitors.Monitor(whichMonitor)) + barWidth*0.5
         total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
@@ -395,7 +402,8 @@ for condType in conditionMatrix:
         # # 1. bar moves to this far from centerPoint (in degrees)
         # # 2. bar starts & ends OFF the screen
 
-        startPoint = startSign*uStartPoint +barWidth*0.5; #bar starts this far from centerPoint (in degrees)
+        startPoint = startSign*uStartPoint +barWidth*0.5 #bar starts this far from centerPoint (in degrees)
+        startPoint = startPoint
         # currently, the endPoint is set s.t. the same total distance is traveled regardless of V or H bar
         # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
         endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint - barWidth*0.5))
@@ -506,6 +514,8 @@ if acquire_images:
 print "GOT HERE"
 im_queue.put(None)
 
+ser.write('2')#TRIGGER
+ser.close()
 
 if save_images:
     hang_time = time.time()
