@@ -319,6 +319,7 @@ if acquire_images:
     win.flip()
     time.sleep(0.002)
     camera.capture_start(frame_rate)
+    ser.write('1')#TRIGGER
     camera.queue_frame()
 
 

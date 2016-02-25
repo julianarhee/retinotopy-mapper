@@ -175,18 +175,18 @@ class Camera:
         result = self.dll.PvCameraClose(self.handle)
         return result
 
-    def capture_start(self):
+    def capture_start(self, fps = 60.000):
         """Begins Camera Capture"""
         result = self.dll.PvCaptureStart(self.handle)
         if result != e.ePvErrSuccess:
             self.handle_error(result)
         # Set the frame trigger mode
 
-        result = self.attr_float32_set('FrameRate', 10.000)
+        result = self.attr_float32_set('FrameRate', fps)
         if result != e.ePvErrSuccess:
             self.handle_error(result)
 
-        result = self.attr_enum_set('FrameStartTriggerMode','SyncIn2')
+        result = self.attr_enum_set('FrameStartTriggerMode','FixedRate')
         if result != e.ePvErrSuccess:
             self.handle_error(result) 
         # Set the Acquisition Mode. This is Continuous so that auto exposure will work

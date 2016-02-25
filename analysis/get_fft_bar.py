@@ -31,6 +31,11 @@ parser.add_option('--sigma', action="store", dest="gauss_kernel",
                   default="0", help="size of Gaussian kernel for smoothing")
 parser.add_option('--format', action="store",
                   dest="im_format", default="png", help="saved image format")
+parser.add_option('--fps', action="store",
+                  dest="sampling_rate", default="60", help="saved image format")
+parser.add_option('--append', action="store",
+                  dest="append_name", default="", help="append string to saved file name")
+
 
 (options, args) = parser.parse_args()
 
@@ -53,13 +58,15 @@ if headless:
 import matplotlib.pylab as plt
 import matplotlib.cm as cm
 
-sampling_rate = 60.  # np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
+sampling_rate = float(options.sampling_rate) # 60.  # np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
 cache_file = True
 cycle_dur = 1. / target_freq  # 10.
 binspread = 0
 
 #stacks = dict()
 # for imdir in imdirs:
+append_to_name = str(options.append_name)
+
 basepath = os.path.split(os.path.split(imdir)[0])[0]
 session = os.path.split(os.path.split(imdir)[0])[1]
 cond = os.path.split(imdir)[1]
@@ -124,7 +131,7 @@ for i, f in enumerate(files):
 #stacks[session] = stack
 
 # SET FFT PARAMETERS:
-freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate)
+freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate) # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120, but freq correct (looks for closest matching target_bin )
 binwidth = freqs[1] - freqs[0]
 #target_bin = int(target_freq / binwidth)
 target_bin = np.where(
@@ -247,7 +254,7 @@ outdir = os.path.join(sessionpath, 'structs')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-fext = 'D_target_%s_%s.pkl' % (cond, str(reduce_factor))
+fext = 'D_target_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)
@@ -256,10 +263,10 @@ with open(fname, 'wb') as f:
 del D
 
 
-# SAVE THE FFT, USE .hkl SINCE HUGE...
+# SAVE THE FFT, USE .hkl SINCE HUGE...??
 D = dict()
 D['ft'] = DF
-fext = 'D_fft_%s_%s.hkl' % (cond, str(reduce_factor))
+fext = 'D_fft_%s_%s.pkl' % (cond, str(reduce_factor))
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)

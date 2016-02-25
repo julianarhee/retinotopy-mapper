@@ -108,7 +108,7 @@ sessiondir = os.path.split(rundir)[0]
 
 # STORED AS DATAFRAME...
 dstructs = [f for f in files if 'D_fft' in f and str(reduce_factor) and key in f]
-print dstructs
+print "Full FFT struct: ", dstructs
 
 f = dstructs[0]
 D = dict()
@@ -116,7 +116,7 @@ outfile = os.path.join(outdir, dstructs[0])
 with open(outfile,'rb') as fp:
     D[f] = pkl.load(fp)
 
-print D.keys()
+print "Full FFT keys: ", D.keys()
 Dkey = D.keys()[0] #[k for k in D.keys() if key in k][0]
 
 
@@ -124,13 +124,25 @@ Dkey = D.keys()[0] #[k for k in D.keys() if key in k][0]
 # GET THE STUFF NEEDED FOR ANALYSIS:
 #################################################################################
 
-fps = D[Dkey]['fps']
-freqs = D[Dkey]['freqs']
-target_freq = D[Dkey]['target_freq']
-target_bin = D[Dkey]['target_bin']
+dd_structs = [f for f in files if 'D_target' in f and str(reduce_factor) and key in f]
+print "Target dict with session info: ", dd_structs
 
-dynrange = D[Dkey]['dynrange']
-mean_intensity = D[Dkey]['mean_intensity']
+f = dd_structs[0]
+S = dict()
+outfile = os.path.join(outdir, dd_structs[0])
+with open(outfile,'rb') as fp:
+    S[f] = pkl.load(fp)
+
+print "Session info keys: ", S.keys()
+
+print "Session info saved: ", S[S.keys()[0]].keys()
+fps = S[S.keys()[0]]['fps']
+freqs = S[S.keys()[0]]['freqs']
+target_freq = S[S.keys()[0]]['target_freq']
+target_bin = S[S.keys()[0]]['target_bin']
+
+dynrange = S[S.keys()[0]]['dynrange']
+mean_intensity = S[S.keys()[0]]['mean_intensity']
 
 ft = D[Dkey]['ft']
 
@@ -141,16 +153,17 @@ del D
 # GET BLOOD VESSEL IMAGE:
 #################################################################################
 folders = os.listdir(sessiondir)
+print folders
 figdir = [f for f in folders if f == 'figures'][0]
 ims = os.listdir(os.path.join(sessiondir, figdir))
 print ims
 impath = os.path.join(sessiondir, figdir, ims[0])
 # image = Image.open(impath) #.convert('L')
 # imarray = np.asarray(image)
-tiff = TIFF.open(impath, mode='r'))
-im = tiff.read_image().astype('float')
+tiff = TIFF.open(impath, mode='r')
+imarray = tiff.read_image().astype('float')
 tiff.close()
-plt.imshow(im)
+plt.imshow(imarray)
 
 
 
@@ -213,7 +226,7 @@ norm = mpl.colors.Normalize(0, 2*np.pi)
 #norm = mpl.colors.Normalize(0, 1)
 #norm = mpl.colors.Normalize(vmin=max(thetas), vmax=max(thetas))
 #quant_steps = 2056
-cb = mpl.colorbar.ColorbarBase(ax, cmap=cm.get_cmap('hsv'),
+cb = mpl.colorbar.ColorbarBase(legend, cmap=cm.get_cmap('hsv'),
                                 norm=norm, orientation='horizontal')
 # cb.outline.set_visible(False)
 # ax.set_axis_off()
