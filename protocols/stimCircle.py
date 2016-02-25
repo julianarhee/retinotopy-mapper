@@ -295,13 +295,13 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 20 #20 # 8 how many times to run each condition
+num_cond_reps = 20 #20 #20 # 8 how many times to run each condition
 condTypes = flatten(['0', list(np.tile('1', num_cond_reps))])
 condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': 0, '1': num_cond_reps}
+num_cycles = {'0': 2, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
