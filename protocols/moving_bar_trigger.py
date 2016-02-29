@@ -260,10 +260,10 @@ win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monit
 
 # SET CONDITIONS:
 num_cond_reps = 1 #20 # 8 how many times to run each condition
-num_seq_reps = 5 # how many times to do the cycle of 1 condition
+num_seq_reps = 20 #5 # how many times to do the cycle of 1 condition
 # conditionTypes = ['1', '2', '3', '4']
 # can either run 1 cycle many times, or repmat:
-conditionTypes = ['1']
+conditionTypes = ['4']
 condLabel = ['V-Left','V-Right','H-Down','H-Up']
 # conditionMatrix = sample_permutations_with_duplicate_spacing(conditionTypes, len(conditionTypes), num_cond_reps) # constrain so that at least 2 diff conditions separate repeats
 conditionMatrix = []
@@ -275,7 +275,7 @@ conditionMatrix = sorted(list(itertools.chain(*conditionMatrix)), key=natural_ke
 
 
 #input parameters 
-cyc_per_sec = 0.30 # 
+cyc_per_sec = 0.13 # 
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
 screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSizePix()[0])*monitors.Monitor(whichMonitor).getSizePix()[1]
 total_length = max([screen_width_cm, screen_height_cm])
@@ -329,7 +329,8 @@ if acquire_images:
     # Start acquiring
     win.flip()
     time.sleep(0.002)
-    camera.capture_start(frame_rate)
+    # camera.capture_start(frame_rate)
+    camera.capture_start()
     ser.write('1')#TRIGGER
     camera.queue_frame()
 
@@ -439,9 +440,10 @@ for condType in conditionMatrix:
     # print endPoint
     # FORMAT = '%Y%m%d%H%M%S%f'
     # datetime.now().strftime(FORMAT)
+    oldFrameT = 0
 
     while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
-        # t = globalClock.getTime()
+        t = globalClock.getTime()
 
         # if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
         #     barStim.setContrast(1)
@@ -460,37 +462,40 @@ for condType in conditionMatrix:
         t_flip = globalClock.getTime()
 
         if acquire_images:
-            # fdict = dict()
-            #for fr_idx in range(int(frame_rate/refresh_rate)):
-                # try:
-                #     fdict['im'].append(camera.capture_wait())
-                # except KeyError:
-                #     fdict['im'] = [camera.capture.wait()]
-            im_array = camera.capture_wait()
-            camera.queue_frame()
+            while (globalClock.getTime() - t_flip < 1/60.):
+                # fdict = dict()
+                #for fr_idx in range(int(frame_rate/refresh_rate)):
+                    # try:
+                    #     fdict['im'].append(camera.capture_wait())
+                    # except KeyError:
+                    #     fdict['im'] = [camera.capture.wait()]
+                im_array = camera.capture_wait()
+                camera.queue_frame()
 
-            frameT=float(ser.readline())/float(1000)#to have time in secs
-            frameInt=frameT-oldFrameT
-            oldFrameT=frameT
+                # frameT=float(ser.readline())/float(1000)#to have time in secs
+                frameT=float(ser.readline())/float(1E6)#to have time in secs
+                frameInt=frameT-oldFrameT
+                print frameInt
+                oldFrameT=frameT
 
-        if save_images:
-            fdict = dict()
-            fdict['im'] = im_array
-            fdict['barWidth'] = barWidth
-            fdict['condNum'] = condType
-            fdict['condName'] = condLabel[int(condType)-1]
-            fdict['frame'] = frame_counter #nframes
-            #print 'frame #....', frame_counter
-            fdict['time'] = datetime.now().strftime(FORMAT)
-            fdict['stimPos'] = [posX,posY]
-            fdict['t_flip'] = tflip
-            fdict['t_trigger'] = frameT
-            fdict['IFI'] = frameInt
+                if save_images:
+                    fdict = dict()
+                    fdict['im'] = im_array
+                    fdict['barWidth'] = barWidth
+                    fdict['condNum'] = condType
+                    fdict['condName'] = condLabel[int(condType)-1]
+                    fdict['frame'] = frame_counter #nframes
+                    #print 'frame #....', frame_counter
+                    fdict['time'] = datetime.now().strftime(FORMAT)
+                    fdict['stimPos'] = [posX,posY]
+                    fdict['t_flip'] = t_flip
+                    fdict['t_trigger'] = frameT
+                    fdict['IFI'] = frameInt
 
 
-            im_queue.put(fdict)
+                    im_queue.put(fdict)
 
-            frame_accumulator += 1
+                    frame_accumulator += 1
 
         if nframes % report_period == 0:
         #if frame_accumulator % report_period == 0:

@@ -28,6 +28,8 @@ from libtiff import TIFF
 import random
 import string
 
+from serial import Serial
+
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -97,6 +99,8 @@ def pol2cart(theta, radius, units='deg'):
     yy = radius*np.sin(theta)
 
     return xx,yy
+
+ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
 
 
 monitor_list = monitors.getAllMonitors()
@@ -291,13 +295,13 @@ globalClock = core.Clock()
 win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
 
 # SET CONDITIONS:
-num_cond_reps = 20 #20 # 8 how many times to run each condition
+num_cond_reps = 20 #20 #20 # 8 how many times to run each condition
 condTypes = flatten(['0', list(np.tile('1', num_cond_reps))])
 condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': num_cond_reps, '1': num_cond_reps}
+num_cycles = {'0': 1, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -311,11 +315,13 @@ print "height", screen_height_cm, screen_height_deg
 
 # TIMING PARAMETERS:
 fps = 60.
-cyc_per_sec = 0.3 # cycle freq in Hz
+cyc_per_sec = 0.13 # cycle freq in Hz
 total_time = 1./cyc_per_sec #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 duration = total_time #total_time*num_seq_reps; #how long to run the same condition for (seconds)
+
+go_CW = 0 #1
 
 # SET UP ALL THE STIMULI:
 if use_images:
@@ -339,7 +345,7 @@ path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension 
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
 driftFrequency = 4.0 # drifting frequency in Hz
-patch_size = (45, 45)
+patch_size = (45, 45) #(30, 30) #(45, 45)
 dwell_time = duration * cyc_per_sec
 
 if use_images:
@@ -401,6 +407,11 @@ for curr_cond in condMatrix:
     curr_frame = 0
 
     print "DUR:", duration*num_cycles[curr_cond]
+
+
+    ser.write('1')#TRIGGER
+
+
     clock = core.Clock()
     while clock.getTime()<=duration*num_cycles[curr_cond]: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
@@ -418,7 +429,11 @@ for curr_cond in condMatrix:
                 else:
                     patch.ori = stims[stimIdxs[sidx]]
 
-            path_pos = 1* ( ( clock.getTime() % duration ) / duration) * 360
+            if go_CW:
+                direction = -1
+            else:
+                direction = 1
+            path_pos = direction * ( ( clock.getTime() % duration ) / duration) * 360
             patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
 
         patch.draw()
@@ -479,6 +494,8 @@ if acquire_images:
 print "GOT HERE"
 im_queue.put(None)
 
+ser.write('2')#TRIGGER
+ser.close()
 
 if save_images:
     hang_time = time.time()
