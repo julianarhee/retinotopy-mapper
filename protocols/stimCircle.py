@@ -301,7 +301,7 @@ condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': 2, '1': num_cond_reps}
+num_cycles = {'0': 1, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -345,7 +345,7 @@ path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension 
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
 driftFrequency = 4.0 # drifting frequency in Hz
-patch_size = (45, 45)
+patch_size = (45, 45) #(30, 30) #(45, 45)
 dwell_time = duration * cyc_per_sec
 
 if use_images:
