@@ -219,6 +219,8 @@ for k in cond_keys:
     D[k]['phase_map'] = np.angle(ftmap[k])
     D[k]['mag_map'] = np.abs(ftmap[k])
 
+    target_freq = D[k]['target_freq']
+    # print "TARGET FREQ: ", type(target_freq)
 
 
 # REVERSE [CCW] COND:
@@ -373,19 +375,25 @@ sessionpath = os.path.split(outdir)[0]
 outdirs = os.path.join(sessionpath, 'figures')
 curr_sesh = os.path.split(os.path.split(sessionpath)[0])[1]
 curr_cond = os.path.split(sessionpath)[1]
+curr_date = os.path.split(os.path.split(sessionpath)[0])[1]
+curr_animal = os.path.split(os.path.split(os.path.split(sessionpath)[0])[0])[1]
+print "ANIMAL:  ", curr_animal
 plt.suptitle(curr_cond)
 
-print outdirs
+print "OUTDIR: ", outdirs
 if not os.path.exists(outdirs):
     os.makedirs(outdirs)
 
 if rev is True:
-    imname = curr_sesh + '_' + curr_cond  + '_masked_CW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
+    imname = curr_animal + '_' + curr_sesh + '_' + curr_cond  + '_masked_CW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.jpg'
 else:
-    imname = curr_sesh + '_' + curr_cond  + '_masked_CCW' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
+    imname = curr_animal + '_' + curr_sesh + '_' + curr_cond  + '_masked_CCW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.jpg'
+print "IMNAME: ", imname
 
+savedir = '/media/labuser/IMDATA1/widefield/AH03/FIGS'
 fig.savefig(outdirs + '/' + imname)
-print outdirs + '/' + imname
+# fig.savefig(savedir + '/' + imname)
+print "FIG 1: ", outdirs + '/' + imname
 
 
 # Save as SVG format
@@ -412,17 +420,17 @@ for k in cond_keys:
     fig = plt.figure()
 
 
-    fig.add_subplot(2,2,1)
+    fig.add_subplot(2,3,1)
     plt.imshow(imarray,cmap=cm.Greys_r)
 
 
-    fig.add_subplot(2,2,2) # heat map of mean intensity
+    fig.add_subplot(2,3,2) # heat map of mean intensity
     plt.imshow(D[k]['mean_intensity'], cmap="hot")
     plt.colorbar()
     plt.title("mean intensity")
 
 
-    fig.add_subplot(2,2,3)
+    fig.add_subplot(2,3,5)
     plt.imshow(imarray,cmap=cm.Greys_r)
     
     if use_mean_intensity:
@@ -452,7 +460,17 @@ for k in cond_keys:
     plt.title(tit)
     # plt.colorbar()
 
-    ax = fig.add_subplot(2,2,4, projection='polar')
+    ######### PLOT MAGNITUDE MAPS: ################################
+    fig.add_subplot(2,3,4)
+    plt.imshow(D[k]['mag_map'], cmap='hot')
+    plt.colorbar()
+    tit = 'Magnitude at %.2f Hz' % (target_freq) #D[k]['target_freq']
+    plt.title(tit)
+
+    ###############################################################
+
+    ################# COLOR WHEEL ###################################
+    ax = fig.add_subplot(2,3,6, projection='polar')
     ax.set_theta_zero_location('W') # 0 on RIGHT side...
     if rev is True or '_CW' in k:
         ax._direction = 2*np.pi # object moves toward bottom first (CW)
@@ -469,17 +487,21 @@ for k in cond_keys:
     # ax.set_axis_off()
     ax.set_rlim([-1, 1])
 
+    #####################################################################
+
     plt.suptitle("Session: %s, Condition: %s" % (curr_cond, k))
 
     #####################
     # SAVE FIG
     #####################
     if rev is True:
-        imname = curr_sesh + '_' + curr_cond  + '_quad_CW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
+        imname = curr_animal + '_' + curr_sesh + '_' + curr_cond  + '_quad_CW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
     else:
-        imname = curr_sesh + '_' + curr_cond  + '_quad_CCW' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
+        imname = curr_animal + '_' + curr_sesh + '_' + curr_cond  + '_quad_CCW' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.png'
 
-    plt.savefig(outdirs + '/' + imname, format='png')
+    # plt.savefig(outdirs + '/' + imname, format='png')
+    plt.savefig(outdirs + '/' + imname)
+    # plt.savefig(savedir + '/' + imname)
 
     print outdirs + '/' + imname
 
