@@ -49,7 +49,8 @@ def pol2cart(theta, radius, units='deg'):
     return xx,yy
 
 
-imdirs = [sys.argv[1], sys.argv[2]]
+# imdirs = [sys.argv[1], sys.argv[2]]
+imdirs = sys.argv[1]
 
 # crop_fov = 0
 # if len(sys.argv) > 2:
@@ -60,16 +61,21 @@ imdirs = [sys.argv[1], sys.argv[2]]
 fdict = dict()
 for imdir in imdirs:
 	flist = os.listdir(imdir)
-	flist = sorted([f for f in flist if os.path.splitext(f)[1] == '.png'])
-	print flist[-1]
+	flist = sorted([f for f in flist if os.path.splitext(f)[1] == '.tif'])
+	# print flist[-1]
 	fdict[imdir] = flist
+	print "IM DIRS: ", fdict.keys()
 
-if len(set([len(l) for l in fdict.values()])) > 1:
-	cutoff = min(set([len(l) for l in fdict.values()]))
-	chopthis = [f for f in fdict.keys() if len(fdict[f]) > cutoff]
-	for key in chopthis:
-		del fdict[key][cutoff:len(fdict[key])]
+# very crude way to make sure conditions (imdirs) have same # frames for comparison....
+# obviously, only do this if combining runs of the same condition...
+if combine is True:
+	if len(set([len(l) for l in fdict.values()])) > 1:
+		cutoff = min(set([len(l) for l in fdict.values()]))
+		chopthis = [f for f in fdict.keys() if len(fdict[f]) > cutoff]
+		for key in chopthis:
+			del fdict[key][cutoff:len(fdict[key])]
 
+# make a dict where keys are im-dirs and values are 3D stacks of frames
 D = dict()
 for fkey in fdict.keys():
 	files = fdict[fkey]
@@ -99,7 +105,15 @@ for fkey in fdict.keys():
 
 	D[fkey] = substack
 
-stack = (D[D.keys()[0]] + D[D.keys()[1]] ) / 2.
+# To COMBINE imdirs (for ex., diff runs of same condition):
+if combine is True:
+	stack = (D[D.keys()[0]] + D[D.keys()[1]] ) / 2.
+
+# To REMOVE BASELINE from STIMULUS condition:
+if get_delta is True:
+	baseline_condition = 'blank'
+	baseline_key = [k for k in D.keys() if baseline_condition in k]
+	mean_baseline = np.mean(D[baseline_key])
 
 
 

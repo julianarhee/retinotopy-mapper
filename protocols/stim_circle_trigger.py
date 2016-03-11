@@ -101,6 +101,11 @@ def pol2cart(theta, radius, units='deg'):
     return xx,yy
 
 ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
+def flushBuffer():
+    #Flush out Teensy's serial buffer
+    tmp=0;
+    while tmp is not '':
+        tmp=ser.readline()
 
 
 monitor_list = monitors.getAllMonitors()
@@ -248,7 +253,7 @@ def save_images_to_disk():
             tiff.close()
 
         elif save_as_tif:
-            fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
+            fname = '%s/%s/%i_%i_M%i_C%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s__%s_%s_%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['cycle']), int(currdict['frame']), int(currdict['frame_counter']), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']), str(currdict['t_flip']), str(currdict['t_trigger']), str(currdict['IFI']))
             tiff = TIFF.open(fname, mode='w')
             tiff.write_image(currdict['im'])
             tiff.close()
@@ -314,7 +319,7 @@ print "width", screen_width_cm, screen_width_deg
 print "height", screen_height_cm, screen_height_deg
 
 # TIMING PARAMETERS:
-fps = 10. #33.23 #60.
+fps = 10. #60.
 cyc_per_sec = 0.13 # cycle freq in Hz
 total_time = 1./cyc_per_sec #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
@@ -344,10 +349,10 @@ random.shuffle(stimIdxs)
 path_diam = 0.3*min([screen_width_deg, screen_height_deg]) # limiting dimension of screen for circle
 deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
 path_pos = np.arange(0, 360, deg_per_frame)
-driftFrequency = 8.0 #4.0 #4.0 # drifting frequency in Hz
+driftFrequency = 4.0 #4.0 # drifting frequency in Hz
 patch_size = (45, 45) #(30, 30) #(30, 30) #(45, 45)
 dwell_time = duration * cyc_per_sec
-print "PATH DIAM: ", path_diam
+
 if use_images:
     print "Creating textures..."
     textures = []
@@ -359,11 +364,12 @@ if use_images:
     driftFrequency = 0.0 
 
 t=0
-nframes = 0.
+nframes = 0
 frame_accumulator = 0
 flash_count = 0
 last_t = None
 
+frame_rate = 10. #180.0
 report_period = 60 #180 # frames
 
 if acquire_images:
@@ -371,6 +377,7 @@ if acquire_images:
     win.flip()
     time.sleep(0.002)
     camera.capture_start()
+    ser.write('1')
     camera.queue_frame()
         
 # RUN:
@@ -386,7 +393,6 @@ for curr_cond in condMatrix:
         patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
         patch.sf = None
         patch.pos = (0, 0)
-        patch.ori = stims[0]
         
     elif curr_cond == '1': # STIMULUS
         if use_images: # USE SCENE STIMULI
@@ -406,18 +412,20 @@ for curr_cond in condMatrix:
     frame_counter = 0
     sidx = 0
     curr_frame = 0
+    cyc = 0
 
     print "DUR:", duration*num_cycles[curr_cond]
 
 
-    ser.write('2')#TRIGGER OFF 
+    # ser.write('1')#TRIGGER
 
+    oldFrameT = 0
 
     clock = core.Clock()
     while clock.getTime()<=duration*num_cycles[curr_cond]: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
         
-        if int(curr_cond) >= 0:
+        if int(curr_cond) > 0:
             if not use_images:
                 patch.phase = 1 - clock.getTime() * driftFrequency
 
@@ -440,36 +448,63 @@ for curr_cond in condMatrix:
         patch.draw()
         win.flip()
 
+        ###############################################
+        # lastT = clock.getTime() #####
+        t_flip = globalClock.getTime()
+
         if acquire_images:
-            # if nframes==0 or (nframes % report_period == 0):
-            im_array = camera.capture_wait()
-            camera.queue_frame()
+            # im_array = camera.capture_wait()
+            # camera.queue_frame()
 
-            if save_images:
-                fdict = dict()
-                fdict['im'] = im_array
-                fdict['size'] = patch.size[0]
-                fdict['tf'] = driftFrequency
-                fdict['sf'] = patch.sf[0]
-                fdict['ori'] = patch.ori
-                fdict['condName'] = condLabels[int(curr_cond)] #condLabel[int(condType)-1]
-                fdict['frame'] = frame_counter
-                fdict['cycleidx'] = sidx
-                fdict['stim'] = re.sub('[^%s]' % allow, '', str(stims[stimIdxs[sidx]]))
-                # print 'frame #....', frame_counter
-                fdict['time'] = datetime.now().strftime(FORMAT)
-                fdict['pos'] = patch.pos
+            # fdict = dict() #####
+            # while (clock.getTime() - lastT + (1./frame_rate)) < 0.017: #(1./refresh_rate):
+            while (globalClock.getTime() - t_flip < 1/60.):
+                # print (clock.getTime() - lastT + (1./frame_rate))
+                im_array = camera.capture_wait()
+                camera.queue_frame()
+                # print ser.readline()
+                frameT=float(ser.readline())/float(1E6)#to have time in secs
+                frameInt=frameT-oldFrameT
+                # print frameInt
+                oldFrameT=frameT
 
-                im_queue.put(fdict)
+
+                if save_images:
+                    fdict = dict()
+                    fdict['im'] = im_array
+                    fdict['size'] = patch.size[0]
+                    fdict['tf'] = driftFrequency
+                    fdict['sf'] = patch.sf[0]
+                    fdict['ori'] = patch.ori
+                    fdict['condName'] = condLabels[int(curr_cond)] #condLabel[int(condType)-1]
+                    fdict['frame'] = nframes #frame_counter
+                    fdict['cycleidx'] = sidx
+                    fdict['stim'] = re.sub('[^%s]' % allow, '', str(stims[stimIdxs[sidx]]))
+                    # print 'frame #....', frame_counter
+                    fdict['time'] = datetime.now().strftime(FORMAT)
+                    fdict['pos'] = patch.pos
+
+                    fdict['frame_counter'] = frame_counter
+                    fdict['cycle'] = cyc
+
+                    fdict['t_flip'] = t_flip
+                    fdict['t_trigger'] = frameT
+                    fdict['IFI'] = frameInt
+
+                    im_queue.put(fdict)
+
+                frame_counter += 1
+
+            # print frame_counter
 
         # if nframes % report_period == 0:
-        if nframes % report_period == 0:
+        if frame_counter % report_period == 0:
             if last_t is not None:
                 print('avg frame rate: %f' % (report_period / (t - last_t)))
             last_t = t
 
         nframes += 1
-        frame_counter += 1
+        # frame_counter += 1
         curr_frame += 1
 
         # Break out of the while loop if these keys are registered
@@ -484,6 +519,8 @@ for curr_cond in condMatrix:
         break
     else:
         continue
+
+    cyc += 1
 
 win.close() 
 
