@@ -16,15 +16,24 @@ from libtiff import TIFF
 
 import PIL.Image as Image
 import libtiff
-
+import optparse
 
 imdir = sys.argv[1]
+
+parser = optparse.OptionParser()
+parser.add_option('--ext', action="store", dest="ext",
+                  default="tif", help="frame image type (.tiff, .tif, .png)")
+
+(options, args) = parser.parse_args()
+
+ext = '.' + options.ext
+
 outdir = os.path.join(os.path.split(imdir)[0], 'figures')
 if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
 cond = 'Surface'
-ext = '.tiff'
+# ext = '.tif'
 files = os.listdir(os.path.join(imdir, cond))
 files = sorted([f for f in files if os.path.splitext(f)[1] == ext])
 print "FNs: ", files, cond

@@ -430,6 +430,19 @@ for k in cond_keys:
     plt.title("mean intensity")
 
 
+    ######### PLOT DYNAMIC RANGE: ################################
+    fig.add_subplot(2,3,3)
+    plt.imshow(D[k]['dynrange'])
+    plt.colorbar()
+    plt.title('dynamic range')
+    ##############################################################
+
+
+    ######### PLOT PHASE MAPS: ################################
+    # Use mean intensity OR magnitude as threshold:
+    use_mean_intensity = 0 # set to 1 if want to threshold with mean intensity values instead of magnitude
+    use_log = 1
+
     fig.add_subplot(2,3,5)
     plt.imshow(imarray,cmap=cm.Greys_r)
     
@@ -460,14 +473,19 @@ for k in cond_keys:
     plt.title(tit)
     # plt.colorbar()
 
+    ###############################################################
+
+
+
     ######### PLOT MAGNITUDE MAPS: ################################
     fig.add_subplot(2,3,4)
     plt.imshow(D[k]['mag_map'], cmap='hot')
     plt.colorbar()
     tit = 'Magnitude at %.2f Hz' % (target_freq) #D[k]['target_freq']
     plt.title(tit)
-
     ###############################################################
+
+
 
     ################# COLOR WHEEL ###################################
     ax = fig.add_subplot(2,3,6, projection='polar')
@@ -490,6 +508,7 @@ for k in cond_keys:
     #####################################################################
 
     plt.suptitle("Session: %s, Condition: %s" % (curr_cond, k))
+
 
     #####################
     # SAVE FIG
