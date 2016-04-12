@@ -45,9 +45,14 @@ tiff.close()
 
 plt.imshow(im, cmap = plt.get_cmap('gray'))
 
+
+# image = Image.open(os.path.join(imdir, cond, files[0]))
+# image.show()
+
 # fname = '%s/surface_%s.tif' % (outdir, os.path.split(os.path.split(imdir)[0])[1])
 fname = '%s/%s_%s.tif' % (outdir, os.path.split(os.path.split(imdir)[0])[1], os.path.split(imdir)[1])
 print outdir
+# plt.savefig(fname)
 
 tiff = TIFF.open(fname, mode='w')
 tiff.write_image(im)
@@ -57,3 +62,8 @@ print fname
 # plt.savefig(fname)
 
 plt.show()
+
+
+import matplotlib.pyplot as pplt
+I = pplt.imread(os.path.join(imdir, cond, files[0]))
+pplt.imsave(fname, I, cmap=plt.get_cmap('gray'))
