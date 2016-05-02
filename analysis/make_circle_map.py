@@ -72,13 +72,16 @@ def pol2cart(theta, radius, units='deg'):
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--freq', action="store", dest="target_freq", default="0.05", help="stimulation frequency")
-parser.add_option('--reduce', action="store", dest="reduce_val", default="4", help="block_reduce value")
+parser.add_option('--reduce', action="store", dest="reduce_val", default="2", help="block_reduce value")
 parser.add_option('--sigma', action="store", dest="gauss_kernel", default="0", help="size of Gaussian kernel for smoothing")
 parser.add_option('--format', action="store", dest="im_format", default="png", help="saved image format")
 parser.add_option('--key', action="store", dest="key", default="stimulus", help="stimulus or blank condition")
+parser.add_option('--rev', action="store_true", dest="rev", default="False", help="CCW is standard, CW is reverse")
+
 
 (options, args) = parser.parse_args()
 
+rev = options.rev
 key = options.key
 im_format = '.'+options.im_format
 headless = options.headless
@@ -106,7 +109,9 @@ sessiondir = os.path.split(rundir)[0]
 #################################################################################
 folders = os.listdir(sessiondir)
 figdir = [f for f in folders if f == 'figures'][0]
-ims = os.listdir(os.path.join(sessiondir, figdir))
+# ims = os.listdir(os.path.join(sessiondir, figdir))
+tmp_ims = os.listdir(os.path.join(sessiondir, figdir))
+ims = [i for i in tmp_ims if 'surface' in i or 'green' in i]
 print ims
 impath = os.path.join(sessiondir, figdir, ims[0])
 # image = Image.open(impath) #.convert('L')
@@ -125,6 +130,7 @@ plt.imshow(imarray)
 
 #files = os.listdir(outdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
+print files
 dstructs = [f for f in files if 'D_target' in f and str(reduce_factor) in f]
 #dstructs = [f for f in files if 'DF_' in f and str(reduce_factor) in f]
 
@@ -348,8 +354,11 @@ plt.title("phase")
 
 
 ax = fig.add_subplot(2,3,6, projection='polar')
-ax.set_theta_zero_location('E') # 0 on RIGHT side...
-ax._direction = 2*np.pi
+ax.set_theta_zero_location('W') # W puts 0 on RIGHT side...
+if rev:
+    ax._direction = 2*np.pi # object moves toward bottom first (CW)
+else:
+    ax._direction = -2*np.pi # objecct moves toward top first (CCW)
 
 norm = mpl.colors.Normalize(vmax=1*np.pi, vmin=-1*np.pi)
 #norm = mpl.colors.Normalize(vmax=2*np.pi, vmin=0)
@@ -395,38 +404,38 @@ plt.show()
 # Make a new figure, with HSV coloramp (continuous)
 #################################
 
-fig = plt.figure()
-fig.add_subplot(2,2,1) # GREEN LED image
-plt.imshow(imarray,cmap=cm.Greys_r)
+# fig = plt.figure()
+# fig.add_subplot(2,2,1) # GREEN LED image
+# plt.imshow(imarray,cmap=cm.Greys_r)
 
-fig.add_subplot(2,2,2)
-plt.imshow(mag_map, cmap=cm.Greys_r)
-plt.title("magnitude")
-plt.colorbar()
+# fig.add_subplot(2,2,2)
+# plt.imshow(mag_map, cmap=cm.Greys_r)
+# plt.title("magnitude")
+# plt.colorbar()
 
-fig.add_subplot(2,2,3) # ABS PHASE -- azimuth
-plt.imshow(phase_map, cmap="hsv", vmin=-1*math.pi, vmax=math.pi)
-#plt.colorbar()
-plt.title("phase")
+# fig.add_subplot(2,2,3) # ABS PHASE -- azimuth
+# plt.imshow(phase_map, cmap="hsv", vmin=-1*math.pi, vmax=math.pi)
+# #plt.colorbar()
+# plt.title("phase")
 
-ax = fig.add_subplot(2,2,4, projection='polar')
-ax.set_theta_zero_location('W') # 0 on RIGHT side...
-ax._direction = 2*np.pi
+# ax = fig.add_subplot(2,2,4, projection='polar')
+# ax.set_theta_zero_location('W') # 0 on RIGHT side...
+# ax._direction = 2*np.pi
 
-norm = mpl.colors.Normalize(1*np.pi, -1*np.pi)
-#quant_steps = 2056
-cb = mpl.colorbar.ColorbarBase(ax, cmap=cm.get_cmap('hsv'),
-								norm=norm, orientation='horizontal')
-# cb.outline.set_visible(False)
-# ax.set_axis_off()
-ax.set_rlim([-1, 1])
+# norm = mpl.colors.Normalize(1*np.pi, -1*np.pi)
+# #quant_steps = 2056
+# cb = mpl.colorbar.ColorbarBase(ax, cmap=cm.get_cmap('hsv'),
+# 								norm=norm, orientation='horizontal')
+# # cb.outline.set_visible(False)
+# # ax.set_axis_off()
+# ax.set_rlim([-1, 1])
 
 
-imname = which_sesh  + '_allmaps_HSV' + str(reduce_factor) + '_' + key + '.png'
-fig.savefig(outdirs + '/' + imname)
-print outdirs + '/' + imname
+# imname = which_sesh  + '_allmaps_HSV' + str(reduce_factor) + '_' + key + '.png'
+# fig.savefig(outdirs + '/' + imname)
+# print outdirs + '/' + imname
 
-plt.show()
+# plt.show()
 
 
 
