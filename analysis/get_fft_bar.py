@@ -155,6 +155,9 @@ phase_map = np.empty(sample.shape)
 ft_real = np.empty(sample.shape)
 ft_imag = np.empty(sample.shape)
 
+ft = np.empty(sample.shape)
+ft = ft + 0j
+
 ft_real_shift = np.empty(sample.shape)
 ft_imag_shift = np.empty(sample.shape)
 
@@ -186,6 +189,8 @@ for x in range(sample.shape[0]):
         ft_real[x, y] = curr_ft[target_bin].real
         ft_imag[x, y] = curr_ft[target_bin].imag
 
+        ft[x, y] = curr_ft[target_bin]
+
         #ft_real_shift[x, y] = curr_ft_shift[target_bin_shift].real
         #ft_imag_shift[x, y] = curr_ft_shift[target_bin_shift].imag
 
@@ -194,11 +199,11 @@ for x in range(sample.shape[0]):
 
         mag_map[x, y] = mag[target_bin]
 
-        dlist.append((x, y, curr_ft))
+        # dlist.append((x, y, curr_ft))
 
         i += 1
 
-DF = pd.DataFrame.from_records(dlist)
+# DF = pd.DataFrame.from_records(dlist)
 
         # try:
         # dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
@@ -226,13 +231,14 @@ D = dict()
 
 D['ft_real'] = ft_real  # np.array(ft)
 D['ft_imag'] = ft_imag
+D['ft'] = ft
 # D['ft_real_shift'] = ft_real_shift #np.array(ft)
 #D['ft_imag_shift'] = ft_imag_shift
 
 D['mag_map'] = mag_map
 
 D['mean_intensity'] = np.mean(stack, axis=2)
-#D['stack'] = stack
+# D['stack'] = stack
 #del stack
 D['dynrange'] = dynrange
 D['target_freq'] = target_freq
@@ -254,7 +260,7 @@ outdir = os.path.join(sessionpath, 'structs')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-fext = 'D_target_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
+fext = 'D_target_FFT_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)
@@ -263,14 +269,17 @@ with open(fname, 'wb') as f:
 del D
 
 
-# SAVE THE FFT, USE .hkl SINCE HUGE...??
-D = dict()
-D['ft'] = DF
-fext = 'D_fft_%s_%s.pkl' % (cond, str(reduce_factor))
-fname = os.path.join(outdir, fext)
-with open(fname, 'wb') as f:
-    # protocol=pkl.HIGHEST_PROTOCOL)
-    pkl.dump(D, f)
+# # SAVE THE FFT, USE .hkl SINCE HUGE...??
+# D = dict()
+# D['ft'] = DF
+# fext = 'D_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+# fname = os.path.join(outdir, fext)
+# with open(fname, 'wb') as f:
+#     # protocol=pkl.HIGHEST_PROTOCOL)
+#     pkl.dump(D, f)
+
+
+
 
 
 # print target_bin, DC_bin
