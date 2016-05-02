@@ -198,7 +198,7 @@ def save_images_to_disk():
 
     while currdict is not None:
 
-        frameTimeOutputFile.write('%i\t %i\t %i\t %s\t %i\t %10.4f\t %10.4f\t %s\t %10.4f\t %10.4f\t %10.4f\t %10.4f\t %10.4f\n' % (int(currdict['time']), n, int(currdict['frame']), str(currdict['cond']), int(runnum), currdict['xpos'], currdict['ypos'], str(stim_size), currdict['cycledur'], curdict['cyclelen'], currdict['degpercyc'], currdict['TF'], currdict['SF']))
+        frame_log_file.write('%i\t %i\t %i\t %s\t %i\t %10.4f\t %10.4f\t %s\t %10.4f\t %10.4f\t %10.4f\t %10.4f\t %10.4f\n' % (int(currdict['time']), n, int(currdict['frame']), str(currdict['condname']), int(run_num), currdict['xpos'], currdict['ypos'], str(currdict['stim_size']), currdict['cycledur'], currdict['cyclelen'], currdict['degpercyc'], currdict['TF'], currdict['SF']))
 
         if save_as_png:
 
@@ -387,7 +387,7 @@ for condType in conditionTypes:
         print "Cycle Travel LENGTH (deg): ", start_to_end
         print "START: ", start_point
         print "END: ", end_point
-        print "Degrees per cycle: ", abs(start_point)*2. + bar_width
+        print "Degrees per cycle: ", start_to_end # center-to-center #abs(start_point)*2. + bar_width
         SF = 1./(abs(start_point)*2. + bar_width)
         print "Calc SF (cpd): ", SF
         # cyc = 0
@@ -460,7 +460,8 @@ for condType in conditionTypes:
             fdict['cyclelen'] = start_to_end
             fdict['total_duration'] = total_duration # total_duration = cycle_duration * num_cycles
             fdict['SF'] = SF # SF = 1./(abs(start_point)*2. + bar_width)
-            fidct['TF'] = cyc_per_sec
+            fdict['TF'] = cyc_per_sec
+            fdict['stim_size'] = stim_size
 
             im_queue.put(fdict)
 
