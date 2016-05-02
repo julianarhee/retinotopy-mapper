@@ -7,60 +7,26 @@ import cPickle as pkl
 import scipy.signal
 import numpy.fft as fft
 import sys
-
 from libtiff import TIFF
-
-<<<<<<< HEAD
-=======
-imdir = sys.argv[1]
-
-if len(sys.argv) == 3:
-	stimfreq = float(sys.argv[2])
-else:
-	stimfreq = 0.05
-
-if len(sys.argv) == 4:
-	reduce_val = int(sys.argv[3])
-else:
-	reduce_val = 4
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
-
 sampling_rate = 60.0
-reduce_factor = (int(reduce_val), int(reduce_val))
+reduce_factor = (4, 4)
 cache_file = True
-<<<<<<< HEAD
 target_freq = 0.08
-=======
-target_freq = stimfreq
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
 
+imdir = sys.argv[1]
 
 files = os.listdir(imdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.png']
 
-
-# files = sorted([f for f in files if os.path.isfile(os.path.join(imdir, f))])
-#files = files[11982:-1]
 # files = files[0:100]
-print files[0]
-<<<<<<< HEAD
-#sample = imread(os.path.join(imdir, files[0]))
-tiff = TIFF.open((os.path.join(imdir, files[0])), mode='r')
-sample = tiff.read_image().astype('float')
-print sample.dtype, [sample.max(), sample.min()]
-tiff.close()
-sample = block_reduce(sample, reduce_factor)
-# print sample.dtype
-=======
-#sample = imread(os.path.join(imdir, files[0])).astype('float')
+
+# sample = imread(os.path.join(imdir, files[0]))
+# sample = block_reduce(sample, reduce_factor)
 tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
 sample = tiff.read_image().astype('float')
 print sample.dtype, [sample.max(), sample.min()]
 tiff.close()
-
 sample = block_reduce(sample, reduce_factor, func=np.mean)
-
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
 # plt.imshow(sample)
 # plt.show()
 
@@ -90,24 +56,13 @@ cos_ref = np.cos(2 * np.pi * t * target_freq )
 
 print('copying files')
 
-#ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
+
+# ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
+# ref_im_reduced = block_reduce(ref_im, reduce_factor)
 tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
 ref_im = tiff.read_image().astype('float')
 tiff.close()
-
-<<<<<<< HEAD
-ref_im_reduced = block_reduce(ref_im, reduce_factor)
-=======
-#ref_im = imread(os.path.join(imdir, files[n_images/2])).astype('float')
-#ref_im = ref_im[20:230,40:275] # CROP
-tiff = TIFF.open(os.path.join(imdir, files[n_images/2]), mode='r')
-ref_im = tiff.read_image().astype('float')
-print ref_im.dtype, [sample.max(), sample.min()]
-tiff.close()
-
 ref_im_reduced = block_reduce(ref_im, reduce_factor, func=np.mean)
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
-
 ref_im_reduced -= np.mean(ref_im_reduced.ravel())
 
 for i, f in enumerate(files):
@@ -117,22 +72,13 @@ for i, f in enumerate(files):
 
 	if i % 100 == 0:
 		print('%d images processed...' % i)
-	#im = imread(os.path.join(imdir, f)).astype('float')
-<<<<<<< HEAD
+	# im = imread(os.path.join(imdir, f)).astype('float')
+	# im_reduced = block_reduce(im, reduce_factor)
 	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
 	im = tiff.read_image().astype('float')
 	tiff.close()
 
-	im_reduced = block_reduce(im, reduce_factor)
-=======
-	#im = im[20:230,40:275] # CROP
-	tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
-	im = tiff.read_image().astype('float')
-	tiff.close()
-
 	im_reduced = block_reduce(im, reduce_factor, func=np.mean)
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
-
 	im_reduced -= np.mean(im_reduced.ravel())
 
 	im_reduced -= ref_im_reduced
@@ -146,8 +92,8 @@ for i, f in enumerate(files):
 
 norm_im = np.sqrt(len_im)
 
-cos_im /= norm_im
-sin_im /= norm_im
+# cos_im /= norm_im
+# sin_im /= norm_im
 
 print cos_im
 
@@ -173,35 +119,6 @@ plt.subplot(2, 2, 4)
 plot = plt.imshow(phase_map)
 plot.set_cmap('spectral')
 plt.colorbar()
-
-
-<<<<<<< HEAD
-figdir = os.path.join(os.path.split(imdir)[0], 'figures')
-if not os.path.exists(figdir):
-	os.makedirs(figdir)
-imname = os.path.split(imdir)[1] + '_' + str(target_freq) + '.png'
-plt.savefig(figdir + imname)
-=======
-# SAVE FIG
-# figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures', 'demodulate')
-basepath = os.path.split(os.path.split(imdir)[0])[0]
-session = os.path.split(os.path.split(imdir)[0])[1]
-figdir = os.path.join(basepath, 'figures', session, 'demodulate')
-print figdir
-if not os.path.exists(figdir):
-	os.makedirs(figdir)
-sess = os.path.split(os.path.split(imdir)[0])[1]
-cond = os.path.split(imdir)[1]
-imname = sess + '_' + cond + '_demodulate_' + str(reduce_factor) + '.png'
-plt.savefig(figdir + '/' + imname)
-
 plt.show()
 
-# figdir = os.path.join(os.path.split(os.path.split(imdir)[0])[0], 'figures')
-# if not os.path.exists(figdir):
-# 	os.makedirs(figdir)
-# imname = imdir + '.png'
-# plt.savefig(figdir + imname)
->>>>>>> 376c5771a5565b6c8f4e660180759f69bd13339f
 
-plt.show()
