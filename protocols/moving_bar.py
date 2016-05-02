@@ -391,9 +391,9 @@ for condType in conditionTypes:
         SF = 1./(abs(start_point)*2. + bar_width)
         print "Calc SF (cpd): ", SF
         # cyc = 0
-        total_time = start_to_end / (start_to_end*cyc_per_sec)
-        total_duration = total_time * num_cycles
-        print "Cycle Travel TIME (s): ", total_time
+        cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
+        total_duration = cycle_duration * num_cycles
+        print "Cycle Travel TIME (s): ", cycle_duration
         print "TOTAL DUR: ", total_duration
 
     # 1. bar moves to this far from centerPoint (in degrees)
@@ -477,8 +477,6 @@ for condType in conditionTypes:
         frame_counter += 1
         flash_count += 1
 
-        if nframes > 100:
-            time.sleep(5)
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
             getout = 1
