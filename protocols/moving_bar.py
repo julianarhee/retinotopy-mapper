@@ -424,7 +424,7 @@ for condType in conditionTypes:
         #     barStim.setContrast(0)
         #     #barStim.setColor(blackBar, 'rgb255')
 
-        posLinear = (clock.getTime() % total_time) / total_time * (end_point-start_point) + start_point; #what pos we are at in degrees
+        posLinear = (clock.getTime() % cycle_duration) / cycle_duration * (end_point-start_point) + start_point; #what pos we are at in degrees
         # print posLinear
         posX = posLinear*math.sin(angle*math.pi/180)+center_point[0]
         posY = posLinear*math.cos(angle*math.pi/180)+center_point[1]
