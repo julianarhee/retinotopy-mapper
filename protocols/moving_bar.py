@@ -182,17 +182,23 @@ else:
 
 disk_writer_alive = True
 
-
 def save_images_to_disk():
     print('Disk-saving thread active...')
     n = 0
 
     currdict = im_queue.get()
-    while currdict is not None:
+
         # Make the output path if it doesn't already exist
-        currpath = '%s/%s_%s/' % (output_path, currdict['condName'], str(run_num))
-        if not os.path.exists(currpath):
-            os.mkdir(currpath)
+    currpath = '%s/%s_%s/' % (output_path, currdict['condname'], str(run_num))
+    if not os.path.exists(currpath):
+        os.mkdir(currpath)
+
+    frame_log_file = open(output_path + 'framelog_%s_%s.txt' % (currdict['condname'], str(run_num)), 'w')
+    frame_log_file.write('tstamp\t n\t framenum\t currcond\t runnum\t xpos\t ypos\t stimsize\t cycledur\t cyclelen\t degpercyc\t TF\t SF\n ')
+
+    while currdict is not None:
+
+        frameTimeOutputFile.write('%i\t %i\t %i\t %s\t %i\t %10.4f\t %10.4f\t %s\t %10.4f\t %10.4f\t %10.4f\t %10.4f\t %10.4f\n' % (int(currdict['time']), n, int(currdict['frame']), str(currdict['cond']), int(runnum), currdict['xpos'], currdict['ypos'], str(stim_size), currdict['cycledur'], curdict['cyclelen'], currdict['degpercyc'], currdict['TF'], currdict['SF']))
 
         if save_as_png:
 
@@ -273,12 +279,12 @@ screen_height_cm = (float(screen_width_cm)/monitors.Monitor(whichMonitor).getSiz
 width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
 height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
 
-use_width = 1
+use_width = True
 if use_width:
     total_length = max([screen_width_cm, screen_height_cm])
 else:
     total_length = min([screen_width_cm, screen_height_cm])
-print "Cycle Travel LENGTH (cm):  ", total_length
+print "Base Length (screen dim, cm):  ", total_length
 
 total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
 
@@ -286,13 +292,16 @@ total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(
 num_cycles = 20 # how many times to do the cycle of 1 condition
 
 fps = 60.
-total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
-print "Cycle Travel TIME (s): ", total_time
+# total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
+# print "Cycle Travel TIME (s): ", total_time
 
 frames_per_cycle = fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
-duration = total_time*num_cycles; #how long to run the same condition for (seconds)
-print "TOTAL DUR: ", duration
+bar_width_cm = tools.monitorunittools.deg2cm(bar_width, monitors.Monitor(whichMonitor))
+print "Distance from monitor (cm): ", distance
+print "Bar width (deg | cm): ", bar_width, ' | ', bar_width_cm
+# duration = total_time*num_cycles; #how long to run the same condition for (seconds)
+# print "TOTAL DUR: ", duration
 
 
 t=0
@@ -374,11 +383,18 @@ for condType in conditionTypes:
         # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint+barWidth*0.5))
         # endPoint = -1*(startPoint + startSign*(total_length_deg*0.5-uStartPoint - barWidth*0.5))
         end_point = -1 * start_point
-        start_end = end_point - start_point
-        print "DIST: ", start_end
+        start_to_end = end_point - start_point
+        print "Cycle Travel LENGTH (deg): ", start_to_end
         print "START: ", start_point
         print "END: ", end_point
-        cyc = 0
+        print "Degrees per cycle: ", abs(start_point)*2. + bar_width
+        SF = 1./(abs(start_point)*2. + bar_width)
+        print "Calc SF (cpd): ", SF
+        # cyc = 0
+        total_time = start_to_end / (start_to_end*cyc_per_sec)
+        total_duration = total_time * num_cycles
+        print "Cycle Travel TIME (s): ", total_time
+        print "TOTAL DUR: ", total_duration
 
     # 1. bar moves to this far from centerPoint (in degrees)
     # 2. bar starts & ends OFF the screen
@@ -398,7 +414,7 @@ for condType in conditionTypes:
 
     clock = core.Clock()
 
-    while clock.getTime()<=duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
+    while clock.getTime()<=total_duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
 
         # if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
@@ -437,9 +453,19 @@ for condType in conditionTypes:
             fdict['time'] = datetime.now().strftime(FORMAT)
             fdict['stim_pos'] = [posX,posY]
 
+            fdict['xpos'] = posX
+            fdict['ypos'] = posY
+            fdict['degpercyc'] = abs(start_point)*2. + bar_width
+            fdict['cycledur'] = cycle_duration # cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
+            fdict['cyclelen'] = start_to_end
+            fdict['total_duration'] = total_duration # total_duration = cycle_duration * num_cycles
+            fdict['SF'] = SF # SF = 1./(abs(start_point)*2. + bar_width)
+            fidct['TF'] = cyc_per_sec
+
             im_queue.put(fdict)
 
             frame_accumulator += 1
+
 
         if nframes % report_period == 0:
         #if frame_accumulator % report_period == 0:
@@ -451,6 +477,8 @@ for condType in conditionTypes:
         frame_counter += 1
         flash_count += 1
 
+        if nframes > 100:
+            time.sleep(5)
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
             getout = 1
