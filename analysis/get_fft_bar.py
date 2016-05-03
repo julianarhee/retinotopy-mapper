@@ -152,14 +152,14 @@ window = sampling_rate * cycle_dur * 2
 mag_map = np.empty(sample.shape)
 phase_map = np.empty(sample.shape)
 
-ft_real = np.empty(sample.shape)
-ft_imag = np.empty(sample.shape)
+# ft_real = np.empty(sample.shape)
+# ft_imag = np.empty(sample.shape)
 
 ft = np.empty(sample.shape)
 ft = ft + 0j
 
-ft_real_shift = np.empty(sample.shape)
-ft_imag_shift = np.empty(sample.shape)
+# ft_real_shift = np.empty(sample.shape)
+# ft_imag_shift = np.empty(sample.shape)
 
 dynrange = np.empty(sample.shape)
 
@@ -183,11 +183,12 @@ for x in range(sample.shape[0]):
 # DF = pd.DataFrame.from_records(dlist)
 
         mag = np.abs(curr_ft)
+        phase = np.angle(curr_ft)
         # mag_max = np.where(mag == mag.max())
         # mag_min = np.where(mag == mag.min())
 
-        ft_real[x, y] = curr_ft[target_bin].real
-        ft_imag[x, y] = curr_ft[target_bin].imag
+        # ft_real[x, y] = curr_ft[target_bin].real
+        # ft_imag[x, y] = curr_ft[target_bin].imag
 
         ft[x, y] = curr_ft[target_bin]
 
@@ -198,12 +199,12 @@ for x in range(sample.shape[0]):
         # print ft_real[x, y], ft_imag[x,y]
 
         mag_map[x, y] = mag[target_bin]
-
-        # dlist.append((x, y, curr_ft))
+        phase_map[x, y]  = phase[target_bin]
+        dlist.append((x, y, curr_ft))
 
         i += 1
 
-# DF = pd.DataFrame.from_records(dlist)
+DF = pd.DataFrame.from_records(dlist)
 
         # try:
         # dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
@@ -227,16 +228,28 @@ for x in range(sample.shape[0]):
         # phase = np.angle(ft)
         # mag_tmp = np.abs(ft) #**2
 
+# D = dict()
+# D['ft'] = DF
+fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+fname = os.path.join(outdir, fext)
+DF.to_pickle(file_name)
+
+# with open(fname, 'wb') as f:
+#     # protocol=pkl.HIGHEST_PROTOCOL)
+#     pkl.dump(D, f)
+
+del DF
+
 D = dict()
 
-D['ft_real'] = ft_real  # np.array(ft)
-D['ft_imag'] = ft_imag
+# D['ft_real'] = ft_real  # np.array(ft)
+# D['ft_imag'] = ft_imag
 D['ft'] = ft
 # D['ft_real_shift'] = ft_real_shift #np.array(ft)
 #D['ft_imag_shift'] = ft_imag_shift
 
 D['mag_map'] = mag_map
-
+D['phase_map'] = phase_map
 D['mean_intensity'] = np.mean(stack, axis=2)
 # D['stack'] = stack
 #del stack
@@ -260,7 +273,7 @@ outdir = os.path.join(sessionpath, 'structs')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-fext = 'D_target_FFT_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
+fext = 'Target_fft_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)
@@ -269,10 +282,10 @@ with open(fname, 'wb') as f:
 del D
 
 
-# # SAVE THE FFT, USE .hkl SINCE HUGE...??
+# SAVE THE FFT, USE .hkl SINCE HUGE...??
 # D = dict()
 # D['ft'] = DF
-# fext = 'D_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+# fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
 # fname = os.path.join(outdir, fext)
 # with open(fname, 'wb') as f:
 #     # protocol=pkl.HIGHEST_PROTOCOL)
