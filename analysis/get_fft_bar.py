@@ -128,6 +128,12 @@ for i, f in enumerate(files):
     else:
         stack[:, :, i] = im
 
+average_stack = np.mean(stack, axis=2)
+
+for i in range(stack.shape[2]):
+    stack[:,:,i] -= np.mean(stack[:,:,i].ravel())
+    stack[:,:,i] -= np.mean(average_stack.ravel())
+
 #stacks[session] = stack
 
 # SET FFT PARAMETERS:
@@ -163,7 +169,7 @@ ft = ft + 0j
 
 dynrange = np.empty(sample.shape)
 
-dlist = []
+# dlist = []
 i = 0
 for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
@@ -200,11 +206,11 @@ for x in range(sample.shape[0]):
 
         mag_map[x, y] = mag[target_bin]
         phase_map[x, y]  = phase[target_bin]
-        dlist.append((x, y, curr_ft))
+        # dlist.append((x, y, curr_ft))
 
         i += 1
 
-DF = pd.DataFrame.from_records(dlist)
+# DF = pd.DataFrame.from_records(dlist)
 
         # try:
         # dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
@@ -230,15 +236,15 @@ DF = pd.DataFrame.from_records(dlist)
 
 # D = dict()
 # D['ft'] = DF
-fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
-fname = os.path.join(outdir, fext)
-DF.to_pickle(file_name)
+# fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+# fname = os.path.join(outdir, fext)
+# DF.to_pickle(file_name)
 
-# with open(fname, 'wb') as f:
-#     # protocol=pkl.HIGHEST_PROTOCOL)
-#     pkl.dump(D, f)
+# # with open(fname, 'wb') as f:
+# #     # protocol=pkl.HIGHEST_PROTOCOL)
+# #     pkl.dump(D, f)
 
-del DF
+# del DF
 
 D = dict()
 

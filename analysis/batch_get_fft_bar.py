@@ -106,16 +106,16 @@ for run in runs:
     positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
-    if 'H-Up' in cond:
+    if 'Up' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) < 0)))
-    if 'H-Down' in cond:
+    if 'Down' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
-    if 'V-Left' in cond:
+    if 'Left' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) < 0)))
-    if 'V-Right' in cond:
+    if 'Right' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) > 0)))
     idxs = [i + 1 for i in find_cycs]
@@ -147,6 +147,13 @@ for run in runs:
             stack[:, :, i] = im_reduced
         else:
             stack[:, :, i] = im
+
+    average_stack = np.mean(stack, axis=2)
+
+    for i in range(stack.shape[2]):
+        stack[:,:,i] -= np.mean(stack[:,:,i].ravel())
+        stack[:,:,i] -= np.mean(average_stack.ravel())
+        
 
     #stacks[session] = stack
 
