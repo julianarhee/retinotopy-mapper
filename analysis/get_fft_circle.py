@@ -132,11 +132,11 @@ strt_idxs = sorted(strt_idxs)
 nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
 
 # Divide into cycles:
-chunks = []
-step = 5
-for i in range(0, len(strt_idxs)-1, step):
-    print i
-    chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
+# chunks = []
+# step = 5
+# for i in range(0, len(strt_idxs)-1, step):
+#     print i
+#     chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
 
 
 
