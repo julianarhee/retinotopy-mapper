@@ -189,7 +189,7 @@ for run in runs:
 
     dynrange = np.empty(sample.shape)
 
-    dlist = []
+    # dlist = []
     i = 0
     for x in range(sample.shape[0]):
         for y in range(sample.shape[1]):
@@ -226,11 +226,11 @@ for run in runs:
 
             mag_map[x, y] = mag[target_bin]
             phase_map[x, y]  = phase[target_bin]
-            dlist.append((x, y, curr_ft))
+            # dlist.append((x, y, curr_ft))
 
             i += 1
 
-    DF = pd.DataFrame.from_records(dlist)
+    # DF = pd.DataFrame.from_records(dlist)
 
             # try:
             # dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
@@ -260,16 +260,16 @@ for run in runs:
     if not os.path.exists(outdir):
        os.makedirs(outdir)
 
-    fext = 'Full_fft_%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor))
-    fname = os.path.join(outdir, fext)
-    DF.to_pickle(fname)
+    # fext = 'Full_fft_%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor))
+    # fname = os.path.join(outdir, fext)
+    # DF.to_pickle(fname)
 
-    # with open(fname, 'wb') as f:
-    #     # protocol=pkl.HIGHEST_PROTOCOL)
-    #     pkl.dump(D, f)
+    # # with open(fname, 'wb') as f:
+    # #     # protocol=pkl.HIGHEST_PROTOCOL)
+    # #     pkl.dump(D, f)
 
-    print "Saved full FFT to:  %s" % str(fname)
-    del DF
+    # print "Saved full FFT to:  %s" % str(fname)
+    # del DF
 
     D = dict()
 
