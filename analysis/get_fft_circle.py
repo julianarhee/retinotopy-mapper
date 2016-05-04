@@ -19,6 +19,39 @@ def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
     return np.convolve(interval, window, 'valid')
 
+
+def  cart2pol(x,y, units='deg'):
+    """Convert from cartesian to polar coordinates
+
+    :usage:
+
+        theta, radius = pol2cart(x, y, units='deg')
+
+    units refers to the units (rad or deg) for theta that should be returned
+    """
+    radius= np.hypot(x,y)
+    theta= np.arctan2(y,x)
+    if units in ['deg', 'degs']:
+        theta=theta*180/np.pi
+    return theta, radius
+
+
+def pol2cart(theta, radius, units='deg'):
+    """Convert from polar to cartesian coordinates
+
+    usage::
+
+        x,y = pol2cart(theta, radius, units='deg')
+
+    """
+    if units in ['deg', 'degs']:
+        theta = theta*np.pi/180.0
+    xx = radius*np.cos(theta)
+    yy = radius*np.sin(theta)
+
+    return xx,yy
+
+    
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless",
                   default=False, help="run in headless mode, no figs")
