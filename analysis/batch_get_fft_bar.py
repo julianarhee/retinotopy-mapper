@@ -66,14 +66,14 @@ cache_file = True
 cycle_dur = 1. / target_freq  # 10.
 binspread = 0
 
-#stacks = dict()
-# for imdir in imdirs:
 append_to_name = str(options.append_name)
 
 
 # basepath = os.path.split(os.path.split(imdir)[0])[0]
-session = os.path.split(sessiondir)[1]
+# session = os.path.split(sessiondir)[1]
 # cond = os.path.split(imdir)[1]
+
+curr_session = os.path.split(sessiondir)[1]
 
 if v1 is True:
     condlist_ = ['Left', 'Right', 'Top', 'Bottom']
@@ -86,15 +86,15 @@ print runs
 
 for run in runs:
 
-
     curr_cond = run.split('_')[0]
     curr_run = run.split('_')[1]
     curr_dir = os.path.join(sessiondir, run)
 
     files = os.listdir(curr_dir)
-    files = [f for f in files if os.path.splitext(f)[1] == str(im_format)]
+    files = sorted([f for f in files if os.path.splitext(f)[1] == str(im_format)])
 
-    print "Processing %i files from SESSION: %s, RUN: %s, COND: %s." % (int(len(files)), str(session), str(curr_run), str(curr_cond))
+    # print "Processing %i files from SESSION: %s, RUN: %s, COND: %s." % (int(len(files)), str(curr_session), str(curr_run), str(curr_cond))
+    print "Processing RUN: %s (%s files)." % (run, str(len(files))
 
 # files = os.listdir(imdir)
 # print len(files)
@@ -208,8 +208,8 @@ for run in runs:
             #curr_ft_shift = fft.fftshift(curr_ft)
 
     # flattend = [f for sublist in ((c.real, c.imag) for c in curr_ft) for f in sublist]
-    # 		dlist.append((x, y, curr_ft))
-    # 		i+=1
+    #       dlist.append((x, y, curr_ft))
+    #       i+=1
 
     # DF = pd.DataFrame.from_records(dlist)
 
@@ -263,8 +263,9 @@ for run in runs:
     # D['ft'] = DF
     outdir = os.path.join(sessiondir, 'structs')
     if not os.path.exists(outdir):
-	os.makedirs(outdir)
-    fext = 'Full_fft_%s_run%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor))
+       os.makedirs(outdir)
+
+    fext = 'Full_fft_%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor))
     fname = os.path.join(outdir, fext)
     DF.to_pickle(fname)
 
@@ -308,7 +309,7 @@ for run in runs:
     # if not os.path.exists(outdir):
     #    os.makedirs(outdir)
 
-    fext = 'Target_fft_%s_run%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor), append_to_name)
+    fext = 'Target_fft_%s_%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor), append_to_name)
     fname = os.path.join(outdir, fext)
     with open(fname, 'wb') as f:
         # protocol=pkl.HIGHEST_PROTOCOL)
@@ -370,19 +371,19 @@ for run in runs:
 # plt.subplot(2,2,1) # GREEN LED image
 # outdir = os.path.join(basepath, 'output')
 # if os.path.exists(outdir):
-# 	flist = os.listdir(outdir)
+#   flist = os.listdir(outdir)
 # GET BLOOD VESSEL IMAGE:
-# 	ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
-# 	if ims:
-# 		impath = os.path.join(outdir, ims[0])
-# 		image = Image.open(impath).convert('L')
-# 		imarray = np.asarray(image)
+#   ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+#   if ims:
+#       impath = os.path.join(outdir, ims[0])
+#       image = Image.open(impath).convert('L')
+#       imarray = np.asarray(image)
 
-# 		plt.imshow(imarray,cmap=cm.Greys_r)
-# 	else:
-# 		print "*** Missing green-LED photo of cortex surface. ***"
+#       plt.imshow(imarray,cmap=cm.Greys_r)
+#   else:
+#       print "*** Missing green-LED photo of cortex surface. ***"
 # else:
-# 	spnum = 2
+#   spnum = 2
 
 # plt.subplot(2, 2, 2)
 # fig =  plt.imshow(dynrange)
@@ -414,7 +415,7 @@ for run in runs:
 # figdir = os.path.join(basepath, 'figures', session, 'fieldmap')
 # print figdir
 # if not os.path.exists(figdir):
-# 	os.makedirs(figdir)
+#   os.makedirs(figdir)
 # imname = session + '_' + cond + '_fieldmap' + str(reduce_factor) + '.png'
 # plt.savefig(figdir + '/' + imname)
 
@@ -424,7 +425,7 @@ for run in runs:
 # SAVE MAPS:
 # outdir = os.path.join(basepath, 'output', session)
 # if not os.path.exists(outdir):
-# 	os.makedirs(outdir)
+#   os.makedirs(outdir)
 
 # fext = 'magnitude_%s_%s_%i.pkl' % (cond, str(reduce_factor), gsigma)
 # fname = os.path.join(outdir, fext)
