@@ -14,7 +14,7 @@ import itertools
 from scipy import ndimage
 import pandas as pd
 
-import hickle as hkl
+#import hickle as hkl
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
