@@ -94,12 +94,7 @@ for run in runs:
     files = sorted([f for f in files if os.path.splitext(f)[1] == str(im_format)])
 
     # print "Processing %i files from SESSION: %s, RUN: %s, COND: %s." % (int(len(files)), str(curr_session), str(curr_run), str(curr_cond))
-    print "Processing RUN: %s (%s files)." % (run, str(len(files))
-
-# files = os.listdir(imdir)
-# print len(files)
-# files = sorted([f for f in files if os.path.splitext(f)[1] == str(im_format)])
-# print len(files)
+    print "Processing RUN: %s (%s files)." % (run, str(len(files)))
 
     tiff = TIFF.open(os.path.join(curr_dir, files[0]), mode='r')
     sample = tiff.read_image().astype('float')
