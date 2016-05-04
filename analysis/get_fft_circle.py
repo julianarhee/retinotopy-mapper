@@ -51,7 +51,7 @@ def pol2cart(theta, radius, units='deg'):
 
     return xx,yy
 
-    
+
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless",
                   default=False, help="run in headless mode, no figs")
@@ -121,9 +121,11 @@ for i in plist:
     pos.append([split_num[0], split_num[1]])
 
 degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
-starts = [(idx, i[0]) for idx, i in enumerate(degs) if abs(i[0]-0.) < 0.1]
 
-find_cycs = list(itertools.chain.from_iterable(np.where(np.diff([p[1] for p in positions]) < 0)))
+degrees = [i[0] for i in degs]
+shift_degrees = [i+360.0 for i in degrees if i<0] # CW: 0 to pi, then -pi to 0...
+
+find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
 strt_idxs = [i+1 for i in find_cycs]
 strt_idxs.append(0)
 strt_idxs = sorted(strt_idxs)
@@ -237,7 +239,8 @@ D['target_freq'] = target_freq
 D['fps'] = sampling_rate
 D['freqs'] = freqs  # fft.fftfreq(len(pix), 1 / sampling_rate)
 D['positions'] = positions
-D['degrees'] = degs
+D['degrees'] = degrees
+D['degrees'] = shift_degrees
 D['strt_idxs'] = strt_idxs
 
 D['binsize'] = freqs[1] - freqs[0]
