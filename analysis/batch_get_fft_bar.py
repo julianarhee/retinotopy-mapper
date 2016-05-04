@@ -1,5 +1,7 @@
+#!/usr/bin/env python2
 import numpy as np
 import os
+from libtiff import TIFF
 from skimage.measure import block_reduce
 from scipy.misc import imread
 import cPickle as pkl
@@ -7,14 +9,14 @@ import scipy.signal
 import numpy.fft as fft
 import sys
 import optparse
-from libtiff import TIFF
+#from libtiff import TIFF
 from PIL import Image
 import re
 import itertools
 from scipy import ndimage
 import pandas as pd
 
-import hickle as hkl
+#import hickle as hkl
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
@@ -35,13 +37,14 @@ parser.add_option('--fps', action="store",
                   dest="sampling_rate", default="60", help="saved image format")
 parser.add_option('--append', action="store",
                   dest="append_name", default="", help="append string to saved file name")
-
+parser.add_option('--v1', action="store_true", dest="v1", default=False, help="new version, with relabeled conds")   
 
 (options, args) = parser.parse_args()
 
 sessiondir = sys.argv[1]
 #imdirs = [sys.argv[1], sys.argv[2]]
 
+v1 = options.v1
 im_format = '.' + options.im_format
 headless = options.headless
 target_freq = float(options.target_freq)
@@ -72,8 +75,10 @@ append_to_name = str(options.append_name)
 session = os.path.split(sessiondir)[1]
 # cond = os.path.split(imdir)[1]
 
-
-condlist_ = ['Left', 'Right', 'Up', 'Down']
+if v1 is True:
+    condlist_ = ['Left', 'Right', 'Top', 'Bottom']
+else:
+    condlist_ = ['Left', 'Right', 'Down', 'Up']
 runs = os.listdir(sessiondir)
 runs = [i for i in runs if any(word in i for word in condlist_) and os.path.isdir(os.path.join(sessiondir,i))]
 
@@ -106,10 +111,10 @@ for run in runs:
     positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
-    if 'Up' in curr_cond:
+    if 'Bottom' in curr_cond or 'Up' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) < 0)))
-    if 'Down' in curr_cond:
+    if 'Top' in curr_cond or 'Down' in curr_cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
     if 'Left' in curr_cond:
@@ -152,7 +157,7 @@ for run in runs:
 
     for i in range(stack.shape[2]):
         stack[:,:,i] -= np.mean(stack[:,:,i].ravel())
-        stack[:,:,i] -= np.mean(average_stack.ravel())
+        #stack[:,:,i] -= np.mean(average_stack.ravel())
         
 
     #stacks[session] = stack
@@ -256,9 +261,12 @@ for run in runs:
 
     # D = dict()
     # D['ft'] = DF
-    fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+    outdir = os.path.join(sessiondir, 'structs')
+    if not os.path.exists(outdir):
+	os.makedirs(outdir)
+    fext = 'Full_fft_%s_run%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor))
     fname = os.path.join(outdir, fext)
-    DF.to_pickle(file_name)
+    DF.to_pickle(fname)
 
     # with open(fname, 'wb') as f:
     #     # protocol=pkl.HIGHEST_PROTOCOL)
@@ -295,12 +303,12 @@ for run in runs:
     D['reduce_factor'] = reduce_factor
 
     # SAVE condition info:
-    sessionpath = os.path.split(imdir)[0]
-    outdir = os.path.join(sessionpath, 'structs')
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+    # sessionpath = os.path.split(imdir)[0]
+    # outdir = os.path.join(sessionpath, 'structs')
+    # if not os.path.exists(outdir):
+    #    os.makedirs(outdir)
 
-    fext = 'Target_fft_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
+    fext = 'Target_fft_%s_run%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor), append_to_name)
     fname = os.path.join(outdir, fext)
     with open(fname, 'wb') as f:
         # protocol=pkl.HIGHEST_PROTOCOL)
