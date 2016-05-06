@@ -123,9 +123,18 @@ for i in plist:
 degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
 
 degrees = [i[0] for i in degs]
-shift_degrees = [i+360.0 for i in degrees if i<0] # CW: 0 to pi, then -pi to 0...
 
-find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
+shift_degrees = [i[0] for i in degs]
+for x in range(len(shift_degrees)):
+    if shift_degrees[x] < 0:
+        shift_degrees[x] += 360.
+
+if CW:
+    find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
+else:
+    find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(degrees) < 0)))
+
+
 strt_idxs = [i+1 for i in find_cycs]
 strt_idxs.append(0)
 strt_idxs = sorted(strt_idxs)
