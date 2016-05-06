@@ -67,12 +67,14 @@ parser.add_option('--fps', action="store",
                   dest="sampling_rate", default="60", help="saved image format")
 parser.add_option('--append', action="store",
                   dest="append_name", default="", help="append string to saved file name")
-
+parser.add_option('--CW', action="store_true", dest="CW",
+                  default=False, help="stimulus ran in CW direction?")
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
 
+CW = options.CW
 im_format = '.' + options.im_format
 headless = options.headless
 target_freq = float(options.target_freq)
