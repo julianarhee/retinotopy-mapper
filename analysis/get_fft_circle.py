@@ -259,6 +259,10 @@ D['target_bin'] = target_bin
 D['nframes_per_cycle'] = nframes_per_cycle
 D['reduce_factor'] = reduce_factor
 
+if CW:
+    D['direction'] = 'CW'
+else:
+    D['direction'] = 'CCW'
 # SAVE condition info:
 sessionpath = os.path.split(imdir)[0]
 outdir = os.path.join(sessionpath, 'structs')
