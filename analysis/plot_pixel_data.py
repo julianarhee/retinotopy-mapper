@@ -237,9 +237,7 @@ print fname
 
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)
-    pkl.dump(D, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-del D
+    pkl.dump(D, f)
 
 
 # print "rescaling to 0-255..."
