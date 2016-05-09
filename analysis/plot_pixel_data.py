@@ -229,14 +229,15 @@ for x in range(sample.shape[0]):
 # save stack:
 D=dict()
 D['stack'] = stack
+print D.keys()
 
 fext = '%s_%s_stack.pkl' % (cond, str(reduce_factor))
 fname = os.path.join(os.path.split(imdir)[0], fext)
+print fname
+
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)
     pkl.dump(D, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-print fname
 
 del D
 
