@@ -86,16 +86,16 @@ tiff.close()
 positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
 plist = list(itertools.chain.from_iterable(positions))
 positions = [map(float, i.split(',')) for i in plist]
-if 'H-Up' in cond:
+if 'Up' in cond or 'Bottom' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[1] for p in positions]) < 0)))
-if 'H-Down' in cond:
+if 'Down' in cond or 'Top' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[1] for p in positions]) > 0)))
-if 'V-Left' in cond:
+if 'Left' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[0] for p in positions]) < 0)))
-if 'V-Right' in cond:
+if 'Right' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[0] for p in positions]) > 0)))
 
