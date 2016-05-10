@@ -141,6 +141,7 @@ strt_idxs = [i+1 for i in find_cycs]
 strt_idxs.append(0)
 strt_idxs = sorted(strt_idxs)
 nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
+print "N frames per cyc: ", nframes_per_cycle
 
 # Divide into cycles:
 # chunks = []
@@ -190,7 +191,13 @@ binwidth = freqs[1] - freqs[0]
 target_bin = np.where(
     freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
 print "TARGET: ", target_bin, freqs[target_bin]
-print "FREQS: ", freqs
+# print "FREQS: ", freqs
+
+DC_freq = 0
+DC_bin = np.where(
+    freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
+print "DC: ", DC_freq, freqs[DC_bin]
+
 
 # freqs_shift = fft.fftshift(freqs)
 # target_bin_shift = np.where(freqs_shift == min(
@@ -206,6 +213,12 @@ phase_map = np.empty(sample.shape)
 
 ft = np.empty(sample.shape)
 ft = ft + 0j
+
+DC_map = np.empty(sample.shape)
+DC_phase = np.empty(sample.shape)
+
+DC = np.empty(sample.shape)
+DC = DC + 0j
 
 dynrange = np.empty(sample.shape)
 
@@ -234,6 +247,12 @@ for x in range(sample.shape[0]):
 
         mag_map[x, y] = mag[target_bin]
         phase_map[x, y]  = phase[target_bin]
+
+        DC[x, y] = curr_ft[DC_bin]
+        DC_mag[x, y] = mag[DC_bin]
+        DC_phase[x, y]  = phase[DC_bin]
+
+
         # dlist.append((x, y, curr_ft))
 
         i += 1
@@ -251,13 +270,19 @@ D['fps'] = sampling_rate
 D['freqs'] = freqs  # fft.fftfreq(len(pix), 1 / sampling_rate)
 D['positions'] = positions
 D['degrees'] = degrees
-D['degrees'] = shift_degrees
+D['shift_degrees'] = shift_degrees
 D['strt_idxs'] = strt_idxs
 
 D['binsize'] = freqs[1] - freqs[0]
 D['target_bin'] = target_bin
 D['nframes_per_cycle'] = nframes_per_cycle
 D['reduce_factor'] = reduce_factor
+
+D['DC_bin'] = DC_bin
+D['DC_freq'] = DC_freq
+D]['DC'] = DC
+D['DC_mag'] = DC_mag
+D['DC_phase'] = DC_phase
 
 if CW:
     D['direction'] = 'CW'
