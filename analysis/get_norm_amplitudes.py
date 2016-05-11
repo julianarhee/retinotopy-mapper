@@ -280,11 +280,11 @@ for x in range(sample.shape[0]):
 
         # THIS IS BASICALLY MOVING AVG WINDOW...
         if detrend_first:
-            pix = stack[x, y, :]
+            pix = fft.fft(stack[x, y, :])
         else:
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+            pix = fft.fft(scipy.signal.detrend(stack[x, y, :], type='constant')) # HP filter - over time...
         # pix = stack[x, y, :]
-        
+
         amp = np.abs(pix)
         targ_amp = amp[target_bin]*2.
 
