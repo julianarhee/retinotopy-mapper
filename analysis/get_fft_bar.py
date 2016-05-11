@@ -86,7 +86,9 @@ tiff.close()
 positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
 plist = list(itertools.chain.from_iterable(positions))
 positions = [map(float, i.split(',')) for i in plist]
+print "Curr COND: ",  cond
 if 'Up' in cond or 'Bottom' in cond:
+    print 'UP'
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[1] for p in positions]) < 0)))
 if 'Down' in cond or 'Top' in cond:
@@ -98,7 +100,7 @@ if 'Left' in cond:
 if 'Right' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[0] for p in positions]) > 0)))
-
+print find_cycs
 # idxs = [i + 1 for i in find_cycs]
 # idxs.append(0)
 # idxs.append(len(positions))
@@ -179,7 +181,7 @@ phase_map = np.empty(sample.shape)
 ft = np.empty(sample.shape)
 ft = ft + 0j
 
-DC_map = np.empty(sample.shape)
+DC_mag = np.empty(sample.shape)
 DC_phase = np.empty(sample.shape)
 
 DC = np.empty(sample.shape)
@@ -301,7 +303,7 @@ D['reduce_factor'] = reduce_factor
 
 D['DC_bin'] = DC_bin
 D['DC_freq'] = DC_freq
-D]['DC'] = DC
+D['DC'] = DC
 D['DC_mag'] = DC_mag
 D['DC_phase'] = DC_phase
 

@@ -214,7 +214,7 @@ phase_map = np.empty(sample.shape)
 ft = np.empty(sample.shape)
 ft = ft + 0j
 
-DC_map = np.empty(sample.shape)
+DC_mag = np.empty(sample.shape)
 DC_phase = np.empty(sample.shape)
 
 DC = np.empty(sample.shape)
@@ -280,7 +280,7 @@ D['reduce_factor'] = reduce_factor
 
 D['DC_bin'] = DC_bin
 D['DC_freq'] = DC_freq
-D]['DC'] = DC
+D['DC'] = DC
 D['DC_mag'] = DC_mag
 D['DC_phase'] = DC_phase
 
