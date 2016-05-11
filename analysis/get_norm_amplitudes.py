@@ -74,6 +74,9 @@ parser.add_option('--circle', action="store_true", dest="circle",
 parser.add_option('--CW', action="store_true", dest="CW",
                   default=False, help="circle stim ONLY: CW or not?")
 
+parser.add_option('--detrend-first', action="store_true", dest="detrend_first",
+                  default=False, help="detrend in time, before mean subtraction")
+
 
 (options, args) = parser.parse_args()
 
@@ -83,7 +86,7 @@ imdir = sys.argv[1]
 
 circle = options.circle
 CW = options.CW
-
+detrend_first = options.detrend_first
 
 im_format = '.' + options.im_format
 headless = options.headless
@@ -201,16 +204,18 @@ for i, f in enumerate(files):
 
 # average_stack = np.mean(stack, axis=2)
 
+if detrend_first:
 
-print "detrending..."
+    print "detrending first..."
 
-for x in range(sample.shape[0]):
-    for y in range(sample.shape[1]):
+    for x in range(sample.shape[0]):
+        for y in range(sample.shape[1]):
 
-        # THIS IS BASICALLY MOVING AVG WINDOW...
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+            # THIS IS BASICALLY MOVING AVG WINDOW...
+            pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
 
-        stack[x, y, :] = pix
+            stack[x, y, :] = pix
+
 
 print "mean subtracting"
 
@@ -274,8 +279,11 @@ for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
 
         # THIS IS BASICALLY MOVING AVG WINDOW...
-        # pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
-        pix = stack[x, y, :]
+        if detrend_first:
+            pix = stack[x, y, :]
+        else:
+        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        # pix = stack[x, y, :]
         
         amp = np.abs(pix)
         targ_amp = amp[target_bin]*2.
