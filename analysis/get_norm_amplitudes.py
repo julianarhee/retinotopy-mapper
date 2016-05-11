@@ -20,6 +20,39 @@ def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
     return np.convolve(interval, window, 'valid')
 
+
+def  cart2pol(x,y, units='deg'):
+    """Convert from cartesian to polar coordinates
+
+    :usage:
+
+        theta, radius = pol2cart(x, y, units='deg')
+
+    units refers to the units (rad or deg) for theta that should be returned
+    """
+    radius= np.hypot(x,y)
+    theta= np.arctan2(y,x)
+    if units in ['deg', 'degs']:
+        theta=theta*180/np.pi
+    return theta, radius
+
+
+def pol2cart(theta, radius, units='deg'):
+    """Convert from polar to cartesian coordinates
+
+    usage::
+
+        x,y = pol2cart(theta, radius, units='deg')
+
+    """
+    if units in ['deg', 'degs']:
+        theta = theta*np.pi/180.0
+    xx = radius*np.cos(theta)
+    yy = radius*np.sin(theta)
+
+    return xx,yy
+
+
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless",
                   default=False, help="run in headless mode, no figs")
@@ -36,11 +69,21 @@ parser.add_option('--fps', action="store",
 parser.add_option('--append', action="store",
                   dest="append_name", default="", help="append string to saved file name")
 
+parser.add_option('--circle', action="store_true", dest="circle",
+                  default=False, help="is the stimulus a circle or bar?")
+parser.add_option('--CW', action="store_true", dest="CW",
+                  default=False, help="circle stim ONLY: CW or not?")
+
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
 #imdirs = [sys.argv[1], sys.argv[2]]
+
+
+circle = options.circle
+CW = options.CW
+
 
 im_format = '.' + options.im_format
 headless = options.headless
@@ -82,37 +125,54 @@ print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.mi
 print "sample shape: %s" % str(sample.shape)
 tiff.close()
 
+
 # FIND CYCLE STARTS:
-positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
-plist = list(itertools.chain.from_iterable(positions))
-positions = [map(float, i.split(',')) for i in plist]
-print "Curr COND: ",  cond
-if 'Up' in cond or 'Bottom' in cond:
-    print 'UP'
-    find_cycs = list(itertools.chain.from_iterable(
-        np.where(np.diff([p[1] for p in positions]) < 0)))
-if 'Down' in cond or 'Top' in cond:
-    find_cycs = list(itertools.chain.from_iterable(
-        np.where(np.diff([p[1] for p in positions]) > 0)))
-if 'Left' in cond:
-    find_cycs = list(itertools.chain.from_iterable(
-        np.where(np.diff([p[0] for p in positions]) < 0)))
-if 'Right' in cond:
-    find_cycs = list(itertools.chain.from_iterable(
-        np.where(np.diff([p[0] for p in positions]) > 0)))
-print find_cycs
-# idxs = [i + 1 for i in find_cycs]
-# idxs.append(0)
-# idxs.append(len(positions))
-# idxs = sorted(idxs)
+if circle:
+    positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+    plist = list(itertools.chain.from_iterable(positions))
+    pos = []
+    for i in plist:
+        split_string = i.split(' ')
+        split_num = [float(s) for s in split_string if s is not '']
+        pos.append([split_num[0], split_num[1]])
+
+    degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
+
+    degrees = [i[0] for i in degs]
+    shift_degrees = [i[0] for i in degs]
+    for x in range(len(shift_degrees)):
+        if shift_degrees[x] < 0:
+            shift_degrees[x] += 360.
+
+    if CW:
+        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
+    else:
+        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
+
+else:
+    # FIND CYCLE STARTS:
+    positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+    plist = list(itertools.chain.from_iterable(positions))
+    positions = [map(float, i.split(',')) for i in plist]
+    if 'H-Up' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[1] for p in positions]) < 0)))
+    if 'H-Down' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[1] for p in positions]) > 0)))
+    if 'V-Left' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[0] for p in positions]) < 0)))
+    if 'V-Right' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[0] for p in positions]) > 0)))
 
 strt_idxs = [i + 1 for i in find_cycs]
 strt_idxs.append(0)
 strt_idxs.append(len(positions))
 strt_idxs = sorted(strt_idxs)
-
 nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
-print "N frames per cyc: ", nframes_per_cycle
+
 
 
 if reduceit:
