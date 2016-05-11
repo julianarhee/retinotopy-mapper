@@ -286,7 +286,7 @@ for x in range(sample.shape[0]):
 
         other_freqs = sum(amp) - targ_amp
         ratio_map[x, y] = targ_amp/other_freqs 
-        dB_map[x, y] = dB
+        dB_map[x, y] = dB[target_bin]
 
         ft[x, y] = pix[target_bin]
 
