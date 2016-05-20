@@ -261,7 +261,7 @@ ft = ft + 0j
 
 dB_map = np.empty(sample.shape)
 ratio_map = np.empty(sample.shape)
-
+norm_dB_map = np.empty(sample.shape)
 # DC_mag = np.empty(sample.shape)
 # DC_phase = np.empty(sample.shape)
 
@@ -291,11 +291,12 @@ for x in range(sample.shape[0]):
         dB = 20*np.abs(pix)/len(pix)
         dB_other_freqs = sum(20*np.abs(pix)/len(pix))
 
-        # normalized_amplitude = (dB - max(dB)) / (dB + max(dB))
+        normalized_amplitude = dB - max(dB) # this should result in 0 being low rel to DC, and neg being high rel to DC
 
         amp_other_freqs = sum(amp) - targ_amp
         ratio_map[x, y] = targ_amp/other_freqs 
         dB_map[x, y] = dB[target_bin]
+        norm_dB_map[x, y] = normalized_amplitude[target_bin]
 
         ft[x, y] = pix[target_bin]
 
