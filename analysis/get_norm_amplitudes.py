@@ -289,10 +289,11 @@ for x in range(sample.shape[0]):
         targ_amp = amp[target_bin]*2.
 
         dB = 20*np.abs(pix)/len(pix)
+        dB_other_freqs = sum(20*np.abs(pix)/len(pix))
 
         # normalized_amplitude = (dB - max(dB)) / (dB + max(dB))
 
-        other_freqs = sum(amp) - targ_amp
+        amp_other_freqs = sum(amp) - targ_amp
         ratio_map[x, y] = targ_amp/other_freqs 
         dB_map[x, y] = dB[target_bin]
 
