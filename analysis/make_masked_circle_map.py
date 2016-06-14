@@ -177,8 +177,11 @@ if reduceit:
 
 files = os.listdir(outdir)
 files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
-dstructs = [f for f in files if 'D_target' in f and str(reduce_factor) and key in f]
+# dstructs = [f for f in files if 'D_target' in f and str(reduce_factor) and key in f]
 #dstructs = [f for f in files if 'DF_' in f and str(reduce_factor) in f]
+append = 'nas'
+dstructs = [f for f in files if 'Target_fft' in f and str(reduce_factor) and key in f and append in f]
+
 
 print dstructs
 
@@ -210,10 +213,12 @@ else:
 ftmap = dict()
 # outshape = D[cond_keys[0]]['ft_real'].shape
 for k in cond_keys:
-    outshape = D[k]['ft_real'].shape
-    reals = D[k]['ft_real'].ravel()
-    imags = D[k]['ft_imag'].ravel()
-    ftmap[k] = [complex(x[0], x[1]) for x in zip(reals, imags)]
+    # outshape = D[k]['ft_real'].shape
+    # reals = D[k]['ft_real'].ravel()
+    # imags = D[k]['ft_imag'].ravel()
+    # ftmap[k] = [complex(x[0], x[1]) for x in zip(reals, imags)]
+    outshape = D[k]['ft'].shape
+    ftmap[k] = D[k]['ft']
     ftmap[k] = np.reshape(np.array(ftmap[k]), outshape)
 
     D[k]['phase_map'] = np.angle(ftmap[k])
@@ -390,7 +395,7 @@ else:
     imname = curr_animal + '_' + curr_sesh + '_' + curr_cond  + '_masked_CCW_' + key + '_reduce' + str(reduce_factor[0]) + '_thresh' + str(threshold) + '.jpg'
 print "IMNAME: ", imname
 
-savedir = '/media/labuser/IMDATA1/widefield/AH03/FIGS'
+# savedir = '/media/labuser/IMDATA1/widefield/AH03/FIGS'
 fig.savefig(outdirs + '/' + imname)
 # fig.savefig(savedir + '/' + imname)
 print "FIG 1: ", outdirs + '/' + imname
