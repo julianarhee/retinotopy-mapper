@@ -86,23 +86,34 @@ tiff.close()
 positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
 plist = list(itertools.chain.from_iterable(positions))
 positions = [map(float, i.split(',')) for i in plist]
-if 'H-Up' in cond:
+print "Curr COND: ",  cond
+if 'Up' in cond or 'Bottom' in cond:
+    print 'UP'
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[1] for p in positions]) < 0)))
-if 'H-Down' in cond:
+if 'Down' in cond or 'Top' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[1] for p in positions]) > 0)))
-if 'V-Left' in cond:
+if 'Left' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[0] for p in positions]) < 0)))
-if 'V-Right' in cond:
+if 'Right' in cond:
     find_cycs = list(itertools.chain.from_iterable(
         np.where(np.diff([p[0] for p in positions]) > 0)))
-idxs = [i + 1 for i in find_cycs]
-idxs.append(0)
-idxs.append(len(positions))
-idxs = sorted(idxs)
-nframes_per_cycle = [idxs[i] - idxs[i - 1] for i in range(1, len(idxs))]
+print find_cycs
+# idxs = [i + 1 for i in find_cycs]
+# idxs.append(0)
+# idxs.append(len(positions))
+# idxs = sorted(idxs)
+
+strt_idxs = [i + 1 for i in find_cycs]
+strt_idxs.append(0)
+strt_idxs.append(len(positions))
+strt_idxs = sorted(strt_idxs)
+
+nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
+print "N frames per cyc: ", nframes_per_cycle
+
 
 if reduceit:
     sample = block_reduce(sample, reduce_factor, func=np.mean)
@@ -143,13 +154,19 @@ binwidth = freqs[1] - freqs[0]
 target_bin = np.where(
     freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
 print "TARGET: ", target_bin, freqs[target_bin]
-print "FREQS: ", freqs
+# print "FREQS: ", freqs
 
-freqs_shift = fft.fftshift(freqs)
-target_bin_shift = np.where(freqs_shift == min(
-    freqs_shift, key=lambda x: abs(float(x) - target_freq)))[0][0]
-print "TARGET-shift: ", target_bin_shift, freqs_shift[target_bin_shift]
-print "FREQS-shift: ", freqs_shift
+DC_freq = 0
+DC_bin = np.where(
+    freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
+print "DC: ", DC_freq, freqs[DC_bin]
+
+
+# freqs_shift = fft.fftshift(freqs)
+# target_bin_shift = np.where(freqs_shift == min(
+#     freqs_shift, key=lambda x: abs(float(x) - target_freq)))[0][0]
+# print "TARGET-shift: ", target_bin_shift, freqs_shift[target_bin_shift]
+# print "FREQS-shift: ", freqs_shift
 
 
 window = sampling_rate * cycle_dur * 2
@@ -163,6 +180,12 @@ phase_map = np.empty(sample.shape)
 
 ft = np.empty(sample.shape)
 ft = ft + 0j
+
+DC_mag = np.empty(sample.shape)
+DC_phase = np.empty(sample.shape)
+
+DC = np.empty(sample.shape)
+DC = DC + 0j
 
 # ft_real_shift = np.empty(sample.shape)
 # ft_imag_shift = np.empty(sample.shape)
@@ -207,6 +230,11 @@ for x in range(sample.shape[0]):
         mag_map[x, y] = mag[target_bin]
         phase_map[x, y]  = phase[target_bin]
         # dlist.append((x, y, curr_ft))
+
+
+        DC[x, y] = curr_ft[DC_bin]
+        DC_mag[x, y] = mag[DC_bin]
+        DC_phase[x, y]  = phase[DC_bin]
 
         i += 1
 
@@ -272,6 +300,12 @@ D['target_bin'] = target_bin
 #D['target_bin_shift'] = target_bin_shift
 D['nframes'] = nframes_per_cycle
 D['reduce_factor'] = reduce_factor
+
+D['DC_bin'] = DC_bin
+D['DC_freq'] = DC_freq
+D['DC'] = DC
+D['DC_mag'] = DC_mag
+D['DC_phase'] = DC_phase
 
 # SAVE condition info:
 sessionpath = os.path.split(imdir)[0]
