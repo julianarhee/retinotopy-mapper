@@ -11,12 +11,12 @@ from libtiff import TIFF
 sampling_rate = 60.0
 reduce_factor = (4, 4)
 cache_file = True
-target_freq = 0.08
+target_freq = 0.05
 
 imdir = sys.argv[1]
 
 files = os.listdir(imdir)
-files = [f for f in files if os.path.splitext(f)[1] == '.png']
+files = [f for f in files if os.path.splitext(f)[1] == '.tif']
 
 # files = files[0:100]
 
