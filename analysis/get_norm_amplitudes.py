@@ -14,6 +14,7 @@ import itertools
 from scipy import ndimage
 import pandas as pd
 
+#import hickle as hkl
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
@@ -67,14 +68,26 @@ parser.add_option('--fps', action="store",
                   dest="sampling_rate", default="60", help="saved image format")
 parser.add_option('--append', action="store",
                   dest="append_name", default="", help="append string to saved file name")
+
+parser.add_option('--circle', action="store_true", dest="circle",
+                  default=False, help="is the stimulus a circle or bar?")
 parser.add_option('--CW', action="store_true", dest="CW",
-                  default=False, help="stimulus ran in CW direction?")
+                  default=False, help="circle stim ONLY: CW or not?")
+
+parser.add_option('--detrend-first', action="store_true", dest="detrend_first",
+                  default=False, help="detrend in time, before mean subtraction")
+
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
+#imdirs = [sys.argv[1], sys.argv[2]]
 
+
+circle = options.circle
 CW = options.CW
+detrend_first = options.detrend_first
+
 im_format = '.' + options.im_format
 headless = options.headless
 target_freq = float(options.target_freq)
@@ -96,6 +109,8 @@ cache_file = True
 cycle_dur = 1. / target_freq  # 10.
 binspread = 0
 
+#stacks = dict()
+# for imdir in imdirs:
 append_to_name = str(options.append_name)
 
 basepath = os.path.split(os.path.split(imdir)[0])[0]
@@ -113,49 +128,60 @@ print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.mi
 print "sample shape: %s" % str(sample.shape)
 tiff.close()
 
+
 # FIND CYCLE STARTS:
-positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
-plist = list(itertools.chain.from_iterable(positions))
-pos = []
-for i in plist:
-    split_string = i.split(' ')
-    split_num = [float(s) for s in split_string if s is not '']
-    pos.append([split_num[0], split_num[1]])
+if circle:
+    positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+    plist = list(itertools.chain.from_iterable(positions))
+    pos = []
+    for i in plist:
+        split_string = i.split(' ')
+        split_num = [float(s) for s in split_string if s is not '']
+        pos.append([split_num[0], split_num[1]])
 
-degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
+    degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
 
-degrees = [i[0] for i in degs]
+    degrees = [i[0] for i in degs]
+    shift_degrees = [i[0] for i in degs]
+    for x in range(len(shift_degrees)):
+        if shift_degrees[x] < 0:
+            shift_degrees[x] += 360.
 
-shift_degrees = [i[0] for i in degs]
-for x in range(len(shift_degrees)):
-    if shift_degrees[x] < 0:
-        shift_degrees[x] += 360.
+    if CW:
+        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
+    else:
+        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
 
-if CW:
-    find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
 else:
-    find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(degrees) < 0)))
+    # FIND CYCLE STARTS:
+    positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
+    plist = list(itertools.chain.from_iterable(positions))
+    positions = [map(float, i.split(',')) for i in plist]
+    if 'H-Up' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[1] for p in positions]) < 0)))
+    if 'H-Down' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[1] for p in positions]) > 0)))
+    if 'V-Left' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[0] for p in positions]) < 0)))
+    if 'V-Right' in cond:
+        find_cycs = list(itertools.chain.from_iterable(
+            np.where(np.diff([p[0] for p in positions]) > 0)))
 
-
-strt_idxs = [i+1 for i in find_cycs]
+strt_idxs = [i + 1 for i in find_cycs]
 strt_idxs.append(0)
+strt_idxs.append(len(positions))
 strt_idxs = sorted(strt_idxs)
 nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
-print "N frames per cyc: ", nframes_per_cycle
-
-# Divide into cycles:
-# chunks = []
-# step = 5
-# for i in range(0, len(strt_idxs)-1, step):
-#     print i
-#     chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
 
 
 
-# READ IN THE FRAMES:
 if reduceit:
     sample = block_reduce(sample, reduce_factor, func=np.mean)
 
+# READ IN THE FRAMES:
 stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
 print len(files)
 
@@ -176,7 +202,22 @@ for i, f in enumerate(files):
     else:
         stack[:, :, i] = im
 
-average_stack = np.mean(stack, axis=2)
+# average_stack = np.mean(stack, axis=2)
+
+if detrend_first:
+
+    print "detrending first..."
+
+    for x in range(sample.shape[0]):
+        for y in range(sample.shape[1]):
+
+            # THIS IS BASICALLY MOVING AVG WINDOW...
+            pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+
+            stack[x, y, :] = pix
+
+
+print "mean subtracting"
 
 for i in range(stack.shape[2]):
     stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) # HP filter - This step removes diff value for each frame, and shifts the range of intensities to span around 0.
@@ -205,22 +246,32 @@ print "DC: ", DC_freq, freqs[DC_bin]
 # print "TARGET-shift: ", target_bin_shift, freqs_shift[target_bin_shift]
 # print "FREQS-shift: ", freqs_shift
 
+
 window = sampling_rate * cycle_dur * 2
 
 # FFT:
 mag_map = np.empty(sample.shape)
 phase_map = np.empty(sample.shape)
 
+# ft_real = np.empty(sample.shape)
+# ft_imag = np.empty(sample.shape)
+
 ft = np.empty(sample.shape)
 ft = ft + 0j
 
-DC_mag = np.empty(sample.shape)
-DC_phase = np.empty(sample.shape)
+dB_map = np.empty(sample.shape)
+ratio_map = np.empty(sample.shape)
+norm_dB_map = np.empty(sample.shape)
+# DC_mag = np.empty(sample.shape)
+# DC_phase = np.empty(sample.shape)
 
-DC = np.empty(sample.shape)
-DC = DC + 0j
+# DC = np.empty(sample.shape)
+# DC = DC + 0j
 
-dynrange = np.empty(sample.shape)
+# ft_real_shift = np.empty(sample.shape)
+# ft_imag_shift = np.empty(sample.shape)
+
+# dynrange = np.empty(sample.shape)
 
 # dlist = []
 i = 0
@@ -228,73 +279,115 @@ for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
 
         # THIS IS BASICALLY MOVING AVG WINDOW...
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        if detrend_first:
+            pix = fft.fft(stack[x, y, :])
+        else:
+            pix = fft.fft(scipy.signal.detrend(stack[x, y, :], type='constant')) # HP filter - over time...
+        # pix = stack[x, y, :]
 
-        dynrange[x, y] = np.log2(pix.max() - pix.min())
+        amp = np.abs(pix)
+        targ_amp = amp[target_bin]*2.
 
-        curr_ft = fft.fft(pix)  # fft.fft(pix) / len(pix)])
-        #curr_ft_shift = fft.fftshift(curr_ft)
+        dB = 20*np.abs(pix)/len(pix)
 
-# 		dlist.append((x, y, curr_ft))
-# 		i+=1
+        normalized_amplitude = dB - max(dB) # this should result in 0 being low rel to DC, and neg being high rel to DC
 
-# DF = pd.DataFrame.from_records(dlist)
+        other_freqs = sum(amp) - targ_amp
+        ratio_map[x, y] = targ_amp/other_freqs 
+        dB_map[x, y] = dB[target_bin]
+        norm_dB_map[x, y] = normalized_amplitude[target_bin]
 
-        mag = np.abs(curr_ft)
-        phase = np.angle(curr_ft)
+        ft[x, y] = pix[target_bin]
 
-        ft[x, y] = curr_ft[target_bin]
-
-        mag_map[x, y] = mag[target_bin]
-        phase_map[x, y]  = phase[target_bin]
-
-        DC[x, y] = curr_ft[DC_bin]
-        DC_mag[x, y] = mag[DC_bin]
-        DC_phase[x, y]  = phase[DC_bin]
+        # mag_map[x, y] = amp[target_bin]
+        # phase_map[x, y]  = phase[target_bin]
+        # # dlist.append((x, y, curr_ft))
 
 
-        # dlist.append((x, y, curr_ft))
+        # DC[x, y] = curr_ft[DC_bin]
+        # DC_mag[x, y] = mag[DC_bin]
+        # DC_phase[x, y]  = phase[DC_bin]
 
         i += 1
 
+# DF = pd.DataFrame.from_records(dlist)
+
+        # try:
+        # dynrange[x,y] = np.log2(stack[x, y, :].max()/stack[x, y, :].min())
+        # except RunTimeWarning:
+        # print f, x, y, dynrange[x,y]
+
+        # pix = scipy.signal.detrend(stack[x, y, :]) # THIS IS BASICALLY MOVING AVG WINDOW...
+        # pix = stack[x,y,:]
+
+        # dynrange[x,y] = np.log2(pix.max() - pix.min())
+
+        # pix = scipy.signal.detrend(pix)
+
+        # sig = movingaverage(pix, window)
+        # mpix = (pix[0:len(sig)] - sig) / sig
+
+        # sig = scipy.signal.detrend(sig)
+
+        # ft = fft.fft(scipy.signal.detrend(stack[x, y, :]))
+        # ft[x, y] = [fft.fft(pix) / len(pix)]
+        # phase = np.angle(ft)
+        # mag_tmp = np.abs(ft) #**2
+
+# D = dict()
+# D['ft'] = DF
+# fext = 'Full_fft_%s_%s.pkl' % (cond, str(reduce_factor))
+# fname = os.path.join(outdir, fext)
+# DF.to_pickle(file_name)
+
+# # with open(fname, 'wb') as f:
+# #     # protocol=pkl.HIGHEST_PROTOCOL)
+# #     pkl.dump(D, f)
+
+# del DF
+
 D = dict()
 
+D['ratio_map'] = ratio_map
+D['dB_map'] = dB_map
+# D['ft_real'] = ft_real  # np.array(ft)
+# D['ft_imag'] = ft_imag
 D['ft'] = ft
+# D['ft_real_shift'] = ft_real_shift #np.array(ft)
+#D['ft_imag_shift'] = ft_imag_shift
 
-D['mag_map'] = mag_map
-D['phase_map'] = phase_map
-D['mean_intensity'] = np.mean(stack, axis=2)
-D['dynrange'] = dynrange
+# D['mag_map'] = mag_map
+# D['phase_map'] = phase_map
+# D['mean_intensity'] = np.mean(stack, axis=2)
+# D['stack'] = stack
+#del stack
+# D['dynrange'] = dynrange
 D['target_freq'] = target_freq
 D['fps'] = sampling_rate
 D['freqs'] = freqs  # fft.fftfreq(len(pix), 1 / sampling_rate)
-D['positions'] = positions
-D['degrees'] = degrees
-D['shift_degrees'] = shift_degrees
-D['strt_idxs'] = strt_idxs
+
+# D['freqs_shift'] = freqs_shift #fft.fftfreq(len(pix), 1 / sampling_rate)
 
 D['binsize'] = freqs[1] - freqs[0]
+# np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
 D['target_bin'] = target_bin
-D['nframes_per_cycle'] = nframes_per_cycle
+#D['target_bin_shift'] = target_bin_shift
+D['nframes'] = nframes_per_cycle
 D['reduce_factor'] = reduce_factor
 
-D['DC_bin'] = DC_bin
-D['DC_freq'] = DC_freq
-D['DC'] = DC
-D['DC_mag'] = DC_mag
-D['DC_phase'] = DC_phase
+# D['DC_bin'] = DC_bin
+# D['DC_freq'] = DC_freq
+# D['DC'] = DC
+# D['DC_mag'] = DC_mag
+# D['DC_phase'] = DC_phase
 
-if CW:
-    D['direction'] = 'CW'
-else:
-    D['direction'] = 'CCW'
 # SAVE condition info:
 sessionpath = os.path.split(imdir)[0]
 outdir = os.path.join(sessionpath, 'structs')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-fext = 'Target_fft_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
+fext = 'Amplitudes_%s_%s_%s.pkl' % (cond, str(reduce_factor), append_to_name)
 fname = os.path.join(outdir, fext)
 with open(fname, 'wb') as f:
     # protocol=pkl.HIGHEST_PROTOCOL)

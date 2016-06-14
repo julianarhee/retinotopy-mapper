@@ -226,6 +226,20 @@ for x in range(sample.shape[0]):
         stack[x, y, :] = pix
 
 
+# save stack:
+D=dict()
+D['stack'] = stack
+print D.keys()
+
+fext = '%s_%s_stack.pkl' % (cond, str(reduce_factor))
+fname = os.path.join(os.path.split(imdir)[0], fext)
+print fname
+
+with open(fname, 'wb') as f:
+    # protocol=pkl.HIGHEST_PROTOCOL)
+    pkl.dump(D, f)
+
+
 # print "rescaling to 0-255..."
 
 # for i in range(stack.shape[2]):
@@ -255,67 +269,74 @@ plt.xlabel('frames')
 plt.ylabel('intensity')
 plt.title('sample pixel (%i, %i)' % (x, y))
 
-# sample params:
-N = len(pix)
-target_freq = 0.13
-sampling_rate = 60.
-dt = 1 / sampling_rate
-
-Ny = len(pix)/2+1
-
-plt.plot(np.abs(ft[0:N/2]))
-# time axes:
-time = 1 / sampling_rate * np.arange(N)
-freqs = fft.fftfreq(len(pix), 1 / sampling_rate)
-
-# fft for target frequency:
-target_bin = np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
-ft = fft.fft(pix)
-# ft_scaled = ft / dt
+plt.show()
 
 
+# # sample params:
+# N = len(pix)
+# target_freq = 0.13
+# sampling_rate = 60.
+# dt = 1 / sampling_rate
 
-# PLOT:  amplitude spectrum (or power)
-plt.plot(freqs, np.abs(ft))
-# plt.plot(freqs, np.abs(ft)/N) # normalize?
-plt.xlabel('frequencies (Hz)')
-plt.ylabel('amplitude ')
-
-
-# PLOT:  only show 1/2, limit to Nyquist:
-plt.plot(np.abs(ft[0:Ny]))
-plt.plot(freqs[0:Ny], 2*np.abs(ft[0:Ny])/Ny)
-plt.plot(freqs[target_bin], 2*np.abs(ft[target_bin])/Ny, 'r*')
-# plt.xlim([0,Ny])
+# time = 1 / sampling_rate * np.arange(N)
+# freqs = fft.fftfreq(len(pix), 1 / sampling_rate)
 
 
-# Hanning window?  wtf units...
-hann = np.hanning(len(pix))
-plt.plot(time, hann*pix)
-ft_hann = fft.fft(hann*pix)
-plt.plot(freqs[0:Ny], 2*np.abs(Yhann[0:Ny])/Ny)
+# Ny = len(pix)/2+1
 
-# http://www.cbcity.de/die-fft-mit-python-einfach-erklaert
+# plt.plot(np.abs(ft[0:N/2]))
+# # time axes:
+# # time = 1 / sampling_rate * np.arange(N)
+# # freqs = fft.fftfreq(len(pix), 1 / sampling_rate)
+
+# # fft for target frequency:
+# target_bin = np.where(freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
+# ft = fft.fft(pix)
+# # ft_scaled = ft / dt
 
 
 
-
-# PLOT:  POWER?
-plt.figure(); plt.plot(freqs, np.abs(ft)**2)
-
-# normalization = 2 / N
-# plt.plot(freqs[:N // 2], normalization * np.abs(ft[:N // 2]))# magnitude maps...
-
+# # PLOT:  amplitude spectrum (or power)
+# plt.plot(freqs, np.abs(ft))
+# # plt.plot(freqs, np.abs(ft)/N) # normalize?
+# plt.xlabel('frequencies (Hz)')
+# plt.ylabel('amplitude ')
 
 
-# divide by DC component at each pixel:
+# # PLOT:  only show 1/2, limit to Nyquist:
+# plt.plot(np.abs(ft[0:Ny]))
+# plt.plot(freqs[0:Ny], 2*np.abs(ft[0:Ny])/Ny)
+# plt.plot(freqs[target_bin], 2*np.abs(ft[target_bin])/Ny, 'r*')
+# # plt.xlim([0,Ny])
 
-DC = np.empty(stack[:,:,1].shape)
-# DC = DC + 0j
-for x in range(stack.shape[0]):
-	for y in range(stack.shape[1]):
-		ft = fft.fft(stack[x,y,:])
-		DC[x,y] = np.abs(ft[0])
+
+# # Hanning window?  wtf units...
+# hann = np.hanning(len(pix))
+# plt.plot(time, hann*pix)
+# ft_hann = fft.fft(hann*pix)
+# plt.plot(freqs[0:Ny], 2*np.abs(Yhann[0:Ny])/Ny)
+
+# # http://www.cbcity.de/die-fft-mit-python-einfach-erklaert
+
+
+
+
+# # PLOT:  POWER?
+# plt.figure(); plt.plot(freqs, np.abs(ft)**2)
+
+# # normalization = 2 / N
+# # plt.plot(freqs[:N // 2], normalization * np.abs(ft[:N // 2]))# magnitude maps...
+
+
+
+# # divide by DC component at each pixel:
+
+# DC = np.empty(stack[:,:,1].shape)
+# # DC = DC + 0j
+# for x in range(stack.shape[0]):
+# 	for y in range(stack.shape[1]):
+# 		ft = fft.fft(stack[x,y,:])
+# 		DC[x,y] = np.abs(ft[0])
 
 
 

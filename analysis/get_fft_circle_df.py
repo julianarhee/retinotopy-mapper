@@ -178,6 +178,20 @@ for i, f in enumerate(files):
 
 average_stack = np.mean(stack, axis=2)
 
+
+
+print "detrending..."
+
+for x in range(sample.shape[0]):
+    for y in range(sample.shape[1]):
+
+        # THIS IS BASICALLY MOVING AVG WINDOW...
+        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+
+        stack[x, y, :] = pix
+
+print "mean subtracting"
+
 for i in range(stack.shape[2]):
     stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) # HP filter - This step removes diff value for each frame, and shifts the range of intensities to span around 0.
     # stack[:,:,i] -= np.mean(average_stack.ravel()) # This step subtracts the same value ALL frames, effectively shifting the range down by the same amount.
@@ -228,7 +242,9 @@ for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
 
         # THIS IS BASICALLY MOVING AVG WINDOW...
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        # pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        
+        pix = stack[x, y, :]
 
         dynrange[x, y] = np.log2(pix.max() - pix.min())
 

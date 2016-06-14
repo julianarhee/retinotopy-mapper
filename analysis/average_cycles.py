@@ -157,6 +157,7 @@ if circle:
         find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
     else:
         find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
+    print "CYC STARTS: ", find_cycs
 
 else:
     # FIND CYCLE STARTS:
@@ -299,7 +300,7 @@ if get_average_cycle:
     print "saving averaged frames..."
 
     for i in range(average_cycle.shape[2]):
-
+	print i
         im = Image.fromarray(average_cycle[:,:,i])
 
         fname = os.path.join(processed_dir, 'image%04d.png' % i)
@@ -316,7 +317,7 @@ else:
         scipy.misc.imsave(fname, im)
 
 print "Done."
-
+print "Saved to: ", fname
     # tiff = TIFF.open(fname, mode='w')
     # tiff.write_image(stack[:,:,i])
     # tiff.close()

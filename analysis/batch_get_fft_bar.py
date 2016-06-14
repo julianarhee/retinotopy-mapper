@@ -303,6 +303,7 @@ for run in runs:
     # outdir = os.path.join(sessionpath, 'structs')
     # if not os.path.exists(outdir):
     #    os.makedirs(outdir)
+    print "saving..."
 
     fext = 'Target_fft_%s_%s_%s_%s.pkl' % (curr_cond, str(curr_run), str(reduce_factor), append_to_name)
     fname = os.path.join(outdir, fext)
