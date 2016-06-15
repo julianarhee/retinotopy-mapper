@@ -294,7 +294,7 @@ plt.show()
 # ft = fft.fft(pix)
 # # ft_scaled = ft / dt
 
-
+freqs
 
 # # PLOT:  amplitude spectrum (or power)
 # plt.plot(freqs, np.abs(ft))
