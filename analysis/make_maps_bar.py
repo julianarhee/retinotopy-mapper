@@ -57,6 +57,8 @@ parser.add_option('--up', action="store", dest="up_key", default=1, help="if mor
 parser.add_option('--down', action="store", dest="down_key", default=1, help="if more than one run, run number")
 parser.add_option('--left', action="store", dest="left_key", default=1, help="if more than one run, run number")
 parser.add_option('--right', action="store", dest="right_key", default=1, help="if more than one run, run number")
+parser.add_option('--append', action="store",
+                  dest="append_name", default="", help="append string to saved file name")
 
 (options, args) = parser.parse_args()
 
@@ -81,6 +83,7 @@ right_key = str(options.right_key)
 
 run_num = str(options.run_num)
 
+append_to_name = str(options.append_name)
 
 #################################################################################
 # GET PATH INFO:
@@ -104,9 +107,10 @@ if figpath:
     figdir = figpath[0]
     # ims = os.listdir(os.path.join(sessiondir, figdir))
     tmp_ims = os.listdir(os.path.join(sessiondir, figdir))
-    ims = [i for i in tmp_ims if 'surface' in i or 'green' in i]
+    ims = [i for i in tmp_ims if 'surface' in i or 'green' in i or 'GREEN' in i]
     print ims
     impath = os.path.join(sessiondir, figdir, ims[0])
+    print impath
     # image = Image.open(impath) #.convert('L')
     # imarray = np.asarray(image)
     print os.path.splitext(impath)[1]
@@ -215,14 +219,26 @@ if bar:
 
     print "AZ keys: ", V_keys
     print "EL keys: ", H_keys
-    azimuth_phase = np.angle(ftmap[V_keys[0]] / ftmap[V_keys[1]]) #* (180./math.pi)
+    azimuth_phase = np.angle(ftmap[V_keys[0]] / ftmap[V_keys[1]]) / 2.  #* (180./math.pi)
+    elevation_phase = np.angle(ftmap[H_keys[0]] / ftmap[H_keys[1]]) / 2. #* (180./math.pi)
     # azimuth_phase = np.angle(ftmap[V_keys[0]]) - np.angle(ftmap[V_keys[1]]) #* (180./math.pi)
-    elevation_phase = np.angle(ftmap[H_keys[0]] / ftmap[H_keys[1]]) #* (180./math.pi)
     # elevation_phase = np.angle(ftmap[H_keys[0]]) - np.angle(ftmap[H_keys[1]]) #* (180./math.pi)
 
     
     # azimuth_phase = 2 * (np.angle(ftmap[V_keys[0]]) - np.angle(ftmap[V_keys[1]])) #* (180./math.pi)
     # elevation_phase = 2 * (np.angle(ftmap[H_keys[0]]) - np.angle(ftmap[H_keys[1]])) #* (180./math.pi)
+
+
+
+    #azimuth_phase = np.angle(ftmap[V_keys[0]] * ftmap[V_keys[1]]) / 2.
+    #elevation_phase = np.angle(ftmap[H_keys[0]] * ftmap[H_keys[1]]) / 2.
+
+    # azimuth_phase = np.angle(ftmap[V_keys[0]]) + np.angle(ftmap[V_keys[1]]) 
+    # elevation_phase = np.angle(ftmap[H_keys[0]]) + np.angle(ftmap[H_keys[1]])
+
+    # azimuth_phase = ( np.angle(ftmap[V_keys[0]]) + np.angle(ftmap[V_keys[1]]) ) / 2.
+    # elevation_phase = ( np.angle(ftmap[H_keys[0]]) + np.angle(ftmap[H_keys[1]]) ) / 2.
+
 
     aztitle = 'azimuth'
     eltitle = 'elevation'
@@ -253,7 +269,7 @@ plt.figure()
 scale = 1
 maptype = 'spectral' #hsv' #'spectral'
 valmin = -1*math.pi
-valmax = math.pi #1*math.pi
+valmax = math.pi#1*math.pi
 
 plt.subplot(1,3,1) # GREEN LED image
 plt.imshow(imarray,cmap=cm.Greys_r)
@@ -322,6 +338,7 @@ if bar:
     plt.subplot(3,4,1) # GREEN LED image
     plt.imshow(imarray,cmap=cm.Greys_r)
 
+    scale = 1
     plt.subplot(3,4,2) # ABS PHASE -- elevation
     if scale:
         fig = plt.imshow(elevation_phase, cmap=maptype, vmin=valmin, vmax=valmax)
@@ -333,6 +350,7 @@ if bar:
 
 
     plt.subplot(3, 4, 3) # ABS PHASE -- azimuth
+    scale = 1
     if scale:
         fig = plt.imshow(azimuth_phase, cmap=maptype, vmin=valmin, vmax=valmax)
     else:
@@ -344,6 +362,7 @@ if bar:
     # plt.show()
 
     # PHASE:
+    scale = 0
     for i,k in enumerate(H_keys): #enumerate(ftmap.keys()):
         plt.subplot(3,4,i+5)
         phase_map = np.angle(ftmap[k]) #np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
@@ -363,6 +382,7 @@ if bar:
         else:
             plt.colorbar() 
 
+    scale = 0 
     for i,k in enumerate(V_keys): #enumerate(ftmap.keys()):
         plt.subplot(3,4,i+7)
         phase_map = np.angle(ftmap[k]) #np.angle(complex(D[k]['ft_real'], D[k]['ft_imag']))
@@ -415,17 +435,24 @@ if bar:
     #   os.makedirs(outdirs)
 
     if custom_keys:
-        imname = "%s_allmaps_%s_U%s_D%s_L%s_R%s_%s" % (which_sesh, str(reduce_factor), up_key, down_key, left_key, right_key, currT)
+        imname = "%s_allmaps_%s_U%s_D%s_L%s_R%s_%s_%s" % (which_sesh, str(reduce_factor), up_key, down_key, left_key, right_key, append_to_name, currT)
 
         # imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '_U' + up_key + '_D' + down_key + '_L' + left_key + '_R' + right_key + '_' + currT + '.svg'
     else:
         # imname = which_sesh  + '_allmaps_run' + str(run_num) + '_' + str(reduce_factor) + '_' + currT + '.svg'
-        imname = "%s_allmaps_%s_run%s_%s" % (which_sesh, str(reduce_factor), str(run_num), currT)
+        imname = "%s_allmaps_%s_run%s_%s_%s" % (which_sesh, str(reduce_factor), str(run_num), append_to_name, currT)
 
-    plt.savefig(outdirs + '/' + imname + '.svg', format='svg', dpi=1200)
+    # plt.savefig(outdirs + '/' + imname + '.svg', format='svg', dpi=1200)
 #   print outdirs + '/' + imname
 #   plt.show()
-    plt.savefig(outdirs + '/' + imname + '.png', format='png')
+    # plt.savefig(outdirs + '/' + imname + '.png', format='png')
+
+
+    plt.savefig(os.path.join(outdirs, imname+'.svg'), format='svg', dpi=1200)
+    plt.savefig(os.path.join(outdirs, imname+'.png'), format='png')
+
+
+
     print outdirs + '/' + imname
     plt.show()
 
