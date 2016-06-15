@@ -119,7 +119,7 @@ if get_average_cycle:
     movie_type = 'avgcycle'
 else:
     movie_type = 'all'
-processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s' % (cond, str(reduce_factor[0]), movie_type))
+processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
 
