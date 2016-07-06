@@ -225,7 +225,7 @@ while True:
 
         currdict = im_queue.get()
 
-            # Make the output path if it doesn't already exist
+        # Make the output path if it doesn't already exist
         currpath = '%s/%s/%s/' % (output_path, exptID, runID) #(output_path, currdict['condname'], str(run_num))
         if not os.path.exists(currpath):
             os.mkdir(currpath)
