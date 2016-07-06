@@ -16,17 +16,21 @@ outPath='/media/labuser/IMDATA1/widefield/CE014/20160701'
 #    --output-path "+outPath)
 #for run in range(runStart,runEnd+1):
 
-os.system("python moving_bar.py \
-    --save-images \
-    --monitor='AQUOS' \
-    --output-path="+outPath)
-
-# os.system("python stimCircle.py \
+# os.system("python moving_bar.py \
 #     --save-images \
 #     --monitor='AQUOS' \
 #     --output-path="+outPath)
+
+os.system("python gabor_circle.py \
+    --save-images \
+    --monitor='AQUOS' \
+    --output-path="+outPath)
 
 
 #   time.sleep(60)#wait a minute
 print("Done")
 #ser.write('2')#Turn off camera
+
+
+
+
