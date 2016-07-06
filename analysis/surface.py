@@ -41,6 +41,7 @@ print "FNs: ", files, cond
 
 tiff = TIFF.open(os.path.join(imdir, cond, files[0]), mode='r')
 im = tiff.read_image().astype('float')
+im = (im/2**12)*(2**16)
 tiff.close()
 
 plt.imshow(im, cmap = plt.get_cmap('gray'))
@@ -64,6 +65,6 @@ print fname
 plt.show()
 
 
-import matplotlib.pyplot as pplt
-I = pplt.imread(os.path.join(imdir, cond, files[0]))
-pplt.imsave(fname, I, cmap=plt.get_cmap('gray'))
+# import matplotlib.pyplot as pplt
+# I = pplt.imread(os.path.join(imdir, cond, files[0]))
+# pplt.imsave(fname, I, cmap=plt.get_cmap('gray'))
