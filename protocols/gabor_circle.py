@@ -283,7 +283,7 @@ while True:
         currdict = im_queue.get()
 
         # Make the output path if it doesn't already exist
-        currpath = '%s/%s/%s/' % (output_path, exptID, runID) #(output_path, currdict['condname'], str(run_num))
+        currpath = '%s/%s/%s' % (output_path, exptID, runID) #(output_path, currdict['condname'], str(run_num))
 
         if not os.path.exists(currpath):
             os.mkdir(currpath)
@@ -296,13 +296,13 @@ while True:
             # frame_log_file.write('%i\t %i\t %i\t %s\t %i\t %10.4f\t %10.4f\t %s\t %10.4f\t %10.4f\t %10.4f\t %10.4f\t %10.4f\n' % (int(currdict['time']), n, int(currdict['frame']), str(currdict['condname']), int(run_num), currdict['xpos'], currdict['ypos'], str(currdict['stim_size']), currdict['cycledur'], currdict['cyclelen'], currdict['degpercyc'], currdict['TF'], currdict['SF']))
 
             if save_as_png:
-                fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.png' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
+                fname = '%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.png' % (currpath, int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
                 tiff = TIFF.open(fname, mode='w')
                 tiff.write_image(currdict['im'])
                 tiff.close()
 
             elif save_as_tif:
-                fname = '%s/%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.tif' % (output_path, currdict['condName'], int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
+                fname = '%s/%i_%i_%i_SZ%s_SF%s_TF%s_pos%s_cyc%s_stim%s.tif' % (currpath, int(currdict['time']), int(currdict['frame']), int(n), str(currdict['size']), str(currdict['sf']), str(currdict['tf']), str(currdict['pos']), str(currdict['cycleidx']), str(currdict['stim']))
                 tiff = TIFF.open(fname, mode='w')
                 tiff.write_image(currdict['im'])
                 tiff.close()
@@ -443,6 +443,7 @@ while True:
         patch.ori = stims[0]
         
     elif condnum==1 or condnum==2: # STIMULUS
+        print "GABORS"
         if use_images: # USE SCENE STIMULI
             patch = textures[0]
             patch.sf = None
@@ -472,6 +473,7 @@ while True:
         t = globalClock.getTime()
         
         # if int(curr_cond) >= 0:
+        print "NON BLANK"
         if condnum < 3: # NON-BLANK CONDITION
             if not use_images:
                 patch.phase = 1 - clock.getTime() * driftFrequency
@@ -534,6 +536,7 @@ while True:
 
     #print "TOTAL COND TIME: " + str(clock.getTime())
 
+    win.flip()
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
