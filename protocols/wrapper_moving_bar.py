@@ -8,17 +8,25 @@ import time
 # runStart=1;
 # runEnd=2;
 #outPath='./outputFiles/'
-# outPath='/media/juliana/IMDATA/widefield/TEST/20160502/anesthetized_bar_0013Hz'
-outPath='/Users/julianarhee/Desktop/test'
+outPath='/media/labuser/IMDATA1/widefield/CE014/20160701/circle_0013Hz_noLED'
+# outPath='/home/labuser/Desktop/test'
 
 # os.system("python getSurface.py \
 #   --save-images\
 #    --output-path "+outPath)
 #for run in range(runStart,runEnd+1):
 
-os.system("python moving_bar.py \
+# os.system("python moving_bar.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --output-path="+outPath)
+
+os.system("python stimCircle.py \
     --save-images \
+    --monitor='AQUOS' \
     --output-path="+outPath)
+
+
 #   time.sleep(60)#wait a minute
 print("Done")
 #ser.write('2')#Turn off camera
