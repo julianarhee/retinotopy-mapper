@@ -2,7 +2,6 @@ name: retinodev
 dependencies:
 - backports_abc=0.4=py27_0
 - cairo=1.12.18=4
-- configparser=3.5.0b2=py27_0
 - decorator=4.0.9=py27_0
 - entrypoints=0.2=py27_0
 - fontconfig=2.11.1=4
