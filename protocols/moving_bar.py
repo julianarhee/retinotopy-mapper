@@ -452,8 +452,8 @@ while True:
     FORMAT = '%Y%m%d%H%M%S%f'
     frame_counter = 0
 
+    cyc = 0
     clock = core.Clock()
-
     while clock.getTime()<=total_duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
 
@@ -464,8 +464,8 @@ while True:
         #     barStim.setContrast(0)
         #     #barStim.setColor(blackBar, 'rgb255')
 
-        posLinear = (clock.getTime() % cycle_duration) / cycle_duration * (end_point-start_point) + start_point; #what pos we are at in degrees
-        # print posLinear
+        posLinear = (clock.getTime() % cycle_duration) / cycle_duration * (end_point-start_point) + start_point #what pos we are at in degrees
+        print posLinear
         posX = posLinear*math.sin(angle*math.pi/180)+center_point[0]
         posY = posLinear*math.cos(angle*math.pi/180)+center_point[1]
         barStim.setPos([posX,posY])
@@ -523,60 +523,73 @@ while True:
             getout = 1
             break  
 
+        # cyc += 1
+        # print cyc
+
+    # make sure stimulus ends up OFF screen...
+    # posLinear = (cycle_duration % cycle_duration) / cycle_duration * (end_point-start_point) + start_point #what pos we are at in degrees
+    # posX = posLinear*math.sin(angle*math.pi/180)+center_point[0]
+    # posY = posLinear*math.cos(angle*math.pi/180)+center_point[1]
+    # barStim.setPos([posX,posY])
+    # barStim.draw()
+    # win.flip()
+
     #print "TOTAL COND TIME: " + str(clock.getTime())
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
     else:
-        continue
+        pass
 
-    cyc += 1
+    # cyc += 1
+    # print cyc
 
-win.close() 
+    if acquire_images:
+        camera.capture_end()
+        # camera.close()
 
+    # fdict['im'] = None
+    # fdict = None
+    print "GOT HERE"
+    im_queue.put(None)
+
+
+    if save_images:
+        hang_time = time.time()
+        # nag_time = 0.05
+        nag_time = 2.0
+
+        sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
+        sys.stdout.flush()
+
+        while disk_writer.is_alive():
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            time.sleep(nag_time)
+
+        print("\n")
+
+        print 'disk_writer.isAlive()', disk_writer.is_alive()
+        if not im_queue.empty():
+            print "NOT EMPTY"
+            print im_queue.get()
+            print "disk_writer_alive", disk_writer_alive
+            print("WARNING: not all images have been saved to disk!")
+        else:
+            print "EMPTY QUEUE"
+
+        # disk_writer_alive = False
+
+        # if save_in_separate_process and disk_writer is not None:
+        #     print("Terminating disk writer...")
+        #     disk_writer.join()
+        #     disk_writer.terminate()
+
+        # disk_writer.terminate()
+        disk_writer.join()
+        print('Disk writer terminated')
+    
 if acquire_images:
-    camera.capture_end()
     camera.close()
 
-# fdict['im'] = None
-# fdict = None
-print "GOT HERE"
-im_queue.put(None)
-
-
-if save_images:
-    hang_time = time.time()
-    # nag_time = 0.05
-    nag_time = 2.0
-
-    sys.stdout.write('Waiting for disk writer to catch up (this may take a while)...')
-    sys.stdout.flush()
-
-    while disk_writer.is_alive():
-        sys.stdout.write('.')
-        sys.stdout.flush()
-        time.sleep(nag_time)
-
-    print("\n")
-
-    print 'disk_writer.isAlive()', disk_writer.is_alive()
-    if not im_queue.empty():
-        print "NOT EMPTY"
-        print im_queue.get()
-        print "disk_writer_alive", disk_writer_alive
-        print("WARNING: not all images have been saved to disk!")
-    else:
-        print "EMPTY QUEUE"
-
-    # disk_writer_alive = False
-
-    # if save_in_separate_process and disk_writer is not None:
-    #     print("Terminating disk writer...")
-    #     disk_writer.join()
-    #     disk_writer.terminate()
-
-    # disk_writer.terminate()
-    disk_writer.join()
-    print('Disk writer terminated')
-    
-
+win.close()

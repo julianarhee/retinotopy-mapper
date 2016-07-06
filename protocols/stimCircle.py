@@ -100,7 +100,7 @@ def pol2cart(theta, radius, units='deg'):
 
     return xx,yy
 
-ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
+# ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
 
 
 monitor_list = monitors.getAllMonitors()
@@ -301,7 +301,7 @@ condMatrix = ['0', '1'] #flatten(condTypes)
 print condMatrix
 labels = ['blank', 'stimulus']
 condLabels = [labels[int(s)] for s in condTypes]
-num_cycles = {'0': 1, '1': num_cond_reps}
+num_cycles = {'0': 0, '1': num_cond_reps}
 
 # SCREEN PARAMETERS:
 screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -314,14 +314,14 @@ print "width", screen_width_cm, screen_width_deg
 print "height", screen_height_cm, screen_height_deg
 
 # TIMING PARAMETERS:
-fps = 10. #33.23 #60.
+fps = 60. #33.23 #60.
 cyc_per_sec = 0.13 # cycle freq in Hz
 total_time = 1./cyc_per_sec #total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
 frames_per_cycle = fps*total_time #fps/cyc_per_sec
 distance = monitors.Monitor(whichMonitor).getDistance()
 duration = total_time #total_time*num_seq_reps; #how long to run the same condition for (seconds)
 
-go_CW = 0 #1
+go_CW = 1 #1
 
 # SET UP ALL THE STIMULI:
 if use_images:
@@ -410,7 +410,7 @@ for curr_cond in condMatrix:
     print "DUR:", duration*num_cycles[curr_cond]
 
 
-    ser.write('2')#TRIGGER OFF 
+    # ser.write('2')#TRIGGER OFF 
 
 
     clock = core.Clock()
@@ -496,8 +496,8 @@ if acquire_images:
 print "GOT HERE"
 im_queue.put(None)
 
-ser.write('2')#TRIGGER
-ser.close()
+# ser.write('2')#TRIGGER
+# ser.close()
 
 if save_images:
     hang_time = time.time()
