@@ -1,0 +1,111 @@
+name: retinodev
+channels: !!python/object/new:ruamel_yaml.comments.CommentedSeq
+  listitems:
+  - menpo
+  - defaults
+  state:
+    _yaml_format: !!python/object:ruamel_yaml.comments.Format
+      _flow_style: false
+    _yaml_line_col: !!python/object:ruamel_yaml.comments.LineCol
+      col: 2
+      data:
+        0:
+        - 1
+        - 4
+        1:
+        - 2
+        - 4
+      line: 1
+dependencies:
+- backports=1.0=py27_0
+- backports_abc=0.4=py27_0
+- cairo=1.12.18=4
+- configparser=3.5.0b2=py27_1
+- decorator=4.0.9=py27_0
+- entrypoints=0.2=py27_0
+- fontconfig=2.11.1=4
+- freetype=2.5.2=2
+- get_terminal_size=1.0.0=py27_0
+- h5py=2.5.0=np19py27_0
+- hdf5=1.8.14=0
+- ipykernel=4.3.1=py27_0
+- ipython=4.2.0=py27_0
+- ipython_genutils=0.1.0=py27_0
+- jinja2=2.8=py27_0
+- jpeg=8d=0
+- jsonschema=2.4.0=py27_0
+- jupyter=1.0.0=py27_3
+- jupyter_client=4.2.2=py27_0
+- jupyter_console=4.1.1=py27_0
+- jupyter_core=4.1.0=py27_0
+- libpng=1.6.17=0
+- libsodium=1.0.3=0
+- libxml2=2.9.0=0
+- markupsafe=0.23=py27_0
+- matplotlib=1.4.3=np19py27_2
+- menpo::ipywidgets=5.1.5=py27_0
+- menpo::widgetsnbextension=1.2.3=py27_1
+- mistune=0.7.2=py27_0
+- nbconvert=4.2.0=py27_0
+- nbformat=4.0.1=py27_0
+- notebook=4.2.1=py27_0
+- numpy=1.9.2=py27_0
+- opencv=2.4.10=np19py27_1
+- openssl=1.0.2d=0
+- path.py=8.2=py27_0
+- pexpect=3.3=py27_0
+- pickleshare=0.5=py27_0
+- pip=7.0.3=py27_0
+- pixman=0.26.2=0
+- ptyprocess=0.5=py27_0
+- py2cairo=1.10.0=py27_2
+- pygments=2.1.3=py27_0
+- pyparsing=2.0.3=py27_0
+- pyqt=4.11.3=py27_1
+- pyserial=2.7=py27_0
+- python=2.7.12=1
+- python-dateutil=2.4.2=py27_0
+- pytz=2015.4=py27_0
+- pyzmq=15.2.0=py27_0
+- qt=4.8.6=3
+- qtconsole=4.2.1=py27_0
+- readline=6.2=2
+- scipy=0.15.1=np19py27_0
+- setuptools=17.0=py27_0
+- simplegeneric=0.8.1=py27_0
+- singledispatch=3.4.0.3=py27_0
+- sip=4.16.5=py27_0
+- six=1.9.0=py27_0
+- sqlite=3.13.0=0
+- ssl_match_hostname=3.4.0.2=py27_0
+- system=5.8=2
+- terminado=0.5=py27_1
+- tk=8.5.18=0
+- tlatorre::pygame=1.9.2=py27_1
+- tlatorre::sdl=2.0.1=1
+- tornado=4.3=py27_0
+- traitlets=4.2.1=py27_0
+- zeromq=4.1.3=0
+- zlib=1.2.8=0
+- pip:
+  - backports-abc==0.4
+  - backports.shutil-get-terminal-size==1.0.0
+  - backports.ssl-match-hostname==3.4.0.2
+  - dask==0.8.1
+  - ipython-genutils==0.1.0
+  - ipywidgets==5.1.5
+  - jupyter-client==4.2.2
+  - jupyter-console==4.1.1
+  - jupyter-core==4.1.0
+  - libtiff==0.4.0
+  - mosek==7.1.49
+  - networkx==1.11
+  - pillow==3.3.0
+  - pygame==1.9.1release
+  - roibuddy==1.0.0
+  - scikit-image==0.12.3
+  - sima==1.3.0
+  - toolz==0.8.0
+  - widgetsnbextension==1.2.3
+prefix: /home/juliana/anaconda/envs/retinodev
+
