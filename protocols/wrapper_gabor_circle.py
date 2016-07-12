@@ -8,7 +8,7 @@ import time
 # runStart=1;
 # runEnd=2;
 #outPath='./outputFiles/'
-outPath='/media/labuser/IMDATA1/widefield/CE014/20160701'
+outPath='/media/labuser/IMDATA1/widefield/CE015/20160706'
 # outPath='/home/labuser/Desktop/test'
 
 # os.system("python getSurface.py \
