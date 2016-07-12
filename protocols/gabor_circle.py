@@ -159,6 +159,13 @@ else:
 
 
 # Make the output path if it doesn't already exist
+if not os.path.exists(output_path):
+    upstream = os.path.split(output_path)[0] # Check if it is a new animal
+    if not os.path.exists(upstream):
+        os.mkdir(upstream)
+    else:
+        os.mkdir(output_path)
+
 try:
     os.mkdir(output_path)
 except OSError, e:
@@ -236,13 +243,13 @@ cyc_per_sec = float(user_input)
 
 while True:
     time.sleep(2)
-    user_input=raw_input("\nEnter COND num [1=CW, 2=CCW, 3=blank] to continue or 'exit':\n")
+    user_input=raw_input("\nEnter COND num [0=blank, 1=CW, 2=CCW] to continue or 'exit':\n")
     if user_input=='exit':
         break
 
     # conditionTypes = ['1']
     condnum = int(user_input)
-    cond_label = ['CW','CCW','blank']
+    cond_label = ['blank', 'CW',' CCW']
     condname = cond_label[int(condnum)-1]
     if condname=='CW':
         go_CW = True
@@ -349,7 +356,7 @@ while True:
     win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
 
     # SET CONDITIONS:
-    num_cond_reps = 20 #20 #20 # 8 how many times to run each condition
+    num_cond_reps = 5 #20 #20 # 8 how many times to run each condition
     # condTypes = flatten(['0', list(np.tile('1', num_cond_reps))])
     # condMatrix = ['0', '1'] #flatten(condTypes)
     # print condMatrix
@@ -433,22 +440,29 @@ while True:
     # for curr_cond in condMatrix:
     #     print condLabels[int(curr_cond)]
 
-    # SPECIFICY CONDITION TYPES:
-    if condnum==3: # BLANK
-        blankscreen = numpy.ones([256,256,3])*-1;
-        #blankscreen[:,:,0] = 0.
-        patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
-        patch.sf = None
-        patch.pos = (0, 0)
-        patch.ori = stims[0]
+    # # SPECIFICY CONDITION TYPES:
+    # if condnum==0: # BLANK
+    #     blankscreen = numpy.ones([256,256,3])*-1;
+    #     #blankscreen[:,:,0] = 0.
+    #     patch = visual.PatchStim(win=win,tex=blankscreen,mask='none',units='deg',size=screen_size, ori=0.)
+    #     patch.sf = None
+    #     patch.pos = (0, 0)
+    #     patch.ori = stims[0]
         
-    elif condnum==1 or condnum==2: # STIMULUS
-        print "GABORS"
+    # elif condnum==1 or condnum==2: # STIMULUS
+    if condnum==0:
+        print "BLANK condition"
+        patch = visual.GratingStim(win=win, tex=blankscreen, mask='none', size=patch_size, units='deg')
+        patch.sf = 0.08
+        patch.ori = 0.00 #stims[0]
+    else:
         if use_images: # USE SCENE STIMULI
+            print "Using IMAGES"
             patch = textures[0]
             patch.sf = None
             patch.ori = 0.00
         else: # USE GABORS
+            print "Using GABORS"
             patch = visual.GratingStim(win=win, tex='sin', mask='raisedCos', size=patch_size, units='deg') #gives a 'Gabor'
             patch.sf = 0.08
             patch.ori = stims[0] # horizontal is 90, vertical is 0
@@ -473,26 +487,26 @@ while True:
         t = globalClock.getTime()
         
         # if int(curr_cond) >= 0:
-        print "NON BLANK"
-        if condnum < 3: # NON-BLANK CONDITION
-            if not use_images:
-                patch.phase = 1 - clock.getTime() * driftFrequency
+        # print "NON BLANK"
+        #if condnum > 0: # NON-BLANK CONDITION
+        if not use_images:
+            patch.phase = 1 - clock.getTime() * driftFrequency
 
-            if nframes % (dwell_time*fps) == 0:
-                print "STIM idx:", sidx
-                sidx += 1
-                if use_images:
-                    patch = textures[stimIdxs[sidx]]
-                    patch.sf = None
-                else:
-                    patch.ori = stims[stimIdxs[sidx]]
-
-            if go_CW:
-                direction = -1
+        if nframes % (dwell_time*fps) == 0:
+            print "STIM idx:", sidx
+            sidx += 1
+            if use_images:
+                patch = textures[stimIdxs[sidx]]
+                patch.sf = None
             else:
-                direction = 1
-            path_pos = direction * ( ( clock.getTime() % duration ) / duration) * 360
-            patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+                patch.ori = stims[stimIdxs[sidx]]
+
+        if go_CW:
+            direction = -1
+        else:
+            direction = 1
+        path_pos = direction * ( ( clock.getTime() % duration ) / duration) * 360
+        patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
 
         patch.draw()
         win.flip()
@@ -536,7 +550,7 @@ while True:
 
     #print "TOTAL COND TIME: " + str(clock.getTime())
 
-    win.flip()
+    #win.flip()
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
