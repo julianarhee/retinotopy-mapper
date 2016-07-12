@@ -26,9 +26,6 @@ import scipy.misc
 
 from serial import Serial
 
-#from skimage import io, exposure, img_as_uint
-#io.use_plugin('freeimage')
-
 from libtiff import TIFF
 
 def atoi(text):
@@ -36,23 +33,6 @@ def atoi(text):
 
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
-
-def valid_duplicate_spacing(x, nconds):
-    for i, elem in enumerate(x):
-        if elem in x[i+1:i+nconds-1]:
-            return False
-    return True
-
-def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
-    sample_seq = []
-    sample_seq = [sample_seq + seq for i in range(nreps)] 
-    sample_seq = list(itertools.chain.from_iterable(sample_seq))    
-    # sample_seq = seq + seq        
-    random.shuffle(sample_seq)    
-    while not valid_duplicate_spacing(sample_seq, nconds):
-        random.shuffle(sample_seq)
-    return sample_seqgithub
-
 
 # ser = Serial('/dev/ttyACM0', 9600,timeout=2) # Establish the connection on a specific port
 
@@ -109,13 +89,19 @@ else:
 print save_as_dict
 
 # Make the output path if it doesn't already exist
+if not os.path.exists(output_path):
+    upstream = os.path.split(output_path)[0] # Check if it is a new animal
+    if not os.path.exists(upstream):
+        os.mkdir(upstream)
+    else:
+        os.mkdir(output_path)
+
 try:
     os.mkdir(output_path)
 except OSError, e:
     if e.errno != errno.EEXIST:
         raise e
     pass
-
 
 
 # -------------------------------------------------------------
@@ -533,6 +519,9 @@ while True:
     # barStim.setPos([posX,posY])
     # barStim.draw()
     # win.flip()
+
+    win.clearBuffer()
+    win.flip()
 
     #print "TOTAL COND TIME: " + str(clock.getTime())
     # Break out of the FOR loop if these keys are registered        

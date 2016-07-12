@@ -36,24 +36,6 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def valid_duplicate_spacing(x, nconds):
-    for i, elem in enumerate(x):
-        if elem in x[i+1:i+nconds-1]:
-            return False
-    return True
-
-def sample_permutations_with_duplicate_spacing(seq, nconds, nreps):
-    sample_seq = []
-    sample_seq = [sample_seq + seq for i in range(nreps)] 
-    sample_seq = list(itertools.chain.from_iterable(sample_seq))    
-    print sample_seq
-    # sample_seq = seq + seq        
-    random.shuffle(sample_seq)    
-    while not valid_duplicate_spacing(sample_seq, nconds):
-        random.shuffle(sample_seq)
-    return sample_seq
-
-
 def flatten(l, limit=1000, counter=0):
   for i in xrange(len(l)):
     if (isinstance(l[i], (list, tuple)) and
@@ -353,10 +335,12 @@ while True:
     globalClock = core.Clock()
 
     # make a window
-    win = visual.Window(fullscr=fullscreen, rgb=-1, size=winsize, units='deg', monitor=whichMonitor)
+    if win_flag==0:
+        win = visual.Window(fullscr=fullscreen, color=(-1,-1,-1), size=winsize, units='deg', monitor=whichMonitor)
+        win_flag = 1
 
     # SET CONDITIONS:
-    num_cond_reps = 5 #20 #20 # 8 how many times to run each condition
+    num_cond_reps = 20 #20 # 8 how many times to run each condition
     # condTypes = flatten(['0', list(np.tile('1', num_cond_reps))])
     # condMatrix = ['0', '1'] #flatten(condTypes)
     # print condMatrix
@@ -406,7 +390,7 @@ while True:
     deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
     path_pos = np.arange(0, 360, deg_per_frame)
     driftFrequency = 8.0 #4.0 #4.0 # drifting frequency in Hz
-    patch_size = (45, 45) #(30, 30) #(30, 30) #(45, 45)
+    patch_size = (5,5) #(45, 45) #(30, 30) #(30, 30) #(45, 45)
     dwell_time = duration * cyc_per_sec
     print "PATH DIAM: ", path_diam
     if use_images:
@@ -483,6 +467,7 @@ while True:
 
 
     clock = core.Clock()
+    print "starting new cycle..."
     while clock.getTime()<=duration*num_cycles: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
         
@@ -505,8 +490,11 @@ while True:
             direction = -1
         else:
             direction = 1
+
         path_pos = direction * ( ( clock.getTime() % duration ) / duration) * 360
-        patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+        # patch.pos = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+        [px, py] = pol2cart(path_pos, path_diam, units='deg') #pol2cart(path_pos[curr_frame], path_diam, units='deg')
+        patch.setPos([px, py])
 
         patch.draw()
         win.flip()
@@ -550,7 +538,8 @@ while True:
 
     #print "TOTAL COND TIME: " + str(clock.getTime())
 
-    #win.flip()
+    win.clearBuffer()
+    win.flip()
     # Break out of the FOR loop if these keys are registered        
     if getout==1:
         break
