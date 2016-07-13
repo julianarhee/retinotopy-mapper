@@ -436,6 +436,7 @@ while True:
     # elif condnum==1 or condnum==2: # STIMULUS
     if condnum==0:
         print "BLANK condition"
+        blankscreen = numpy.ones([256,256,3])*-1;
         patch = visual.GratingStim(win=win, tex=blankscreen, mask='none', size=patch_size, units='deg')
         patch.sf = 0.08
         patch.ori = 0.00 #stims[0]
