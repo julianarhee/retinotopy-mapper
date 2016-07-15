@@ -390,7 +390,7 @@ while True:
     deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
     path_pos = np.arange(0, 360, deg_per_frame)
     driftFrequency = 8.0 #4.0 #4.0 # drifting frequency in Hz
-    patch_size = (5,5) #(45, 45) #(30, 30) #(30, 30) #(45, 45)
+    patch_size = (45, 45) #(30, 30) #(30, 30) #(45, 45)
     dwell_time = duration * cyc_per_sec
     print "PATH DIAM: ", path_diam
     if use_images:
