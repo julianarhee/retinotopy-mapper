@@ -232,6 +232,7 @@ while True:
     # conditionTypes = ['1']
     condnum = int(user_input)
     cond_label = ['blank', 'CW',' CCW']
+    # condname = cond_label[int(condnum)-1]
     condname = cond_label[int(condnum)-1]
     if condname=='CW':
         go_CW = True
