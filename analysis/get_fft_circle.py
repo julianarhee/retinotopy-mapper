@@ -79,7 +79,7 @@ im_format = '.' + options.im_format
 headless = options.headless
 target_freq = float(options.target_freq)
 reduce_factor = (int(options.reduce_val), int(options.reduce_val))
-if reduce_factor[0] > 0:
+if reduce_factor[0] > 1:
     reduceit = 1
 else:
     reduceit = 0
