@@ -164,16 +164,16 @@ else:
     positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
-    if 'H-Up' in cond:
+    if 'H-Up' in cond or 'Bottom' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) < 0)))
-    if 'H-Down' in cond:
+    if 'H-Down' in cond or 'Top' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
-    if 'V-Left' in cond:
+    if 'V-Left' in cond or 'Left' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) < 0)))
-    if 'V-Right' in cond:
+    if 'V-Right' in cond or 'Right' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) > 0)))
 
