@@ -299,6 +299,7 @@ D['ft'] = ft
 D['mag_map'] = mag_map
 D['phase_map'] = phase_map
 D['mean_intensity'] = np.mean(stack, axis=2)
+D['average'] = average_stack
 # D['stack'] = stack
 #del stack
 D['dynrange'] = dynrange
