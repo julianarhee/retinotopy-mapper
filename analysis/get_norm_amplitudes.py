@@ -157,16 +157,16 @@ else:
     positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
-    if 'H-Up' in cond:
+    if 'H-Up' in cond or 'Bottom' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) < 0)))
-    if 'H-Down' in cond:
+    if 'H-Down' in cond or 'Top' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
-    if 'V-Left' in cond:
+    if 'V-Left' in cond or 'Left' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) < 0)))
-    if 'V-Right' in cond:
+    if 'V-Right' in cond or 'Right' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) > 0)))
 
@@ -294,7 +294,7 @@ for x in range(sample.shape[0]):
         normalized_amplitude = dB - max(dB) # this should result in 0 being low rel to DC, and neg being high rel to DC
 
         amp_other_freqs = sum(amp) - targ_amp
-        ratio_map[x, y] = targ_amp/other_freqs 
+        ratio_map[x, y] = targ_amp/amp_other_freqs 
         dB_map[x, y] = dB[target_bin]
         norm_dB_map[x, y] = normalized_amplitude[target_bin]
 
