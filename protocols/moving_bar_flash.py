@@ -295,11 +295,11 @@ while True:
 
     # cyc_per_sec = 0.13 # 
 
-    flashPeriod = 0.1 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
+    flashPeriod = 0.2 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
     dutyCycle = 0.5 #1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
     bar_color = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
-    bar_width = 1 # bar width in degrees 
+    bar_width = 8 #2 # bar width in degrees 
 
     # SCREEN PARAMS:
     screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -431,7 +431,7 @@ while True:
 
     # CREATE THE STIMULUS:
     if flash is True:
-        sq_size = [15., 15.]
+        # sq_size = [1000., 1000.]
         #make two wedges (in opposite contrast) and alternate them for flashing
         # bar1 = visual.RadialStim(win, tex='sqrXsqr', color=1, size=sq_size,
         #     visibleWedge=[0, 45], radialCycles=4, angularCycles=8, interpolate=False,
@@ -441,8 +441,8 @@ while True:
         #     autoLog=False) #this stim changes too much for autologging to be useful
         #barmask = np.ones([256,256]) #,3])*bar_color;
         barmask = np.ones([1,1]) 
-        bar1 = visual.PatchStim(win=win,tex='sqrXsqr', color=1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
-        bar2 = visual.PatchStim(win=win,tex='sqrXsqr', color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
+        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
+        bar2 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
     
     else:
 
