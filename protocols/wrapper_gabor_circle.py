@@ -8,7 +8,9 @@ import time
 # runStart=1;
 # runEnd=2;
 #outPath='./outputFiles/'
-outPath='/media/labuser/IMDATA1/widefield/CE015/20160715'
+# outPath='/media/labuser/IMDATA1/widefield/JR015W/20160803'
+outPath='/media/labuser/dixie_widefield/data/JR016W/20160815'
+
 # outPath='/home/labuser/Desktop/test'
 
 # os.system("python getSurface.py \
@@ -21,10 +23,17 @@ outPath='/media/labuser/IMDATA1/widefield/CE015/20160715'
 #     --monitor='AQUOS' \
 #     --output-path="+outPath)
 
+# os.system("python gabor_circle.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --use-images\
+#     --output-path="+outPath)
+
 os.system("python gabor_circle.py \
-    --save-images \
     --monitor='AQUOS' \
+    --save-images\
     --output-path="+outPath)
+
 
 
 #   time.sleep(60)#wait a minute

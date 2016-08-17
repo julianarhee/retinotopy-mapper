@@ -231,7 +231,7 @@ while True:
 
     # conditionTypes = ['1']
     condnum = int(user_input)
-    cond_label = ['blank', 'CW',' CCW']
+    cond_label = ['blank', 'CW','CCW']
     # condname = cond_label[int(condnum)-1]
     condname = cond_label[int(condnum)]
     if condname=='CW':
@@ -371,12 +371,15 @@ while True:
 
     # SET UP ALL THE STIMULI:
     if use_images:
-        stimdir = '../stimuli'
-        stimset = os.listdir(stimdir)[0]
+        stimdir = '../stimuli/fullScenes'
+        stimset = os.listdir(stimdir)
         print stimset
-        stims = os.listdir(os.path.join(stimdir, stimset))
-        stims = [s for s in stims if os.path.splitext(s)[1] == '.tif']
-        stims = [os.path.join(stimdir, stimset, s) for s in stims]
+        # stims = os.listdir(os.path.join(stimdir, stimset))
+        # stims = [os.path.join(stimdir, s) for s in stimset]
+        # stims = [s for s in stims if os.path.splitext(s)[1] == '.tif']
+        # stims = [os.path.join(stimdir, stimset, s) for s in stims]
+        stims = [s for s in stimset if os.path.splitext(s)[1] == '.tif']
+        stims = [os.path.join(stimdir, s) for s in stims]
     else:
         oris = [s for s in range(0, 360, 30)]
         stims = oris
@@ -391,7 +394,7 @@ while True:
     deg_per_frame = 360 * cyc_per_sec / fps # number of degrees to move per frame
     path_pos = np.arange(0, 360, deg_per_frame)
     driftFrequency = 8.0 #4.0 #4.0 # drifting frequency in Hz
-    patch_size = (45, 45) #(30, 30) #(30, 30) #(45, 45)
+    patch_size = (45, 45) #(30, 30) #(45, 45) #(30, 30) #(30, 30) #(45, 45)
     dwell_time = duration * cyc_per_sec
     print "PATH DIAM: ", path_diam
     if use_images:
