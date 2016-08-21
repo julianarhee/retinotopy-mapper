@@ -73,6 +73,8 @@ parser.add_option('--CW', action="store_true", dest="CW",
                   default=False, help="circle stim ONLY: CW or not?")
 parser.add_option('--average', action="store_true", dest="get_average_cycle",
                   default=False, help="average cycles or no?")
+parser.add_option('--detrend', action="store_true", dest="detrend",
+                  default=False, help="detrend first, then mean subtract?")
 
 (options, args) = parser.parse_args()
 
@@ -83,7 +85,7 @@ imdir = sys.argv[1]
 # if not os.path.exists(processed_dir):
 #     os.makedirs(processed_dir)
 
-
+detrend = options.detrend
 circle = options.circle
 CW = options.CW
 get_average_cycle = options.get_average_cycle
@@ -119,7 +121,11 @@ if get_average_cycle:
     movie_type = 'avgcycle'
 else:
     movie_type = 'all'
-processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type))
+if detrend is True:
+    detrend_flag = '_detrend'
+else:
+    detrend_flag = ''
+processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
 
@@ -164,16 +170,16 @@ else:
     positions = [re.findall("\[([^[\]]*)\]", f) for f in files]
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
-    if 'H-Up' in cond:
+    if 'H-Up' in cond or 'Bottom' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) < 0)))
-    if 'H-Down' in cond:
+    if 'H-Down' in cond or 'Top' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
-    if 'V-Left' in cond:
+    if 'V-Left' in cond or 'Left' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) < 0)))
-    if 'V-Right' in cond:
+    if 'V-Right' in cond or 'Right' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) > 0)))
 
@@ -236,21 +242,27 @@ average_stack = np.mean(stack, axis=2)
 
 #         stack[x, y, :] = pix
 
+if detrend is True:
+    print "FIRST DETRENDING..."
+    for x in range(sample.shape[0]):
+        for y in range(sample.shape[1]):
+            pix = scipy.signal.detrend(stack[x, y, :], type='constant')
+	    stack[x, y, :] = pix
 
 print "mean subtracting..."
 for i in range(stack.shape[2]):
     stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) 
 
+if detrend is False:
+    print "detrending..."
 
-print "detrending..."
+    for x in range(sample.shape[0]):
+        for y in range(sample.shape[1]):
 
-for x in range(sample.shape[0]):
-    for y in range(sample.shape[1]):
+            # THIS IS BASICALLY MOVING AVG WINDOW...
+	    pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
 
-        # THIS IS BASICALLY MOVING AVG WINDOW...
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
-
-        stack[x, y, :] = pix
+            stack[x, y, :] = pix
 
 
 print "rescaling to 0-255..."

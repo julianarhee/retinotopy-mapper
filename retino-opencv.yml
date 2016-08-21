@@ -1,21 +1,4 @@
 name: retinodev
-channels: !!python/object/new:ruamel_yaml.comments.CommentedSeq
-  listitems:
-  - menpo
-  - defaults
-  state:
-    _yaml_format: !!python/object:ruamel_yaml.comments.Format
-      _flow_style: false
-    _yaml_line_col: !!python/object:ruamel_yaml.comments.LineCol
-      col: 2
-      data:
-        0:
-        - 1
-        - 4
-        1:
-        - 2
-        - 4
-      line: 1
 dependencies:
 - backports=1.0=py27_0
 - backports_abc=0.4=py27_0
@@ -107,5 +90,4 @@ dependencies:
   - sima==1.3.0
   - toolz==0.8.0
   - widgetsnbextension==1.2.3
-prefix: /home/juliana/anaconda/envs/retinodev
 
