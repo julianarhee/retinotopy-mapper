@@ -57,8 +57,6 @@ def pol2cart(theta, radius, units='deg'):
     return xx,yy
 
 
-
-
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="1", help="block_reduce value")
@@ -67,10 +65,12 @@ parser.add_option('-t', '--thresh', action="store", dest="threshold", default=0.
 parser.add_option('-r', '--run', action="store", dest="run", default=1, help="cutoff threshold value")
 parser.add_option('--append', action="store", dest="append", default="", help="appended label for analysis structs")
 parser.add_option('--mask', action="store", dest="mask", type="choice", choices=['DC', 'blank', 'magmax'], default='DC', help="mag map to use for thresholding: DC | blank | magmax [default: DC]")
+parser.add_option('--cmap', action="store", dest="cmap", default='spectral', help="colormap for summary figures [default: spectral]")
+parser.add_option('--use-norm', action="store_true", dest="use_norm", default=False, help="compare normalized blank to condition")
 
 (options, args) = parser.parse_args()
 
-
+use_norm = options.use_norm
 headless = options.headless
 reduce_factor = (int(options.reduce_val), int(options.reduce_val))
 if reduce_factor[0] > 1:
@@ -80,70 +80,53 @@ else:
 if headless:
     mpl.use('Agg')
     
+colormap = options.cmap
 
 threshold = float(options.threshold)
 outdir = options.path
-curr_run = options.run
-
-
-# condkey = '_CCW_'
-
-# if condkey=='_CCW_':
-#     CW=False
-# else:
-#     CW=True
-#         #options.rev # CW IS REVERSE
-
-# if CW:
-#     rev=True
-# else:
-#     rev=False
-    
-# print "REV STATE: ", CW
-
-# if rev=='False' and '_CW' in outdir:
-#     print "Fixing REV status [CW detected in fn]..."
-#     CW = True
+run_num = options.run
 
 exptdir = os.path.split(outdir)[0]
 sessiondir = os.path.split(exptdir)[0]
 
-# print "REV STATE: ", CW
+savedir = os.path.split(outdir)[0]
+figdir = os.path.join(savedir, 'figures')
+if not os.path.exists(figdir):
+    os.makedirs(figdir)
 
-
-# In[1426]:
 
 #################################################################################
 # GET BLOOD VESSEL IMAGE:
 #################################################################################
-# folders = os.listdir(rundir)
 folders = os.listdir(sessiondir)
 # figpath = [f for f in folders if f == 'figures']
-figpath = [f for f in folders if f == 'surface']
+figpath = [f for f in folders if f == 'surface'][0]
 print "EXPT: ", exptdir
 print "SESSION: ", sessiondir
 print "path to surface: ", figpath
 
 if figpath:
-    figdir = figpath[0]
-    tmp_ims = os.listdir(os.path.join(sessiondir, figdir))
+    # figdir = figpath[0]
+    tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
     surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
     ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
     ims = [i for i in ims if '_' in i]
     print ims
-    impath = os.path.join(sessiondir, figdir, ims[0])
-    # image = Image.open(impath) #.convert('L')
-    # imarray = np.asarray(image)
-    print os.path.splitext(impath)[1]
-    if os.path.splitext(impath)[1] == '.tif':
-        tiff = TIFF.open(impath, mode='r')
-        surface = tiff.read_image().astype('float')
-        tiff.close()
-        plt.imshow(surface)
+    if ims:
+        impath = os.path.join(sessiondir, figpath, ims[0])
+        # image = Image.open(impath) #.convert('L')
+        # imarray = np.asarray(image)
+        print os.path.splitext(impath)[1]
+        if os.path.splitext(impath)[1] == '.tif':
+            tiff = TIFF.open(impath, mode='r')
+            surface = tiff.read_image().astype('float')
+            tiff.close()
+            plt.imshow(surface)
+        else:
+            image = Image.open(impath) #.convert('L')
+            surface = np.asarray(image)
     else:
-        image = Image.open(impath) #.convert('L')
-        surface = np.asarray(image)
-
+        surface = np.zeros([200,300])
 else: # NO BLOOD VESSEL IMAGE...
     surface = np.zeros([200,300])
 
@@ -221,7 +204,8 @@ for key in range(len(cond_keys)):
         phase_map = D[curr_key]['phase_map']
 
         DC_mag_map = D[curr_key]['DC_mag']/Ny
-        blank_mag_map = D[blank_key[0]]['mag_map']/Ny
+        if threshold_type=='blank':
+            blank_mag_map = D[blank_key[0]]['mag_map']/Ny
 
         date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
         experiment = os.path.split(os.path.split(outdir)[0])[1]
@@ -237,7 +221,7 @@ for key in range(len(cond_keys)):
         plt.axis('off')
 
         fig.add_subplot(2,3,2)
-        plt.imshow(phase_map, cmap='spectral')
+        plt.imshow(phase_map, cmap=colormap)
         plt.axis('off')
         plt.title('phase')
 
@@ -271,19 +255,23 @@ for key in range(len(cond_keys)):
                 old_val = thresh_map[x, y]
                 normed_thresh_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
 
-                
-        # [x, y] = np.where(mag_map >= threshold*thresh_map)
-        [x, y] = np.where(normed_mag_map >= threshold*normed_thresh_map)
+        if use_norm is True:
+            [x, y] = np.where(normed_mag_map >= threshold*normed_thresh_map)
+            tit = 'Threshold, %.2f of %s normed magnitude' % (threshold, threshold_type)
+        else:
+            [x, y] = np.where(mag_map >= threshold*thresh_map)
+            tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+
 
         phase_mask = np.ones(thresh_map.shape) * 100
         phase_mask[x, y] = phase_map[x, y]
-        tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+        # tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
         # threshold_type = 'DCmag'
             
         [nullx, nully] = np.where(phase_mask == 100)
         phase_mask[nullx, nully] = np.nan
         phase_mask = np.ma.array(phase_mask)
-        plt.imshow(phase_mask, cmap='spectral', vmin=-1*math.pi, vmax=math.pi)
+        plt.imshow(phase_mask, cmap=colormap, vmin=-1*math.pi, vmax=math.pi)
         plt.axis('off')
         plt.title(tit)
 
@@ -301,7 +289,7 @@ for key in range(len(cond_keys)):
 
         norm = mpl.colors.Normalize(vmax=1*np.pi, vmin=-1*np.pi)
         #norm = mpl.colors.Normalize(vmax=2*np.pi, vmin=0)
-        cb = mpl.colorbar.ColorbarBase(ax, cmap=cm.get_cmap('spectral'),
+        cb = mpl.colorbar.ColorbarBase(ax, cmap=cm.get_cmap(colormap),
                                         norm=norm, orientation='horizontal')
         # cb.ax.invert_xaxis()
         # cb.outline.set_visible(False)
@@ -340,12 +328,13 @@ for key in range(len(cond_keys)):
         # impath = os.path.join(savedir, imname+'.png')
         # plt.savefig(impath, format='png')
 
-        savedir = os.path.split(outdir)[0]
-        figdir = os.path.join(savedir, 'figures')
-        if not os.path.exists(figdir):
-            os.makedirs(figdir)
-            
-        impath = os.path.join(figdir, imname+'.png')
+
+        if use_norm:
+            norm_flag = 'normed_'
+        else:
+            norm_flag = 'actual_'
+
+        impath = os.path.join(figdir, colormap+'_'+norm_flag+imname+'.png')
         plt.savefig(impath, format='png')
         print impath
 
@@ -376,7 +365,8 @@ for key in range(len(cond_keys)):
         phase_map = D[curr_key]['phase_map']
 
         DC_map = D[curr_key]['DC_mag']/Ny
-        blank_map = D[blank_key[0]]['mag_map']/Ny
+        if threshold_type=='blank':
+            blank_map = D[blank_key[0]]['mag_map']/Ny
 
         print "mag range: ", mag_map.min(), mag_map.max()
         print "phase range: ", phase_map.min(), phase_map.max()
@@ -460,11 +450,19 @@ for key in range(len(cond_keys)):
         nons = []
         for x in range(mag_map.shape[0]):
             for y in range(mag_map.shape[1]):
-        #         if mag_map[x, y] < thresh_map[x, y]*cutoff_val:
-        #         if normed_mag_map[x, y] < normed_thresh_map[x, y]*cutoff_val:
-                if not normed_mag_map[x, y] >= normed_thresh_map[x, y]*threshold:
-                    nons.append([x,y])
+        # #         if mag_map[x, y] < thresh_map[x, y]*cutoff_val:
+        # #         if normed_mag_map[x, y] < normed_thresh_map[x, y]*cutoff_val:
+        #         if not normed_mag_map[x, y] >= normed_thresh_map[x, y]*threshold:
+        #             nons.append([x,y])
+
+                if use_norm is True:
+                    if normed_mag_map[x, y] < normed_thresh_map[x, y]*threshold:
+                        nons.append([x,y])
+                else:
+                    if mag_map[x, y] < thresh_map[x, y]*threshold:
+                        nons.append([x,y])
                 
+
         # NOTE ON THRESHOLDING:
         # If use normed-mag against normed-threshold-map, get good removal of baddies.
         # BUT, if use actual mag-map values against actual blank/DC map conditions, too much stuff gets included...
@@ -559,7 +557,7 @@ for key in range(len(cond_keys)):
         if not os.path.exists(figdir):
             os.makedirs(figdir)
             
-        impath = os.path.join(figdir, imname+'.png')
+        impath = os.path.join(figdir, norm_flag+imname+'.png')
         plt.savefig(impath, format='png')
         print impath
 
