@@ -28,7 +28,7 @@ parser.add_option('--ext', action="store", dest="ext",
 
 ext = '.' + options.ext
 
-outdir = os.path.join(os.path.split(imdir)[0], 'figures')
+outdir = os.path.join(os.path.split(imdir)[0], 'surface')
 if not os.path.exists(outdir):
 	os.makedirs(outdir)
 
@@ -41,9 +41,20 @@ print "FNs: ", files, cond
 
 tiff = TIFF.open(os.path.join(imdir, cond, files[0]), mode='r')
 im = tiff.read_image().astype('float')
+# im = (im/2**12)*(2**16)
 tiff.close()
 
-plt.imshow(im, cmap = plt.get_cmap('gray'))
+fig = plt.figure(frameon=False)
+# fig.set_size_inches(w,h)
+ax = plt.Axes(fig, [0., 0., 1., 1.])
+ax.set_axis_off()
+fig.add_axes(ax)
+
+# ax.imshow(your_image, aspect='normal')
+ax.imshow(im, cmap=plt.get_cmap('gray'))
+# fig.savefig(fname, dpi)
+
+# plt.imshow(im, cmap = plt.get_cmap('gray'))
 
 
 # image = Image.open(os.path.join(imdir, cond, files[0]))
@@ -59,11 +70,15 @@ tiff.write_image(im)
 tiff.close()
 
 print fname
-# plt.savefig(fname)
+
+
+fname = '%s/%s_%s_plot.png' % (outdir, os.path.split(os.path.split(imdir)[0])[1], os.path.split(imdir)[1])
+
+plt.savefig(fname)
 
 plt.show()
 
 
-import matplotlib.pyplot as pplt
-I = pplt.imread(os.path.join(imdir, cond, files[0]))
-pplt.imsave(fname, I, cmap=plt.get_cmap('gray'))
+# import matplotlib.pyplot as pplt
+# I = pplt.imread(os.path.join(imdir, cond, files[0]))
+# pplt.imsave(fname, I, cmap=plt.get_cmap('gray'))
