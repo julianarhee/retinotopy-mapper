@@ -13,7 +13,7 @@ import re
 import itertools
 from scipy import ndimage
 import pandas as pd
-
+from scipy import ndimage
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
@@ -59,8 +59,8 @@ parser.add_option('--freq', action="store", dest="target_freq",
                   default="0.05", help="stimulation frequency")
 parser.add_option('--reduce', action="store",
                   dest="reduce_val", default="2", help="block_reduce value")
-parser.add_option('--sigma', action="store", dest="gauss_kernel",
-                  default="0", help="size of Gaussian kernel for smoothing")
+#parser.add_option('--sigma', action="store", dest="gauss_kernel",
+#                  default="0", help="size of Gaussian kernel for smoothing")
 parser.add_option('--format', action="store",
                   dest="im_format", default="png", help="saved image format")
 parser.add_option('--fps', action="store",
@@ -75,10 +75,16 @@ parser.add_option('--average', action="store_true", dest="get_average_cycle",
                   default=False, help="average cycles or no?")
 parser.add_option('--detrend', action="store_true", dest="detrend",
                   default=False, help="detrend first, then mean subtract?")
+parser.add_option('--smooth', action="store_true", dest="smooth", default=False, help="smooth? (default sig = 2)")
+parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
+
+smooth = options.smooth
+sigma_val_num = options.sigma_val
+sigma_val = (int(sigma_val_num), int(sigma_val_num))
 
 # processed_dir = os.path.join(os.path.split(imdir)[0], 'processed')
 
@@ -98,7 +104,7 @@ if reduce_factor[0] > 0:
     reduceit = 1
 else:
     reduceit = 0
-gsigma = int(options.gauss_kernel)
+#gsigma = int(options.gauss_kernel)
 
 if headless:
     import matplotlib as mpl
@@ -125,7 +131,12 @@ if detrend is True:
     detrend_flag = '_detrend'
 else:
     detrend_flag = ''
-processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag))
+
+if smooth is True:
+    smooth_flag = '_smooth%i' % int(sigma_val_num)
+else:
+    smooth_flag = ''
+processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
 
@@ -229,6 +240,9 @@ for i, f in enumerate(files):
     else:
         stack[:, :, i] = im
 
+    if smooth is True:
+        stack[:,:,i] = ndimage.gaussian_filter(stack[:,:,i], sigma=sigma_val, order=0)
+
 average_stack = np.mean(stack, axis=2)
 
 
@@ -267,16 +281,26 @@ if detrend is False:
 
 print "rescaling to 0-255..."
 
+old_max = stack.max()
+old_min = stack.min()
+new_max = 255.
+new_min = 0.
+old_range = float(old_max) - float(old_min)
+new_range = 255.
 for i in range(stack.shape[2]):
 
-    old_max = max(stack[:,:,i].ravel())
-    old_min = min(stack[:,:,i].ravel())
-    old_range = (old_max - old_min)  
-    new_min = 0.
-    new_range = 255. #(0 - 255)  
+#    old_max = max(stack[:,:,i].ravel())
+#    old_min = min(stack[:,:,i].ravel())
+#    old_range = (old_max - old_min)  
+#    new_min = 0.
+#    new_range = 255. #(0 - 255)  
     stack[:,:,i] = (((stack[:,:,i] - old_min) * float(new_range)) / old_range) + new_min
+    
+#    if smooth is True:
+#	stack[:,:,i] = ndimage.gaussian_filter(stack[:,:,i], sigma=sigma_val, order=0)
 
-
+if smooth is True:
+    print "SMOOTHED with val: ", sigma_val	
 # for i, f in enumerate(files):
 
 
