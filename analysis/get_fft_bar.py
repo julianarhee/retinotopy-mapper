@@ -202,7 +202,7 @@ for x in range(sample.shape[0]):
 
         dynrange[x, y] = np.log2(pix.max() - pix.min())
 
-        curr_ft = fft.fft(pix)  # fft.fft(pix) / len(pix)])
+        curr_ft = fft.fft(pix) #*(1./60.)  # fft.fft(pix) / len(pix)])
         #curr_ft_shift = fft.fftshift(curr_ft)
 
 # flattend = [f for sublist in ((c.real, c.imag) for c in curr_ft) for f in sublist]
