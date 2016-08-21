@@ -262,6 +262,8 @@ ft = ft + 0j
 dB_map = np.empty(sample.shape)
 ratio_map = np.empty(sample.shape)
 norm_dB_map = np.empty(sample.shape)
+summed_mags_map = np.empty(sample.shape)
+
 # DC_mag = np.empty(sample.shape)
 # DC_phase = np.empty(sample.shape)
 
@@ -286,7 +288,8 @@ for x in range(sample.shape[0]):
         # pix = stack[x, y, :]
 
         amp = np.abs(pix)
-        targ_amp = amp[target_bin]*2.
+        targ_amp = amp[target_bin] #*2. # Why am i squaring this...
+	summed_mags_map[x, y] = sum(amp)
 
         dB = 20*np.abs(pix)/len(pix)
         dB_other_freqs = sum(20*np.abs(pix)/len(pix))
@@ -348,7 +351,7 @@ for x in range(sample.shape[0]):
 # del DF
 
 D = dict()
-
+D['summed_mags_map'] = summed_mags_map
 D['ratio_map'] = ratio_map
 D['dB_map'] = dB_map
 # D['ft_real'] = ft_real  # np.array(ft)
