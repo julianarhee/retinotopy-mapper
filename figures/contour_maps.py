@@ -295,41 +295,6 @@ for cond in cond_types:
             curr_map = D[curr_key]['ft']
             Ny = len(D[curr_key]['freqs'])/2.
 
-            # fig = plt.figure()
-            # plt.subplot(2,2,3)
-            # plt.imshow(np.angle(curr_map), cmap='spectral', vmin=-1*math.pi, vmax=1*math.pi)
-            # # plt.title('AZ: left')
-            # plt.axis('off')
-
-
-            # ax = fig.add_subplot(2,2,4)
-            # plt.imshow(legend, cmap='spectral')
-            # plt.axis('off')
-
-            # fig.add_subplot(2,2,1)
-            # plt.imshow(surface, cmap='gray')
-            # plt.axis('off')
-
-            # fig.add_subplot(2,2,2)
-            # plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
-            # plt.axis('off')
-            # plt.colorbar()
-
-            # plt.tight_layout()
-            # plt.suptitle(curr_key)
-
-
-            # # SAVE FIG:
-
-            # # plt.imshow(np.angle(currmap), cmap='spectral', vmin=-1*math.pi, vmax=1*math.pi)
-            # # # plt.title('AZ: right to left')
-            # # plt.axis('off')
-            # print figdir
-
-            # impath = os.path.join(figdir, curr_key+'.png')
-            # plt.savefig(impath, format='png')
-            # print impath
-
 
             # --------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------
@@ -386,7 +351,7 @@ for cond in cond_types:
             # 1.  SURFACE
             # -----------------------------------
             fig.add_subplot(1,3,1)
-            plt.imshow(surface, cmap='gray')
+            plt.imshow(surface, cmap='gray', alpha=0)
             plt.axis('off')
             plt.title('surface')
 
@@ -404,15 +369,25 @@ for cond in cond_types:
             # -----------------------------------
             fig.add_subplot(1,3,2)
             plt.title('magnitude')
-            ax = plt.gca()
-            divider = make_axes_locatable(ax)
+            # ax = plt.gca()
+            # divider = make_axes_locatable(ax)
+            # cax = divider.append_axes("right", size="5%", pad=0.05)
+            # im = ax.imshow(mag_map, cmap='gray')
+            # ax.axis('off')
+            # plt.colorbar(im, cax=cax, cmap='gray')
+            # ax.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=1.7, alpha=0.7)
+            # # plt.colorbar()
+            # ax.axis('off')
+
             cax = divider.append_axes("right", size="5%", pad=0.05)
-            im = ax.imshow(mag_map, cmap='gray')
-            ax.axis('off')
-            plt.colorbar(im, cax=cax, cmap='gray')
-            ax.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=1.7, alpha=0.7)
+            plt.imshow(mag_map, cmap='hot')
+            plt.axis('off')
+            plt.colorbar()
+            #plt.colorbar(im, cax=cax, cmap='gray')
+            #ax.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=1.7, alpha=0.7)
             # plt.colorbar()
-            ax.axis('off')
+            #ax.axis('off')
+
 
 
             # LEGEND:
