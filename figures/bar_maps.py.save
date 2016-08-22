@@ -46,12 +46,9 @@ parser.add_option('--smooth', action="store_true", dest="smooth", default=False,
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
 parser.add_option('--contour', action="store_true", dest="contour", default=False, help="show contour lines for phase map")
-parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use power or just magnitude?")
-
+parser.add_option('--use-norm', action="store_true", dest="use_norm", defau
 
 (options, args) = parser.parse_args()
-
-use_power = options.use_power
 
 use_norm = options.use_norm
 smooth = options.smooth
@@ -357,7 +354,6 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             phase_map = D[curr_key]['phase_map']
-	    power_map = mag_map**2 #D[curr_key]['mag_map']**2
 
             if smooth is True:
                 # sigma_val = sigma_val
@@ -521,16 +517,11 @@ for cond in cond_types:
             # 5. MAG MAP:
             # -----------------------------------
             fig.add_subplot(2,3,5)
-            #power_map = mag_map**2
-	    if use_power is True:
-                plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
-		plt.title('power')
-            else:
-		plt.imshow(mag_map, cmap='hot')
-		plt.title('magnitude')
+            power_map = mag_map**2
+            plt.imshow(power_map, cmap='hot')
             plt.colorbar()
             plt.axis('off')
-            # plt.title('power')
+            plt.title('power')
 
             # 6. LEGEND
             ax = fig.add_subplot(2,3,6)
@@ -586,7 +577,7 @@ for cond in cond_types:
 
             # Get normed MAGNITUDE map for stimulation condN for HSV composite:
 	    if use_power is True:
-		mag_map = power_map #mag_map**2
+		mag_map = mag_map**2
             old_min = mag_map.min()
             old_max = mag_map.max()
             new_min = 0
