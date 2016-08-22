@@ -289,8 +289,8 @@ for cond in cond_types:
     else:
         for curr_key in tmp_keys:
             print "Curr key is: ", curr_key
-            curr_amp_key = curr_key.split('Target_fft')[1]
-            print "Corresponding AMP key is: ", curr_amp_key
+            # curr_amp_key = curr_key.split('Target_fft')[1]
+            # print "Corresponding AMP key is: ", curr_amp_key
 
             curr_map = D[curr_key]['ft']
             Ny = len(D[curr_key]['freqs'])/2.
@@ -415,6 +415,14 @@ for cond in cond_types:
             ax.axis('off')
 
 
+            # LEGEND:
+            # -----------------------------------
+            ax = fig.add_subplot(1,3,3)
+            plt.imshow(legend, cmap=colormap)
+            plt.axis('off')
+
+            plt.suptitle([date, experiment, curr_key])
+
             # # 3. PHASE MASKED BY MAG, OVERRLAY:
             # # -----------------------------------
             # fig.add_subplot(2,3,3)
@@ -490,11 +498,11 @@ for cond in cond_types:
             # plt.title('magnitude')
 
             # 6. LEGEND
-            ax = fig.add_subplot(1,3,3)
-            plt.imshow(legend, cmap=colormap)
-            plt.axis('off')
+            # ax = fig.add_subplot(1,3,3)
+            # plt.imshow(legend, cmap=colormap)
+            # plt.axis('off')
 
-            plt.suptitle([date, experiment, curr_key])
+            # plt.suptitle([date, experiment, curr_key])
             
 
             # if use_norm:
@@ -512,4 +520,64 @@ for cond in cond_types:
             print impath
 
             plt.show()
+
+
+            # PLOT WITHOUT BACKGROUND MAG:
+
+            fig = plt.figure(figsize=(20,10))
+
+            # 1.  SURFACE
+            # -----------------------------------
+            # fig.add_subplot(1,3,1)
+            # plt.imshow(surface, cmap='gray')
+            # plt.axis('off')
+            # plt.title('surface')
+
+            # 2.  PHASE MAP
+            # -----------------------------------
+            # fig.add_subplot(2,3,2)
+
+            plt.subplot(1,3,1)
+            plt.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=1.7, alpha=0.7)
+            # plt.imshow(phase_map, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+            plt.axis('off')
+            # plt.title('phase')
+
+
+            # 5. MAG MAP:
+            # -----------------------------------
+            fig.add_subplot(1,3,2)
+            plt.title('magnitude')
+            ax = plt.gca()
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            im = ax.imshow(mag_map, cmap='gray')
+            ax.axis('off')
+            plt.colorbar(im, cax=cax, cmap='gray')
+            ax.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=1.7, alpha=0.7)
+            # plt.colorbar()
+            ax.axis('off')
+
+
+            # LEGEND:
+            # -----------------------------------
+            ax = fig.add_subplot(1,3,3)
+            plt.imshow(legend, cmap=colormap)
+            plt.axis('off')
+
+            plt.suptitle([date, experiment, curr_key])
+
+
+            if smooth:
+                sigma_flag = '_smoothed' + str(sigma_val_num)
+            else:
+                sigma_flag = ''
+
+
+            impath = os.path.join(figdir, 'contourONLY_' + sigma_flag + colormap+'_'+curr_key+'.png')
+            plt.savefig(impath, format='png')
+            print impath
+
+            plt.show()
+
 
