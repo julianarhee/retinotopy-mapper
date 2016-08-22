@@ -18,7 +18,7 @@ import re
 import itertools
 from scipy import ndimage
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import copy
 import colorsys
 
@@ -68,8 +68,10 @@ if reduce_factor[0] > 1:
 else:
     reduceit=0
 if headless:
+    import matplotlib as mpl
     mpl.use('Agg')
 
+import matplotlib.pyplot as plt
 colormap = options.cmap
 
 threshold_type = options.mask #'blank'
@@ -92,7 +94,7 @@ if not os.path.exists(figdir):
 # GET BLOOD VESSEL IMAGE:
 #################################################################################
 folders = os.listdir(sessiondir)
-figpath = [f for f in folders if f == 'surface'][0]
+figpath = [f for f in folders if f == 'surface']
 # figpath = [f for f in folders if f == 'figures'][0]
 # print "EXPT: ", exptdir
 # print "SESSION: ", sessiondir
@@ -100,6 +102,7 @@ print "path to surface: ", figpath
 
 if figpath:
     # figdir = figpath[0]
+    figpath = figpath[0]
     tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
     surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
     ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
