@@ -196,7 +196,7 @@ legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
 # MAKE LEGENDS:
 
 winsize = [1920, 1200]
-screen_size = [int(i*0.25) for i in winsize]
+screen_size = [int(i*0.1) for i in winsize]
 print screen_size
 
 create_legend = 1
@@ -357,11 +357,11 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             phase_map = D[curr_key]['phase_map']
-	        power_map = mag_map**2 #D[curr_key]['mag_map']**2
+            power_map = mag_map**2 #D[curr_key]['mag_map']**2
 
             vmin_val = -1*math.pi
             vmax_val = 1*math.pi
-            levels = np.arange(vmin_val, vmax_val, .25)  # Boost the upper limit to avoid truncation errors.
+            levels = np.arange(vmin_val, vmax_val, .75) 
 
 
             date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
@@ -374,16 +374,8 @@ for cond in cond_types:
             fig.add_subplot(1,3,1)
             plt.imshow(surface, cmap='gray', alpha=0)
             plt.axis('off')
-            plt.contour(phase_map, levels, origin='upper', cmap=colormap, linewidths=2)
+            plt.contour(phase_map, levels, origin='lower', cmap=colormap, linewidths=.7)
 
-            # 2.  PHASE MAP
-            # -----------------------------------
-            # fig.add_subplot(2,3,2)
-            # if contour is True:
-            #     plt.contour(phase_map, levels, origin='upper', cmap=colormap, linewidths=2)
-            # else:
-            #     plt.imshow(phase_map, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-            # plt.axis('off')
 
             # MAKE AND SAVE FIGURE:
 
@@ -408,12 +400,12 @@ for cond in cond_types:
             # -----------------------------------
             fig.add_subplot(1,3,2)
             #power_map = mag_map**2
-	        if use_power is True:
+            if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
-        		plt.title('power')
+    		plt.title('power')
             else:
-        		plt.imshow(mag_map, cmap='hot')
-        		plt.title('magnitude')
+    		plt.imshow(mag_map, cmap='hot')
+    		plt.title('magnitude')
 
             plt.colorbar()
             plt.axis('off')
@@ -421,25 +413,19 @@ for cond in cond_types:
 
             # 6. LEGEND
             ax = fig.add_subplot(1,3,3)
-            plt.imshow(legend, cmap=colormap)
+	    plt.imshow(surface, cmap='gray', alpha=0)
+	    plt.axis('off')
+            plt.contour(legend, levels, origin='lower', cmap=colormap, linewidths=1)
             plt.axis('off')
 
             plt.suptitle([date, experiment, curr_key])
-            
 
-            impath = os.path.join(figdir, colormap+'_summary_'+curr_key+'.png')
-            plt.savefig(impath, format='png')
-            print impath
-
-
-	    
-    	    if use_power is True:
+            if use_power is True:
     		  power_flag = 'power_'
     	    else:
     		  power_flag = ''
-
-            impath = os.path.join(figdir, 'contour_'+power_flag+imname+'.png')
-            plt.savefig(impath, format='png')
+            impath = os.path.join(figdir, 'contour_'+power_flag+imname+'.eps')
+            plt.savefig(impath, format='eps')
             print impath
 
             
