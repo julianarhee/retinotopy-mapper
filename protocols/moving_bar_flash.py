@@ -172,14 +172,14 @@ cyc_per_sec = float(user_input)
 
 while True:
     time.sleep(2)
-    user_input=raw_input("\nEnter COND num [1=V-Left, 2=V-Right, 3=H-Down, 4=H-Up]  to continue or 'exit':\n")
+    user_input=raw_input("\nEnter COND num [0=Blank, 1=V-Left, 2=V-Right, 3=H-Down, 4=H-Up]  to continue or 'exit':\n")
     if user_input=='exit':
         break
 
     # conditionTypes = ['1']
     condnum = int(user_input)
-    cond_label = ['Left','Right','Top','Bottom']
-    condname = cond_label[int(condnum)-1]
+    cond_label = ['Blank','Left','Right','Top','Bottom']
+    condname = cond_label[int(condnum)]
 
     user_input=raw_input("\nEnter RUN num to continue or 'exit':\n")
     if user_input=='exit':
@@ -298,8 +298,11 @@ while True:
     flashPeriod = 0.2 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
     dutyCycle = 0.5 #1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
-    bar_color = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
-    bar_width = 8 #2 # bar width in degrees 
+    if condname=='Blank' or condnum==0:
+        bar_color = -1 #1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
+    else:
+        bar_color = 1
+    bar_width = 8 #8 #2 # bar width in degrees 
 
     # SCREEN PARAMS:
     screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -362,7 +365,7 @@ while True:
 
     # if cyc == 1:
     # SPECIFICY CONDITION TYPES:
-    if condnum == 1:
+    if condnum == 1 or condnum == 0:
         orientation = 1 # 1 = VERTICAL, 0 = horizontal
         direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
 
@@ -440,8 +443,8 @@ while True:
         #     visibleWedge=[0, 45], radialCycles=4, angularCycles=8, interpolate=False,
         #     autoLog=False) #this stim changes too much for autologging to be useful
         #barmask = np.ones([256,256]) #,3])*bar_color;
-        barmask = np.ones([1,1]) 
-        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
+        barmask = np.ones([1,1]) * bar_color
+        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=1*bar_color, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
         bar2 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
     
     else:
@@ -500,7 +503,7 @@ while True:
             fdict['im'] = im_array
             fdict['bar_width'] = bar_width
             fdict['condnum'] = condnum
-            fdict['condname'] = cond_label[int(condnum)-1]
+            fdict['condname'] = cond_label[int(condnum)]
             fdict['frame'] = frame_counter #nframes
             #print 'frame #....', frame_counter
             fdict['time'] = datetime.now().strftime(FORMAT)
