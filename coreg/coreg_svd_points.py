@@ -40,6 +40,9 @@ parser.add_option('-r', '--ref', action="store", dest="ref",
 parser.add_option('-o', '--outpath', action="store", dest="outpath",
                   default="/tmp", help="Path to the save ROIs")
 
+parser.add_option('-m', '--map', action="store", dest="map",
+                  default="", help="Path to retino map for overlay")
+
 parser.add_option('--C', '--crop', action="store_true", dest="crop", default=False, help="Path to save ROI")
 
 (options, args) = parser.parse_args()
@@ -52,11 +55,16 @@ parser.add_option('--C', '--crop', action="store_true", dest="crop", default=Fal
 
 # In[5]:
 
+map_path = options.map
+
 image_path = options.image
 ref_path = options.ref
 
 outpath = options.outpath
 
+
+retinomap = cv2.imread(map_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+print retinomap.shape
 # './JR015W_test/20160906_REF.png'
 img1 = cv2.imread(ref_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
@@ -299,6 +307,8 @@ M = transformation_from_points(mat2, mat1)
 # out = warp_im(SAMPLE, M, REF.shape)
 out = warp_im(REF, M, SAMPLE.shape)
 
+out_map = warp_im(retinomap, M, SAMPLE.shape)
+
 
 # In[23]:
 
@@ -347,25 +357,46 @@ plt.show()
 
 print "Displaying MASKED figure..."
 
-I1 = np.zeros((SAMPLE.shape[0], SAMPLE.shape[1], 3))
-I1[:,:,1] = SAMPLE
+# I1 = np.zeros((SAMPLE.shape[0], SAMPLE.shape[1], 3))
+# I1[:,:,1] = SAMPLE
 
-I2 = np.zeros((SAMPLE.shape[0], SAMPLE.shape[1], 3))
-I2[:,:,0] = out
+# I2 = np.zeros((SAMPLE.shape[0], SAMPLE.shape[1], 3))
+# I2[:,:,0] = out
 
-# plt.figure(figsize=(20,10))
+# # plt.figure(figsize=(20,10))
+# plt.figure()
+# plt.imshow(I1, alpha=0.2)
+# plt.imshow(I2, alpha=0.2)
+# plt.axis('off')
 plt.figure()
-plt.imshow(I1, alpha=0.2)
-plt.imshow(I2, alpha=0.2)
+merged = np.zeros((SAMPLE.shape[0], SAMPLE.shape[1], 3), dtype=np.uint8)
+merged[:,:,0] = SAMPLE
+merged[:,:,1] = out
+plt.imshow(merged)
 plt.axis('off')
 
 imname = 'points_svd_IM-%s_npoints-%i_overlay' % (input_image_name, npoints)
 print os.path.join(outpath, imname)
 plt.savefig(os.path.join(outpath, imname))
 
-
-# In[ ]:
-
-
-
 plt.show()
+
+
+# Overlay phase map
+
+print "Displaying PHASE map onto figure..."
+
+out_mask = np.ma.masked_where(out == 0, out)
+
+out_map_mask = np.ma.masked_where(out_map == 0, out_map)
+
+plt.figure()
+plt.imshow(SAMPLE, cmap='gray')
+plt.imshow(out_mask, cmap='gray', alpha=.75)
+plt.imshow(out_map_mask, cmap='spectral', alpha=0.5)
+plt.axis('off')
+
+imname = 'points_svd_IM-%s_npoints-%i_RETINO' % (input_image_name, npoints)
+print os.path.join(outpath, imname)
+plt.savefig(os.path.join(outpath, imname))
+

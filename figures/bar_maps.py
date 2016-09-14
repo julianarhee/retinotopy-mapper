@@ -189,9 +189,10 @@ print "AZ keys: ", az_keys
 print "EL keys: ", el_keys
 
 
-# grab legends:
 
-legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
+# grab legends:
+use_corrected_screen = True
+# legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
 
 # MAKE LEGENDS:
 
@@ -207,17 +208,14 @@ if create_legend:
     nspaces_start = np.linspace(0, -1*math.pi, screen_size[0]/2)
     for i in range(screen_size[1]):
         V_left_legend[i][0:screen_size[0]/2] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
     nspaces_end = np.linspace(1*math.pi, 0, screen_size[0]/2)
     for i in range(screen_size[1]):
         V_left_legend[i][screen_size[0]/2:] = nspaces_end
-        
 else:
     legend_name = 'V-Left_legend.tif'
     V_left_legend = imread(os.path.join(legend_dir, legend_name))
 
-    
 if create_legend:
     V_right_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
@@ -227,47 +225,59 @@ if create_legend:
     # Then, set right side of screen (240 to end = to pi to 0)
     nspaces_end = np.linspace(-1*math.pi, 0, screen_size[0]/2)
     for i in range(screen_size[1]):
-        V_right_legend[i][screen_size[0]/2:] = nspaces_end
-        
+        V_right_legend[i][screen_size[0]/2:] = nspaces_end 
 else:
     legend_name = 'V-Right_legend.tif'
     V_right_legend = imread(os.path.join(legend_dir, legend_name))
 
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# FIX THIS:
+# ----------------------------------------------------------------------------------------------
+# This adjustment needs to be fixed for cases of using the older Samsung monitor (smaller)
+# Also, any scripts in which horizontal condition started at the edge of the screen, rather than
+# being centered around the screen middle.
+
+ratio_factor = .5458049 # This is true / hardcoded only for AQUOS monitor.
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+
+if use_corrected_screen is True:
+    screen_edge = math.pi - (math.pi*ratio_factor)
+else:
+    screen_edge = 0
     
 if create_legend:        
     H_down_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
-    nspaces_start = np.linspace(0, -1*math.pi, screen_size[1]/2)
+    # If CORRECTING for true physical screen, start  after 0 (~1.43):
+    nspaces_start = np.linspace(-1*screen_edge, -1*math.pi, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_down_legend[0:screen_size[1]/2, i] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
-    nspaces_end = np.linspace(1*math.pi, 0, screen_size[1]/2)
+    nspaces_end = np.linspace(1*math.pi, screen_edge, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_down_legend[screen_size[1]/2:, i] = nspaces_end
-        
 else:
     legend_name = 'H-Down_legend.tif'
     H_down_legend = imread(os.path.join(legend_dir, legend_name))
 
-
 if create_legend:
     H_up_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
-    nspaces_start = np.linspace(0, 1*math.pi, screen_size[1]/2)
+    # If CORRECTING for true physical screen, start  after 0 (~1.43):
+    nspaces_start = np.linspace(screen_edge, 1*math.pi, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_up_legend[0:screen_size[1]/2, i] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
-    nspaces_end = np.linspace(-1*math.pi, 0, screen_size[1]/2)
+    nspaces_end = np.linspace(-1*math.pi, -1*screen_edge, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_up_legend[screen_size[1]/2:, i] = nspaces_end
 else:
     legend_name = 'H-Up_legend.tif'
     H_up_legend = imread(os.path.join(legend_dir, legend_name))
 
-# plt.imshow(V_left_legend, cmap='hsv')
-# plt.colorbar()
+
 
 
 cond_types = ['Left', 'Right', 'Top', 'Bottom']
@@ -343,6 +353,7 @@ for cond in cond_types:
             print impath
 
 
+
             # --------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------
             # PLOT IT ALL: 
@@ -357,7 +368,7 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             phase_map = D[curr_key]['phase_map']
-	    power_map = mag_map**2 #D[curr_key]['mag_map']**2
+            power_map = mag_map**2 #D[curr_key]['mag_map']**2
 
             if smooth is True:
                 # sigma_val = sigma_val
@@ -365,6 +376,7 @@ for cond in cond_types:
                 phase_map = ndimage.gaussian_filter(phase_map, sigma=sigma_val, order=0)
                 vmin_val = 0
                 vmax_val = 2*math.pi
+                legend[legend<0]=2*math.pi+legend[legend<0]
             else:
                 vmin_val = -1*math.pi
                 vmax_val = 1*math.pi
@@ -505,7 +517,7 @@ for cond in cond_types:
             phase_mask[nullx, nully] = np.nan
             phase_mask = np.ma.array(phase_mask)
             plt.imshow(surface, cmap='gray')
-            plt.imshow(phase_mask, cmap=colormap)
+            plt.imshow(phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
             plt.axis('off')
             plt.title(tit)
 
@@ -522,14 +534,14 @@ for cond in cond_types:
             # -----------------------------------
             fig.add_subplot(2,3,5)
             #power_map = mag_map**2
-	    if use_power is True:
+            if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
-		plt.title('power')
+                plt.title('power')
             else:
-		plt.imshow(mag_map, cmap='hot')
-		plt.title('magnitude')
-            plt.colorbar()
-            plt.axis('off')
+                plt.imshow(mag_map, cmap='hot')
+                plt.title('magnitude')
+                plt.colorbar()
+                plt.axis('off')
             # plt.title('power')
 
             # 6. LEGEND
@@ -585,8 +597,8 @@ for cond in cond_types:
 
 
             # Get normed MAGNITUDE map for stimulation condN for HSV composite:
-	    if use_power is True:
-		mag_map = power_map #mag_map**2
+        if use_power is True:
+            mag_map = power_map #mag_map**2
             old_min = mag_map.min()
             old_max = mag_map.max()
             new_min = 0
@@ -743,11 +755,11 @@ for cond in cond_types:
             #     norm_flag = 'normed_'
             # else:
             #     norm_flag = 'actual_'
-	    
-	    if use_power is True:
-		power_flag = 'power_'
-	    else:
-		power_flag = ''
+        
+            if use_power is True:
+              power_flag = 'power_'
+            else:
+              power_flag = ''
 
             impath = os.path.join(figdir, power_flag+norm_flag+imname+'.png')
             plt.savefig(impath, format='png')
@@ -875,7 +887,7 @@ for cond in cond_types:
             phase_mask[nullx, nully] = np.nan
             phase_mask = np.ma.array(phase_mask)
             plt.imshow(surface, cmap='gray')
-            plt.imshow(phase_mask, cmap=colormap)
+            plt.imshow(phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
             plt.axis('off')
             plt.title(tit)
 
