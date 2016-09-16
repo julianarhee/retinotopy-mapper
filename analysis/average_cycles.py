@@ -79,6 +79,9 @@ parser.add_option('--detrend-first', action="store_true", dest="detrend_first",
                   default=False, help="detrend first, then mean subtract?")
 parser.add_option('--smooth', action="store_true", dest="smooth", default=False, help="smooth? (default sig = 2)")
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
+parser.add_option('--sum', action="store_true", dest="use_sum", default=False, help="if reduce, sum (otherwise func is np.mean)")
+parser.add_option('--global', action="store_true", dest="mean_subtract_global", default=False, help="subtract mean of each frame or subtract global mean")
+#parser.add_option('--nomean', action="store_false", dest="mean_subtract", default=True, help="subtract mean at all or no")
 
 parser.add_option('--rolling', action='store_true', default=False, help="Rolling average [window size is 2 cycles] or detrend.")
 parser.add_option('--meansub', action='store_true', default=False, help="Remove mean of each frame.")
@@ -87,6 +90,10 @@ parser.add_option('--interpolate', action='store_true', default=False, help='Int
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
+
+#mean_subtract = options.mean_subtract
+mean_subtract_global = options.mean_subtract_global
+use_sum = options.use_sum
 
 rolling = options.rolling
 interpolate = options.interpolate
@@ -146,7 +153,17 @@ if smooth is True:
     smooth_flag = '_smooth%i' % int(sigma_val_num)
 else:
     smooth_flag = ''
-processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag))
+
+if mean_subtract_global is True:
+    mean_flag = '_global'
+else:
+    mean_flag = ''
+
+if meansub is True:
+    mean_sub_flag = '_meansub'
+else:
+    mean_sub_flag = ''
+processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag, mean_sub_flag, mean_flag))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
 
@@ -266,7 +283,10 @@ for i, f in enumerate(files):
     tiff.close()
 
     if reduceit:
-        im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+	if use_sum is True:
+	    im_reduced = block_reduce(im, reduce_factor, func=np.sum)
+	else:
+            im_reduced = block_reduce(im, reduce_factor, func=np.mean)
         # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
         tmp_stack[:, :, i] = im_reduced
     else:
@@ -297,8 +317,12 @@ if detrend_first is True:
 
 if meansub is True:
     print "mean subtracting..."
-    for i in range(stack.shape[2]):
-        tmp_stack[:,:,i] -= np.mean(tmp_stack[:,:,i].ravel()) 
+    if mean_subtract_global is True:
+        for i in range(stack.shape[2]):
+            tmp_stack[:,:,i] -= average_stack
+    else:
+        for i in range(stack.shape[2]):
+            tmp_stack[:,:,i] -= np.mean(tmp_stack[:,:,i].ravel()) 
 else:
     print "Not doing a mean subtraction from each frame.  Select option --meansub if this is incorrect."
 
