@@ -285,9 +285,10 @@ if detrend is True:
             pix = scipy.signal.detrend(stack[x, y, :], type='constant')
 	    stack[x, y, :] = pix
 
-print "mean subtracting..."
-for i in range(stack.shape[2]):
-    stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) 
+print "NOT mean-subtracting..."
+#print "mean subtracting..."
+#for i in range(stack.shape[2]):
+#    stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) 
 
 if detrend is False:
     print "detrending..."
