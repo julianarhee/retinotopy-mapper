@@ -18,7 +18,7 @@ import re
 import itertools
 from scipy import ndimage
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import copy
 import colorsys
 
@@ -39,18 +39,21 @@ parser.add_option('--path', action="store", dest="path", default="", help="path 
 parser.add_option('-t', '--thresh', action="store", dest="threshold", default=0.5, help="cutoff threshold value")
 parser.add_option('-r', '--run', action="store", dest="run", default=1, help="cutoff threshold value")
 parser.add_option('--append', action="store", dest="append", default="", help="appended label for analysis structs")
-parser.add_option('--mask', action="store", dest="mask", type="choice", choices=['DC', 'blank', 'magmax'], default='DC', help="mag map to use for thresholding: DC | blank | magmax [default: DC]")
+parser.add_option('--mask', action="store", dest="mask", type="choice", choices=['DC', 'blank', 'magmax', 'ratio'], default='DC', help="mag map to use for thresholding: DC | blank | magmax [default: DC]")
 parser.add_option('--cmap', action="store", dest="cmap", default='spectral', help="colormap for summary figures [default: spectral]")
-parser.add_option('--use-norm', action="store_true", dest="use_norm", default=False, help="compare normalized blank to condition")
+#parser.add_option('--use-norm', action="store_true", dest="use_norm", default=False, help="compare normalized blank to condition")
 parser.add_option('--smooth', action="store_true", dest="smooth", default=False, help="smooth? (default sig = 2)")
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
 parser.add_option('--contour', action="store_true", dest="contour", default=False, help="show contour lines for phase map")
+parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use power or just magnitude?")
 
 
 (options, args) = parser.parse_args()
 
-use_norm = options.use_norm
+use_power = options.use_power
+
+#use_norm = options.use_norm
 smooth = options.smooth
 sigma_val_num = options.sigma_val
 sigma_val = (int(sigma_val_num), int(sigma_val_num))
@@ -65,7 +68,10 @@ if reduce_factor[0] > 1:
 else:
     reduceit=0
 if headless:
+    import matplotlib as mpl
     mpl.use('Agg')
+
+import matplotlib.pyplot as plt
 
 colormap = options.cmap
 
@@ -89,7 +95,7 @@ if not os.path.exists(figdir):
 # GET BLOOD VESSEL IMAGE:
 #################################################################################
 folders = os.listdir(sessiondir)
-figpath = [f for f in folders if f == 'surface'][0]
+figpath = [f for f in folders if f == 'surface']
 # figpath = [f for f in folders if f == 'figures'][0]
 # print "EXPT: ", exptdir
 # print "SESSION: ", sessiondir
@@ -97,6 +103,7 @@ print "path to surface: ", figpath
 
 if figpath:
     # figdir = figpath[0]
+    figpath=figpath[0]
     tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
     surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
     ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
@@ -124,7 +131,7 @@ else: # NO BLOOD VESSEL IMAGE...
 if reduceit:
     surface = block_reduce(surface, reduce_factor, func=np.mean)
 
-plt.imshow(surface, cmap='gray')
+#plt.imshow(surface, cmap='gray')
 
 
 
@@ -150,25 +157,44 @@ for f in dstructs:
     with open(outfile,'rb') as fp:
         D[f] = pkl.load(fp)
 
-astructs = [f for f in files if 'Amplitude' in f and str(reduce_factor) and append in f]
-print astructs
-A = dict()
-for f in astructs:
-    outfile = os.path.join(outdir, f)
-    with open(outfile,'rb') as fp:
-        A[f] = pkl.load(fp)
+# astructs = [f for f in files if 'Amplitude' in f and str(reduce_factor) and append in f]
+# print astructs
+# A = dict()
+# for f in astructs:
+#     outfile = os.path.join(outdir, f)
+#     with open(outfile,'rb') as fp:
+#         A[f] = pkl.load(fp)
 
+# if not A:
+#     if threshold_type=='ratio' # trying to use ratio-map, but can't
+#         print "No amplitude struct found. Use DC or blank:"
+#         threshold_type=''
+#         user_input=raw_input("\nChoose different threshold map, DC [0] or blank [1]:\n")
+#         if int(user_input)==0:
+#             threshold_type = 'DC'
+#         elif int(user_input)==1:
+#             threshold_type = 'blank'
+
+if threshold_type=='blank':
+    blank_keys = [k for k in dstructs if 'blank_' in k] #[0]
+    if not blank_keys:
+        print "Blank condition not found. Using DC."
+        threshold_type = 'DC'
+    else:
+        blank_key = blank_keys[0]
+        print "Using BLANK key: ", blank_key
 
 # Get specific keys:
 
 bottomkeys = [k for k in D.keys() if 'Bottom' in k or 'Up' in k]
 topkeys = [k for k in D.keys() if 'Top' in k or 'Down' in k]
+if len([i for i in bottomkeys if 'Up' in i])>0:
+    oldflag = True
+else:
+    oldflag = False
 
 leftkeys = [k for k in D.keys() if 'Left' in k]
 rightkeys = [k for k in D.keys() if 'Right' in k]
-if threshold_type=='blank':
-    blank_key = [k for k in dstructs if 'blank_' in k][0]
-    print "BLANK: ", blank_key
 
 el_keys = [topkeys, bottomkeys]
 az_keys = [leftkeys, rightkeys]
@@ -178,9 +204,10 @@ print "AZ keys: ", az_keys
 print "EL keys: ", el_keys
 
 
-# grab legends:
 
-legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
+# grab legends:
+use_corrected_screen = True
+# legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
 
 # MAKE LEGENDS:
 
@@ -196,17 +223,14 @@ if create_legend:
     nspaces_start = np.linspace(0, -1*math.pi, screen_size[0]/2)
     for i in range(screen_size[1]):
         V_left_legend[i][0:screen_size[0]/2] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
     nspaces_end = np.linspace(1*math.pi, 0, screen_size[0]/2)
     for i in range(screen_size[1]):
         V_left_legend[i][screen_size[0]/2:] = nspaces_end
-        
 else:
     legend_name = 'V-Left_legend.tif'
     V_left_legend = imread(os.path.join(legend_dir, legend_name))
 
-    
 if create_legend:
     V_right_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
@@ -216,54 +240,83 @@ if create_legend:
     # Then, set right side of screen (240 to end = to pi to 0)
     nspaces_end = np.linspace(-1*math.pi, 0, screen_size[0]/2)
     for i in range(screen_size[1]):
-        V_right_legend[i][screen_size[0]/2:] = nspaces_end
-        
+        V_right_legend[i][screen_size[0]/2:] = nspaces_end 
 else:
     legend_name = 'V-Right_legend.tif'
     V_right_legend = imread(os.path.join(legend_dir, legend_name))
 
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# FIX THIS:
+# ----------------------------------------------------------------------------------------------
+# This adjustment needs to be fixed for cases of using the older Samsung monitor (smaller)
+# Also, any scripts in which horizontal condition started at the edge of the screen, rather than
+# being centered around the screen middle.
+
+ratio_factor = .5458049 # This is true / hardcoded only for AQUOS monitor.
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+
+if use_corrected_screen is True:
+    screen_edge = math.pi - (math.pi*ratio_factor)
+else:
+    screen_edge = 0
     
 if create_legend:        
     H_down_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
-    nspaces_start = np.linspace(0, -1*math.pi, screen_size[1]/2)
+    # If CORRECTING for true physical screen, start  after 0 (~1.43):
+    nspaces_start = np.linspace(-1*screen_edge, -1*math.pi, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_down_legend[0:screen_size[1]/2, i] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
-    nspaces_end = np.linspace(1*math.pi, 0, screen_size[1]/2)
+    nspaces_end = np.linspace(1*math.pi, screen_edge, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_down_legend[screen_size[1]/2:, i] = nspaces_end
-        
 else:
     legend_name = 'H-Down_legend.tif'
     H_down_legend = imread(os.path.join(legend_dir, legend_name))
 
-
 if create_legend:
     H_up_legend = np.zeros((screen_size[1], screen_size[0]))
     # First, set half the screen width (0 to 239 = to 0 to -pi)
-    nspaces_start = np.linspace(0, 1*math.pi, screen_size[1]/2)
+    # If CORRECTING for true physical screen, start  after 0 (~1.43):
+    nspaces_start = np.linspace(screen_edge, 1*math.pi, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_up_legend[0:screen_size[1]/2, i] = nspaces_start
-
     # Then, set right side of screen (240 to end = to pi to 0)
-    nspaces_end = np.linspace(-1*math.pi, 0, screen_size[1]/2)
+    nspaces_end = np.linspace(-1*math.pi, -1*screen_edge, screen_size[1]/2)
     for i in range(screen_size[0]):
         H_up_legend[screen_size[1]/2:, i] = nspaces_end
 else:
     legend_name = 'H-Up_legend.tif'
     H_up_legend = imread(os.path.join(legend_dir, legend_name))
 
-# plt.imshow(V_left_legend, cmap='hsv')
-# plt.colorbar()
+
+
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# Cycle through ALL conditions, plot:
+# ----------------------------------------------------------------------------------------------
+# 1.  2x2 :  surface, magnitude, phase, legend
+# 2.  2x3 :  
+
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
 
 
 cond_types = ['Left', 'Right', 'Top', 'Bottom']
 for cond in cond_types:
     print "RUNNING cond: ", cond
     # run_conds = [cond, str(run_num)+'_', str(reduce_factor), append]
-    run_conds = [cond, str(reduce_factor), append]
+    if oldflag is True and (cond=='Top' or cond=='Bottom'):
+        print "Using old EL condition names..."
+        if cond=='Top':
+            run_conds = ['Down', str(reduce_factor), append]
+        if cond=='Bottom':
+            run_conds = ['Up', str(reduce_factor), append]
+    else:
+        run_conds = [cond, str(reduce_factor), append]
 
     if cond=='Left':
         tmp_keys = [k for k in leftkeys if all([c in k for c in run_conds])] #[0]
@@ -283,8 +336,13 @@ for cond in cond_types:
     else:
         for curr_key in tmp_keys:
             print "Curr key is: ", curr_key
-            curr_amp_key = curr_key.split('Target_fft')[1]
-            print "Corresponding AMP key is: ", curr_amp_key
+
+            # if use_ratio is True:
+            #     curr_amp_key_suffix = curr_key.split('Target_fft')[1]
+            #     curr_amp_key = [a for a in A.keys() if curr_amp_key_suffix in a][0]
+            #     print "Corresponding AMP key is: ", curr_amp_key
+
+            #     ratio_map = A[curr_amp_key]['ratio_map']
 
             curr_map = D[curr_key]['ft']
             Ny = len(D[curr_key]['freqs'])/2.
@@ -325,20 +383,33 @@ for cond in cond_types:
             print impath
 
 
+
             # --------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------
             # PLOT IT ALL: 
             # --------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------
+            
+            date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
+            experiment = os.path.split(os.path.split(outdir)[0])[1]
 
-            # In[1319]:
-
-            # curr_key = leftkey
+            colormap = options.cmap
 
             print "CURR KEY : ", curr_key
 
             mag_map = D[curr_key]['mag_map']/Ny
+            power_map = mag_map**2 #D[curr_key]['mag_map']**2
+            DC_mag_map = D[curr_key]['DC_mag']/Ny
+            
+            # ------------------------------------------------------------------
+            # Not all structs will have this... need to run get_fft_bar.py with:
+            # options:  --rolling --interpolate 
+            # True as of 09/15/2016 --------------------------------------------
+            ratio_map = D[curr_key]['ratio_map']
+
+
             phase_map = D[curr_key]['phase_map']
+
 
             if smooth is True:
                 # sigma_val = sigma_val
@@ -346,6 +417,7 @@ for cond in cond_types:
                 phase_map = ndimage.gaussian_filter(phase_map, sigma=sigma_val, order=0)
                 vmin_val = 0
                 vmax_val = 2*math.pi
+                legend[legend<0]=2*math.pi+legend[legend<0]
             else:
                 vmin_val = -1*math.pi
                 vmax_val = 1*math.pi
@@ -353,55 +425,21 @@ for cond in cond_types:
             if contour is True:
                 levels = np.arange(vmin_val, vmax_val, .25)  # Boost the upper limit to avoid truncation errors.
 
-            # raw_phase_map = D[curr_key]['phase_map']
-            
-            # old_min = -math.pi #phase_map.min()
-            # old_max = math.pi #phase_map.max()
-            # new_min = 0
-            # new_max = 1
-            # normed_phase_map = np.zeros(raw_phase_map.shape)
-            # for x in range(raw_phase_map.shape[0]):
-            #     for y in range(raw_phase_map.shape[1]):
-            #         old_val = raw_phase_map[x, y]
-            #         normed_phase_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
-
-            # k = (1/9.)*np.array([[1, 1, 1],
-            #             [1, 1, 1],
-            #             [1, 1, 1]])
-
-            # phase_map = ndimage.convolve(normed_phase_map, k, mode='constant', cval=0.0)
-
-
-            DC_mag_map = D[curr_key]['DC_mag']/Ny
-            # DC_phase_map = D[curr_key]['DC_phase']
-
-            # blank_mag_map = D[curr_key]['DC_mag']/Ny
-
-            # log_thresh = 0.8
-            # thresh = 2. #10 #0.5
-
-            # use_log = 0
-            # use_DC = 1
-
-            date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
-            experiment = os.path.split(os.path.split(outdir)[0])[1]
-
-            colormap = options.cmap
 
             # MAKE AND SAVE FIGURE:
 
             if 'Left' in curr_key or 'Right' in curr_key:
                 imname = 'AZ_HSV_%s' % curr_key
-                if 'Left' in curr_key:
-                    legend = V_left_legend
-                else:
-                    legend = V_right_legend
+                # if 'Left' in curr_key:
+                #     legend = V_left_legend
+                # else:
+                #     legend = V_right_legend
             else:
                 imname = 'EL_HSV_%s' % curr_key  
-                if 'Top' in curr_key or 'Down' in curr_key:
-                    legend = H_down_legend
-                else:
-                    legend = H_up_legend
+                # if 'Top' in curr_key or 'Down' in curr_key:
+                #     legend = H_down_legend
+                # else:
+                #     legend = H_up_legend
                     
                     
             fig = plt.figure(figsize=(20,10))
@@ -428,34 +466,36 @@ for cond in cond_types:
 
             # Assign mask to use for thresholding:
             if threshold_type=='DC':
-                thresh_map = DC_mag_map
+                thresh_map = copy.deepcopy(DC_mag_map)
             elif threshold_type=='magmax' or threshold_type=='logmax':
-                thresh_map = mag_map
+                thresh_map = copy.deepcopy(mag_map)
             elif threshold_type=='blank': # 07-27-2016:  this doesnt exist yet!
                 blank_mag_map = D[blank_key]['mag_map']/Ny
-                thresh_map = blank_mag_map
+                thresh_map = copy.deepcopy(blank_mag_map)
+            elif threshold_type=='ratio':
+                thresh_map = copy.deepcopy(ratio_map)
 
             # normalize threshold_map to do comparison against 0 map:
-            old_min = mag_map.min()
-            old_max = mag_map.max()
-            new_min = 0
-            new_max = 1
-            normed_mag_map = np.zeros(mag_map.shape)
-            for x in range(mag_map.shape[0]):
-                for y in range(mag_map.shape[1]):
-                    old_val = mag_map[x, y]
-                    normed_mag_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+            # old_min = mag_map.min()
+            # old_max = mag_map.max()
+            # new_min = 0
+            # new_max = 1
+            # normed_mag_map = np.zeros(mag_map.shape)
+            # for x in range(mag_map.shape[0]):
+            #     for y in range(mag_map.shape[1]):
+            #         old_val = mag_map[x, y]
+            #         normed_mag_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
             
-            # normalize threshold_map to do comparison against 0 map:
-            old_min = thresh_map.min()
-            old_max = thresh_map.max()
-            new_min = 0
-            new_max = 1
-            normed_thresh_map = np.zeros(thresh_map.shape)
-            for x in range(mag_map.shape[0]):
-                for y in range(thresh_map.shape[1]):
-                    old_val = thresh_map[x, y]
-                    normed_thresh_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+            # # normalize threshold_map to do comparison against 0 map:
+            # old_min = thresh_map.min()
+            # old_max = thresh_map.max()
+            # new_min = 0
+            # new_max = 1
+            # normed_thresh_map = np.zeros(thresh_map.shape)
+            # for x in range(mag_map.shape[0]):
+            #     for y in range(thresh_map.shape[1]):
+            #         old_val = thresh_map[x, y]
+            #         normed_thresh_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
 
             # if threshold_type=='logmax':
             #     [mx, my] = np.where(np.log(mag_map) >= log_thresh*np.log(mag_map.max()))
@@ -469,26 +509,38 @@ for cond in cond_types:
             # elif threshold_type=='magmax':
             #     [mx, my] = np.where(mag_map >= thresh*mag_map.max())
             #     plot_title = 'masked, >= %s of mag max' % str(thresh)
-            if use_norm is True:
-                [mx, my] = np.where(normed_mag_map >= threshold*normed_thresh_map)
-                tit = 'Threshold, %.2f of normed %s magnitude' % (threshold, threshold_type)
+
+            # if use_norm is True:
+            #     [mx, my] = np.where(normed_mag_map >= threshold*normed_thresh_map)
+            #     tit = 'Threshold, %.2f of normed %s magnitude' % (threshold, threshold_type)
+            # else:
+            #     [mx, my] = np.where(mag_map >= threshold*thresh_map)
+            #     tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+
+
+            # phase_mask = np.ones(mag_map.shape) * 100
+            # phase_mask[mx, my] = phase_map[mx, my]
+            # # tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+
+            # [nullx, nully] = np.where(phase_mask == 100)
+            # # print len(mx)
+            # phase_mask[nullx, nully] = np.nan
+
+            phase_mask = copy.deepcopy(phase_map)
+
+            if not threshold_type=='ratio':
+                [mx, my] = np.where(mag_map < threshold*thresh_map)
+                phase_mask[mx, my] = np.nan
+                mask_title = 'Masked with %s, each pixel > threshold %s' % (threshold_type, str(threshold))
             else:
-                [mx, my] = np.where(mag_map >= threshold*thresh_map)
-                tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+                phase_mask[thresh_map < (threshold*thresh_map.max())] = np.nan
+                mask_title = 'Masked with ratio, %s of max' % str(threshold)
 
-
-            phase_mask = np.ones(mag_map.shape) * 100
-            phase_mask[mx, my] = phase_map[mx, my]
-            # tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
-
-            [nullx, nully] = np.where(phase_mask == 100)
-            # print len(mx)
-            phase_mask[nullx, nully] = np.nan
             phase_mask = np.ma.array(phase_mask)
             plt.imshow(surface, cmap='gray')
-            plt.imshow(phase_mask, cmap=colormap)
+            plt.imshow(phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
             plt.axis('off')
-            plt.title(tit)
+            plt.title(mask_title)
 
             # 4. MEAN INTENSITY:
             # -----------------------------------
@@ -502,10 +554,16 @@ for cond in cond_types:
             # 5. MAG MAP:
             # -----------------------------------
             fig.add_subplot(2,3,5)
-            plt.imshow(mag_map, cmap='gray')
-            plt.colorbar()
-            plt.axis('off')
-            plt.title('magnitude')
+            #power_map = mag_map**2
+            if use_power is True:
+                plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
+                plt.title('power')
+            else:
+                plt.imshow(mag_map, cmap='hot')
+                plt.title('magnitude')
+                plt.colorbar()
+                plt.axis('off')
+            # plt.title('power')
 
             # 6. LEGEND
             ax = fig.add_subplot(2,3,6)
@@ -515,12 +573,12 @@ for cond in cond_types:
             plt.suptitle([date, experiment, curr_key])
             
 
-            if use_norm:
-                norm_flag = 'normed_'
-            else:
-                norm_flag = 'actual_'
+            # if use_norm:
+            #     norm_flag = 'normed_'
+            # else:
+            #     norm_flag = 'actual_'
 
-            impath = os.path.join(figdir, colormap+'_'+norm_flag+'summary_'+curr_key+'.png')
+            impath = os.path.join(figdir, 'summary_'+colormap+'_'+curr_key+'.png')
             plt.savefig(impath, format='png')
             print impath
 
@@ -560,6 +618,8 @@ for cond in cond_types:
 
 
             # Get normed MAGNITUDE map for stimulation condN for HSV composite:
+        if use_power is True:
+            mag_map = power_map #mag_map**2
             old_min = mag_map.min()
             old_max = mag_map.max()
             new_min = 0
@@ -622,12 +682,18 @@ for cond in cond_types:
             nons = []
             for x in range(mag_map.shape[0]):
                 for y in range(mag_map.shape[1]):
-                    if use_norm is True:
-                        if normed_mag_map[x, y] < normed_thresh_map[x, y]*threshold:
-                            nons.append([x,y])
-                    else:
+                    # if use_norm is True:
+                    #     if normed_mag_map[x, y] < normed_thresh_map[x, y]*threshold:
+                    #         nons.append([x,y])
+                    # else:
+                    if not threshold_type=='ratio':
+                        # i.e,. if thresholding using magnitude map of condN:
                         if mag_map[x, y] < thresh_map[x, y]*threshold:
                             nons.append([x,y])
+                    else:
+                        # Or, can threshold using ratio-map of magnitudes:
+                        if thresh_map[x,y] < thresh_map.max()*threshold:
+                            nons.append([x, y])
                     
             # NOTE ON THRESHOLDING:
             # If use normed-mag against normed-threshold-map, get good removal of baddies.
@@ -716,7 +782,13 @@ for cond in cond_types:
             #     norm_flag = 'normed_'
             # else:
             #     norm_flag = 'actual_'
-            impath = os.path.join(figdir, norm_flag+imname+'.png')
+        
+            if use_power is True:
+              power_flag = 'power_'
+            else:
+              power_flag = ''
+
+            impath = os.path.join(figdir, imname+'_'+power_flag+threshold_type+'.png')
             plt.savefig(impath, format='png')
             print impath
 
@@ -726,40 +798,40 @@ for cond in cond_types:
 
             # Checkout the threshold map...
 
-            plt.subplot(2,2,1)
-            plt.imshow(mag_map, vmin=0, vmax=mag_map.max()) 
-            plt.title('magnitude at target freq')
-            plt.colorbar()
+            # plt.subplot(2,2,1)
+            # plt.imshow(mag_map, vmin=0, vmax=mag_map.max()) 
+            # plt.title('magnitude at target freq')
+            # plt.colorbar()
 
-            plt.subplot(2,2,2)
-            plt.imshow(normed_mag_map, vmin=0, vmax=1)
-            plt.title('normed magnitude')
-            plt.colorbar()
+            # plt.subplot(2,2,2)
+            # plt.imshow(normed_mag_map, vmin=0, vmax=1)
+            # plt.title('normed magnitude')
+            # plt.colorbar()
 
-            plt.subplot(2,2,3)
-            plt.imshow(thresh_map,  vmin=0, vmax=mag_map.max())
-            if threshold_type=='DC':
-                plt.title('magnitude at DC')
-            # elif thresh_method=='magmax'
-            #     plt.
-            plt.colorbar()
+            # plt.subplot(2,2,3)
+            # plt.imshow(thresh_map,  vmin=0, vmax=mag_map.max())
+            # if threshold_type=='DC':
+            #     plt.title('magnitude at DC')
+            # # elif thresh_method=='magmax'
+            # #     plt.
+            # plt.colorbar()
 
-            plt.subplot(2,2,4)
-            plt.imshow(normed_thresh_map, vmin=0, vmax=1)
-            plt.title('normed mag at DC)')
-            plt.colorbar()
+            # plt.subplot(2,2,4)
+            # plt.imshow(normed_thresh_map, vmin=0, vmax=1)
+            # plt.title('normed mag at DC)')
+            # plt.colorbar()
 
 
-            imname = "magnitude_%s_thresh%s%%_%s" % (threshold_type, str(int(threshold*100)), os.path.splitext(curr_key)[0])
+            # imname = "magnitude_%s_thresh%s%%_%s" % (threshold_type, str(int(threshold*100)), os.path.splitext(curr_key)[0])
 
-            savedir = os.path.split(outdir)[0]
-            figdir = os.path.join(savedir, 'figures')
-            if not os.path.exists(figdir):
-                os.makedirs(figdir)
+            # savedir = os.path.split(outdir)[0]
+            # figdir = os.path.join(savedir, 'figures')
+            # if not os.path.exists(figdir):
+            #     os.makedirs(figdir)
                 
-            impath = os.path.join(figdir, imname+'.png')
-            plt.savefig(impath, format='png')
-            print impath
+            # impath = os.path.join(figdir, imname+'.png')
+            # plt.savefig(impath, format='png')
+            # print impath
 
 
             #plt.show()
@@ -771,128 +843,128 @@ for cond in cond_types:
             # --------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------
 
-            # DELTA MAOPS!
+#             # DELTA MAOPS!
 
-            fig = plt.figure(figsize=(20,10))
+#             fig = plt.figure(figsize=(20,10))
 
-            # 1.  SURFACE
-            # -----------------------------------
-            fig.add_subplot(2,4,1)
-            plt.imshow(surface, cmap='gray')
-            plt.axis('off')
+#             # 1.  SURFACE
+#             # -----------------------------------
+#             fig.add_subplot(2,4,1)
+#             plt.imshow(surface, cmap='gray')
+#             plt.axis('off')
 
-            # 2.  PHASE MAP
-            # -----------------------------------
-            fig.add_subplot(2,4,2)
-            if contour is True:
-                plt.contour(phase_map, levels, origin='upper', cmap=colormap, linewidths=2)
-            else:
-                plt.imshow(phase_map, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-            plt.axis('off')
-            plt.title('phase')
+#             # 2.  PHASE MAP
+#             # -----------------------------------
+#             fig.add_subplot(2,4,2)
+#             if contour is True:
+#                 plt.contour(phase_map, levels, origin='upper', cmap=colormap, linewidths=2)
+#             else:
+#                 plt.imshow(phase_map, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+#             plt.axis('off')
+#             plt.title('phase')
 
-            # 3. PHASE MASKED BY MAG, OVERRLAY:
-            # -----------------------------------
-            fig.add_subplot(2,4,3)
+#             # 3. PHASE MASKED BY MAG, OVERRLAY:
+#             # -----------------------------------
+#             fig.add_subplot(2,4,3)
 
-            # Assign mask to use for thresholding:
-            if threshold_type=='DC':
-                thresh_map = DC_mag_map
-            elif threshold_type=='magmax' or threshold_type=='logmax':
-                thresh_map = mag_map
-            elif threshold_type=='blank': # 07-27-2016:  this doesnt exist yet!
-                blank_mag_map = D[blank_key]['mag_map']/Ny
-                thresh_map = blank_mag_map
+#             # Assign mask to use for thresholding:
+#             if threshold_type=='DC':
+#                 thresh_map = DC_mag_map
+#             elif threshold_type=='magmax' or threshold_type=='logmax':
+#                 thresh_map = mag_map
+#             elif threshold_type=='blank': # 07-27-2016:  this doesnt exist yet!
+#                 blank_mag_map = D[blank_key]['mag_map']/Ny
+#                 thresh_map = blank_mag_map
 
-            # normalize threshold_map to do comparison against 0 map:
-            old_min = mag_map.min()
-            old_max = mag_map.max()
-            new_min = 0
-            new_max = 1
-            normed_mag_map = np.zeros(mag_map.shape)
-            for x in range(mag_map.shape[0]):
-                for y in range(mag_map.shape[1]):
-                    old_val = mag_map[x, y]
-                    normed_mag_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+#             # normalize threshold_map to do comparison against 0 map:
+#             old_min = mag_map.min()
+#             old_max = mag_map.max()
+#             new_min = 0
+#             new_max = 1
+#             # normed_mag_map = np.zeros(mag_map.shape)
+#             # for x in range(mag_map.shape[0]):
+#             #     for y in range(mag_map.shape[1]):
+#             #         old_val = mag_map[x, y]
+#             #         normed_mag_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
             
-            # normalize threshold_map to do comparison against 0 map:
-            old_min = thresh_map.min()
-            old_max = thresh_map.max()
-            new_min = 0
-            new_max = 1
-            normed_thresh_map = np.zeros(thresh_map.shape)
-            for x in range(mag_map.shape[0]):
-                for y in range(thresh_map.shape[1]):
-                    old_val = thresh_map[x, y]
-                    normed_thresh_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+#             # normalize threshold_map to do comparison against 0 map:
+#             # old_min = thresh_map.min()
+#             # old_max = thresh_map.max()
+#             # new_min = 0
+#             # new_max = 1
+#             # normed_thresh_map = np.zeros(thresh_map.shape)
+#             # for x in range(mag_map.shape[0]):
+#             #     for y in range(thresh_map.shape[1]):
+#             #         old_val = thresh_map[x, y]
+#             #         normed_thresh_map[x, y] = (((old_val - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
 
-            if use_norm is True:
-                [mx, my] = np.where(normed_mag_map >= threshold*normed_thresh_map)
-                tit = 'Threshold, %.2f of normed %s magnitude' % (threshold, threshold_type)
-            else:
-                [mx, my] = np.where(mag_map >= threshold*thresh_map)
-                tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+#             # if use_norm is True:
+#             #     [mx, my] = np.where(normed_mag_map >= threshold*normed_thresh_map)
+#             #     tit = 'Threshold, %.2f of normed %s magnitude' % (threshold, threshold_type)
+#             # else:
+#             #     [mx, my] = np.where(mag_map >= threshold*thresh_map)
+#             #     tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
 
-            phase_mask = np.ones(mag_map.shape) * 100
-            phase_mask[mx, my] = phase_map[mx, my]
-            # tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
+#             phase_mask = np.ones(mag_map.shape) * 100
+#             phase_mask[mx, my] = phase_map[mx, my]
+#             # tit = 'Threshold, %.2f of %s magnitude' % (threshold, threshold_type)
 
-            [nullx, nully] = np.where(phase_mask == 100)
-            # print len(mx)
-            phase_mask[nullx, nully] = np.nan
-            phase_mask = np.ma.array(phase_mask)
-            plt.imshow(surface, cmap='gray')
-            plt.imshow(phase_mask, cmap=colormap)
-            plt.axis('off')
-            plt.title(tit)
+#             [nullx, nully] = np.where(phase_mask == 100)
+#             # print len(mx)
+#             phase_mask[nullx, nully] = np.nan
+#             phase_mask = np.ma.array(phase_mask)
+#             plt.imshow(surface, cmap='gray')
+#             plt.imshow(phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+#             plt.axis('off')
+#             plt.title(tit)
 
-            # 4. MEAN INTENSITY:
-            # -----------------------------------
-            fig.add_subplot(2,4,5)
-            mean_intensity = D[curr_key]['mean_intensity']
-            plt.imshow(mean_intensity, cmap='hot')
-            plt.axis('off')
-            plt.colorbar()
-            plt.title('mean intensity')
+#             # 4. MEAN INTENSITY:
+#             # -----------------------------------
+#             fig.add_subplot(2,4,5)
+#             mean_intensity = D[curr_key]['mean_intensity']
+#             plt.imshow(mean_intensity, cmap='hot')
+#             plt.axis('off')
+#             plt.colorbar()
+#             plt.title('mean intensity')
 
-            # 5. MAG MAP:
-            # -----------------------------------
-            fig.add_subplot(2,4,6)
-            plt.imshow(mag_map, cmap='gray')
-            plt.colorbar()
-            plt.axis('off')
-            plt.title('magnitude')
-
-
-            # 5b. DELTA MAG MAP:
-            # -----------------------------------
-            delta_mag = (mag_map-thresh_map)/thresh_map
-
-            fig.add_subplot(2,4,7)
-            plt.imshow(delta_mag, cmap='gray', vmax=20)
-            plt.colorbar()
-            plt.axis('off')
-            plt.title('perc. change over %s' % threshold_type)
+#             # 5. MAG MAP:
+#             # -----------------------------------
+#             fig.add_subplot(2,4,6)
+#             plt.imshow(mag_map, cmap='gray')
+#             plt.colorbar()
+#             plt.axis('off')
+#             plt.title('magnitude')
 
 
-            # 6. LEGEND
-            ax = fig.add_subplot(2,4,8)
-            plt.imshow(legend, cmap=colormap)
-            plt.axis('off')
+#             # 5b. DELTA MAG MAP:
+#             # -----------------------------------
+#             delta_mag = (mag_map-thresh_map)/thresh_map
 
-            plt.suptitle([date, experiment, curr_key])
+#             fig.add_subplot(2,4,7)
+#             plt.imshow(delta_mag, cmap='gray', vmax=20)
+#             plt.colorbar()
+#             plt.axis('off')
+#             plt.title('perc. change over %s' % threshold_type)
+
+
+#             # 6. LEGEND
+#             ax = fig.add_subplot(2,4,8)
+#             plt.imshow(legend, cmap=colormap)
+#             plt.axis('off')
+
+#             plt.suptitle([date, experiment, curr_key])
             
 
-            if use_norm:
-                norm_flag = 'normed_'
-            else:
-                norm_flag = 'actual_'
+#             if use_norm:
+#                 norm_flag = 'normed_'
+#             else:
+#                 norm_flag = 'actual_'
 
-            impath = os.path.join(figdir, 'DELTA_'+colormap+'_'+norm_flag+'summary_'+curr_key+'.png')
-            plt.savefig(impath, format='png')
-            print impath
+#             impath = os.path.join(figdir, 'DELTA_'+colormap+'_'+norm_flag+'summary_'+curr_key+'.png')
+#             plt.savefig(impath, format='png')
+#             print impath
 
-            plt.show()
+# #            plt.show()
 
 
 

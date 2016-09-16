@@ -14,6 +14,9 @@ import itertools
 from scipy import ndimage
 import pandas as pd
 
+import time
+import datetime
+
 #import hickle as hkl
 
 def movingaverage(interval, window_size):
@@ -36,11 +39,18 @@ parser.add_option('--fps', action="store",
 parser.add_option('--append', action="store",
                   dest="append_name", default="", help="append string to saved file name")
 
+parser.add_option('--rolling', action='store_true', default=False, help="Rolling average [window size is 2 cycles] or detrend.")
+parser.add_option('--meansub', action='store_true', default=False, help="Remove mean of each frame.")
+parser.add_option('--interpolate', action='store_true', default=False, help='Interpolate frames or no.')
+
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
 #imdirs = [sys.argv[1], sys.argv[2]]
+interpolate = options.interpolate
+rolling = options.rolling
+meansub = options.meansub
 
 im_format = '.' + options.im_format
 headless = options.headless
@@ -118,7 +128,51 @@ print "N frames per cyc: ", nframes_per_cycle
 if reduceit:
     sample = block_reduce(sample, reduce_factor, func=np.mean)
 
-# READ IN THE FRAMES:
+
+# INTERPOLATE FRAMES:
+ncycles = len(find_cycs) + 1
+N = int((ncycles / target_freq) * sampling_rate)
+
+FORMAT = '%Y%m%d%H%M%S%f'
+datetimes = [f.split('_')[1] for f in files]
+tstamps = [float(datetime.datetime.strptime(t, FORMAT).strftime("%H%m%s%f")) for t in datetimes]
+actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
+tpoints = np.linspace(0, ncycles/target_freq, N)
+
+if interpolate is True:
+    moving_win_sz = len(tpoints)/ncycles * 2
+    freqs = fft.fftfreq(N, 1 / sampling_rate)
+else:
+    moving_win_sz = min(nframes_per_cycle)*2
+    freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate) # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120, but freq correct (looks for closest matching target_bin )
+
+
+# SET FFT PARAMETERS:
+binwidth = freqs[1] - freqs[0]
+#target_bin = int(target_freq / binwidth)
+target_bin = np.where(
+    freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
+print "TARGET: ", target_bin, freqs[target_bin]
+
+# print "FREQS: ", freqs
+
+DC_freq = 0
+DC_bin = np.where(
+    freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
+print "DC: ", DC_freq, freqs[DC_bin]
+
+# freqs_shift = fft.fftshift(freqs)
+# target_bin_shift = np.where(freqs_shift == min(
+#     freqs_shift, key=lambda x: abs(float(x) - target_freq)))[0][0]
+# print "TARGET-shift: ", target_bin_shift, freqs_shift[target_bin_shift]
+# print "FREQS-shift: ", freqs_shift
+
+window = sampling_rate * cycle_dur * 2
+
+
+
+
+# READ IN THE FRAMES:times 
 stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
 print len(files)
 
@@ -141,39 +195,22 @@ for i, f in enumerate(files):
 
 average_stack = np.mean(stack, axis=2)
 
-for i in range(stack.shape[2]):
-    stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) # HP filter - This step removes diff value for each frame, and shifts the range of intensities to span around 0.
-    # stack[:,:,i] -= np.mean(average_stack.ravel()) # This step subtracts the same value ALL frames, effectively shifting the range down by the same amount.
-
+if meansub is True:
+    for i in range(stack.shape[2]):
+        stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) # HP filter - This step removes diff value for each frame, and shifts the range of intensities to span around 0.
+    #    # stack[:,:,i] -= np.mean(average_stack.ravel()) # This step subtracts the same value ALL frames, effectively shifting the range down by the same amount.
+else:
+    print "Not doing a mean subtraction from each frame.  Select option --meansub if this is incorrect."
 #stacks[session] = stack
 
-# SET FFT PARAMETERS:
-freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate) # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120, but freq correct (looks for closest matching target_bin )
-binwidth = freqs[1] - freqs[0]
-#target_bin = int(target_freq / binwidth)
-target_bin = np.where(
-    freqs == min(freqs, key=lambda x: abs(float(x) - target_freq)))[0][0]
-print "TARGET: ", target_bin, freqs[target_bin]
-# print "FREQS: ", freqs
 
-DC_freq = 0
-DC_bin = np.where(
-    freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
-print "DC: ", DC_freq, freqs[DC_bin]
-
-
-# freqs_shift = fft.fftshift(freqs)
-# target_bin_shift = np.where(freqs_shift == min(
-#     freqs_shift, key=lambda x: abs(float(x) - target_freq)))[0][0]
-# print "TARGET-shift: ", target_bin_shift, freqs_shift[target_bin_shift]
-# print "FREQS-shift: ", freqs_shift
-
-
-window = sampling_rate * cycle_dur * 2
 
 # FFT:
 mag_map = np.empty(sample.shape)
 phase_map = np.empty(sample.shape)
+sum_all_mags = np.empty(sample.shape)
+mag_other_freqs = np.empty(sample.shape)
+ratio_map = np.empty(sample.shape)
 
 # ft_real = np.empty(sample.shape)
 # ft_imag = np.empty(sample.shape)
@@ -192,24 +229,34 @@ DC = DC + 0j
 
 dynrange = np.empty(sample.shape)
 
+# def movingaverage(interval, window_size):
+#     window= numpy.ones(int(window_size))/float(window_size)
+#     return numpy.convolve(interval, window, 'same')
+    
 # dlist = []
 i = 0
 for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
 
+        if interpolate is True:
+            pix = np.interp(tpoints, actual_tpoints, stack[x, y, :])
+
         # THIS IS BASICALLY MOVING AVG WINDOW...
-        pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        # curr_pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        if rolling is True:
+            pix_padded = [np.ones(moving_win_sz)*pix[0], pix, np.ones(moving_win_sz)*pix[-1]]
+            tmp_pix = list(itertools.chain(*pix_padded))
+            tmp_pix_rolling = np.convolve(tmp_pix, np.ones(moving_win_sz)/moving_win_sz, 'same')
+            remove_pad = (len(tmp_pix_rolling) - len(pix) ) / 2
+            rpix = np.array(tmp_pix_rolling[remove_pad:-1*remove_pad])
+            pix -= rpix
+ 
+        else:
+           pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
 
         dynrange[x, y] = np.log2(pix.max() - pix.min())
 
         curr_ft = fft.fft(pix) #*(1./60.)  # fft.fft(pix) / len(pix)])
-        #curr_ft_shift = fft.fftshift(curr_ft)
-
-# flattend = [f for sublist in ((c.real, c.imag) for c in curr_ft) for f in sublist]
-# 		dlist.append((x, y, curr_ft))
-# 		i+=1
-
-# DF = pd.DataFrame.from_records(dlist)
 
         mag = np.abs(curr_ft)
         phase = np.angle(curr_ft)
@@ -227,11 +274,14 @@ for x in range(sample.shape[0]):
         # if i % 100 == 0:
         # print ft_real[x, y], ft_imag[x,y]
 
-        mag_map[x, y] = mag[target_bin]
+        mag_map[x, y] = mag[target_bin] + mag[int(N) - target_bin]
         phase_map[x, y]  = phase[target_bin]
         # dlist.append((x, y, curr_ft))
 
-
+        sum_all_mags[x, y] = sum(mag) 
+        mag_other_freqs[x, y] = sum(mag) - mag[DC_bin]
+        ratio_map[x, y] = (mag[target_bin]+mag[int(N)-target_bin]) / mag_other_freqs[x, y]
+            
         DC[x, y] = curr_ft[DC_bin]
         DC_mag[x, y] = mag[DC_bin]
         DC_phase[x, y]  = phase[DC_bin]
@@ -284,6 +334,11 @@ D['ft'] = ft
 
 D['mag_map'] = mag_map
 D['phase_map'] = phase_map
+
+D['sum_all_mags'] = sum_all_mags
+D['mag_other_freqs'] = mag_other_freqs
+D['ratio_map'] = ratio_map
+
 D['mean_intensity'] = np.mean(stack, axis=2)
 # D['stack'] = stack
 #del stack
@@ -306,6 +361,10 @@ D['DC_freq'] = DC_freq
 D['DC'] = DC
 D['DC_mag'] = DC_mag
 D['DC_phase'] = DC_phase
+
+D['meansub'] = meansub
+D['interpolated'] = interpolate
+D['rolling'] = rolling
 
 # SAVE condition info:
 sessionpath = os.path.split(imdir)[0]
@@ -374,19 +433,19 @@ del D
 # plt.subplot(2,2,1) # GREEN LED image
 # outdir = os.path.join(basepath, 'output')
 # if os.path.exists(outdir):
-# 	flist = os.listdir(outdir)
+#   flist = os.listdir(outdir)
 # GET BLOOD VESSEL IMAGE:
-# 	ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
-# 	if ims:
-# 		impath = os.path.join(outdir, ims[0])
-# 		image = Image.open(impath).convert('L')
-# 		imarray = np.asarray(image)
+#   ims = [f for f in flist if os.path.splitext(f)[1] == '.png']
+#   if ims:
+#       impath = os.path.join(outdir, ims[0])
+#       image = Image.open(impath).convert('L')
+#       imarray = np.asarray(image)
 
-# 		plt.imshow(imarray,cmap=cm.Greys_r)
-# 	else:
-# 		print "*** Missing green-LED photo of cortex surface. ***"
+#       plt.imshow(imarray,cmap=cm.Greys_r)
+#   else:
+#       print "*** Missing green-LED photo of cortex surface. ***"
 # else:
-# 	spnum = 2
+#   spnum = 2
 
 # plt.subplot(2, 2, 2)
 # fig =  plt.imshow(dynrange)
@@ -418,7 +477,7 @@ del D
 # figdir = os.path.join(basepath, 'figures', session, 'fieldmap')
 # print figdir
 # if not os.path.exists(figdir):
-# 	os.makedirs(figdir)
+#   os.makedirs(figdir)
 # imname = session + '_' + cond + '_fieldmap' + str(reduce_factor) + '.png'
 # plt.savefig(figdir + '/' + imname)
 
@@ -428,7 +487,7 @@ del D
 # SAVE MAPS:
 # outdir = os.path.join(basepath, 'output', session)
 # if not os.path.exists(outdir):
-# 	os.makedirs(outdir)
+#   os.makedirs(outdir)
 
 # fext = 'magnitude_%s_%s_%i.pkl' % (cond, str(reduce_factor), gsigma)
 # fname = os.path.join(outdir, fext)
