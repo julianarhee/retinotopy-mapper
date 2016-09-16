@@ -287,7 +287,16 @@ parser.add_option('--avg', action='store_true', dest='use_avg', default=False, h
 parser.add_option('--mask', action='store_true', dest='use_mask', default=False, help="Use masked phase maps")
 parser.add_option('--threshold', action="store", dest="threshold", default=0.2, help="Threshold (max of ratio map)")
 
+parser.add_option('--std', action="store", dest="std_thresh", default=0.3, help="STD threshold for VF sign map")
+
+parser.add_option('--k1', action="store", dest="k1", default=5, help="kernel size for first opening")
+parser.add_option('--k2', action="store", dest="k2", default=5, help="kernel size for morphol. steps")
+
+
 (options, args) = parser.parse_args()
+
+k1 = int(options.k1)
+k2 = int(options.k2)
 
 use_avg = options.use_avg
 use_left = options.use_left
@@ -559,10 +568,13 @@ rightmap = D[AZ['Right']]['ft']
 topmap = D[EL['Top']]['ft']
 bottommap = D[EL['Bottom']]['ft']
 
-ratio_left = D[AZ['Left']]['ratio_map']
-ratio_right = D[AZ['Right']]['ratio_map']
-ratio_top = D[EL['Top']]['ratio_map']
-ratio_bottom = D[EL['Bottom']]['ratio_map']
+if threshold_type=='ratio':
+    ratio_left = D[AZ['Left']]['ratio_map']
+    ratio_right = D[AZ['Right']]['ratio_map']
+    ratio_top = D[EL['Top']]['ratio_map']
+    ratio_bottom = D[EL['Bottom']]['ratio_map']
+# else:
+
 
 
 # Quick checkout:
@@ -673,29 +685,30 @@ plt.axis('off')
 
 # ratio of stimulation freq vs. all other:
 # threshold = 0.2
-az_ratio_map = (ratio_left + ratio_right) / 2.
-plt.subplot(2,2,2)
-plt.axis('off')
-ax = plt.gca()
-im = ax.imshow(az_ratio_map, cmap='hot')
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-plt.colorbar(im, cax=cax)
+if threshold_type=='ratio':
+    az_ratio_map = (ratio_left + ratio_right) / 2.
+    plt.subplot(2,2,2)
+    plt.axis('off')
+    ax = plt.gca()
+    im = ax.imshow(az_ratio_map, cmap='hot')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
 
-# mask phase with ratio:
-az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold)
-plt.subplot(2,2,3)
-plt.title('Threshold: %s of ratio max' % str(threshold))
-plt.imshow(surface, cmap='gray')
-plt.imshow(az_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
+    # mask phase with ratio:
+    az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold)
+    plt.subplot(2,2,3)
+    plt.title('Threshold: %s of ratio max' % str(threshold))
+    plt.imshow(surface, cmap='gray')
+    plt.imshow(az_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
 
-# legend
-plt.subplot(2,2,4)
-plt.imshow(AZ_legend, cmap=colormap)
-plt.axis('off')
-plt.suptitle('AZ AVG')
-plt.show()
+    # legend
+    plt.subplot(2,2,4)
+    plt.imshow(AZ_legend, cmap=colormap)
+    plt.axis('off')
+    plt.suptitle('AZ AVG')
+    plt.show()
 
 
 # 2.  ELEVATION maps --------------------------------------
@@ -717,6 +730,7 @@ plt.show()
 
 # Do the thing to deal with averaging across -pi and pi:
 # Vmap[Vmap<0]=2*math.pi+Vmap[Vmap<0]
+
 top_phase[top_phase<0] += 2*math.pi
 bottom_phase[bottom_phase<0] += 2*math.pi
 EL_legend[EL_legend<0] += 2*math.pi
@@ -745,37 +759,45 @@ plt.axis('off')
 
 # ratio of stimulation freq vs. all other:
 # threshold = 0.2
-el_ratio_map = (ratio_top + ratio_bottom) / 2.
-plt.subplot(2,2,2)
-plt.axis('off')
-ax = plt.gca()
-im = ax.imshow(el_ratio_map, cmap='hot')
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-plt.colorbar(im, cax=cax)
+if threshold_type=='ratio':
+    el_ratio_map = (ratio_top + ratio_bottom) / 2.
+    plt.subplot(2,2,2)
+    plt.axis('off')
+    ax = plt.gca()
+    im = ax.imshow(el_ratio_map, cmap='hot')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
 
-# mask phase with ratio:
-el_phase_mask = get_ratio_mask(el_avg, el_ratio_map, threshold)
+    # mask phase with ratio:
+    el_phase_mask = get_ratio_mask(el_avg, el_ratio_map, threshold)
 
-plt.subplot(2,2,3)
-plt.title('Threshold: %s of ratio max' % str(threshold))
-plt.imshow(surface, cmap='gray')
-plt.imshow(el_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
+    plt.subplot(2,2,3)
+    plt.title('Threshold: %s of ratio max' % str(threshold))
+    plt.imshow(surface, cmap='gray')
+    plt.imshow(el_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
 
-# legend
-plt.subplot(2,2,4)
-plt.imshow(EL_legend, cmap=colormap)
-plt.axis('off')
-plt.suptitle('EL AVG')
-plt.show()
+    # legend
+    plt.subplot(2,2,4)
+    plt.imshow(EL_legend, cmap=colormap)
+    plt.axis('off')
+    plt.suptitle('EL AVG')
+    plt.show()
 
 # -------------------------------------------------------
 # Calculate gradients, make field sign map.
 # -------------------------------------------------------
 
+# az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold) # reduce thresh to 0.10
+# el_phase_mask = get_ratio_mask(el_avg, el_ratio_map, threshold) # thres 0.15 good
+
+
 if use_avg is True:
     if use_mask is True:
+        az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold) # reduce thresh to 0.10
+        el_phase_mask = get_ratio_mask(el_avg, el_ratio_map, threshold) # thres 0.15 good
+
         Hmap = el_phase_mask
         Vmap = az_phase_mask
     else:
@@ -797,11 +819,14 @@ else:
             Hmap = top_phase
             Vmap = right_phase
 
-smooth = True
-sigma_val = (3, 3)
+
+
+# smooth = True
+# sigma_val = (2, 2)
 if smooth is True:
     Hmap = ndimage.gaussian_filter(Hmap, sigma=sigma_val, order=0)
     Vmap = ndimage.gaussian_filter(Vmap, sigma=sigma_val, order=0)
+
 
 [Hgy,Hgx]=np.array(gradient_phase(Hmap))
 
@@ -826,24 +851,24 @@ S=np.sign(O)
 
 # PLOT:
 # -----------------------------------------------------
-plt.subplot(131)
-plt.imshow(Hgdir,cmap='jet');
-# plt.colorbar();
-plt.axis('off')
-plt.title('Hgdir')
+# plt.subplot(131)
+# plt.imshow(Hgdir,cmap='jet');
+# # plt.colorbar();
+# plt.axis('off')
+# plt.title('Hgdir')
 
-plt.subplot(132)
-plt.imshow(Vgdir,cmap='jet');
-# plt.colorbar();
-plt.axis('off')
-plt.title('Vgdir')
+# plt.subplot(132)
+# plt.imshow(Vgdir,cmap='jet');
+# # plt.colorbar();
+# plt.axis('off')
+# plt.title('Vgdir')
 
 
-plt.subplot(133)
-plt.imshow(S,cmap='jet');
-plt.axis('off')
-plt.title('sign')
-# plt.colorbar()
+# plt.subplot(133)
+# plt.imshow(S,cmap='jet');
+# plt.axis('off')
+# plt.title('sign')
+# # plt.colorbar()
 
 
 
@@ -854,143 +879,388 @@ plt.title('sign')
 O_sigma=np.nanstd(O)
 
 S_thresh=np.zeros(np.shape(O))
-std_thresh = .5
+std_thresh = float(options.std_thresh) #.2
 S_thresh[O>(O_sigma*std_thresh)]=1
 S_thresh[O<(-1*O_sigma*std_thresh)]=-1
 
 plt.figure()
+plt.subplot(1,3,1)
 plt.imshow(surface, cmap='gray')
 plt.imshow(S_thresh,cmap='bwr', alpha=0.5);
 plt.axis('off')
-plt.colorbar();
-
-plt.show()
-
-
-# ----------------------------------------------------------------------------------------
-# IMAGE DILATION and etc.....
-# ----------------------------------------------------------------------------------------
-from scipy import ndimage
-# im2 = ndimage.grey_dilation(S_thresh)
-
-import cv2
-kernel = np.ones((2,2),np.uint8)
-
-opening = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
-
-closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-opening2 = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
-
-dilation = cv2.dilate(opening2,kernel,iterations = 1)
-
-
-plt.imshow(dilation,cmap='bwr', alpha=0.3);
-plt.axis('off')
-plt.colorbar();
-
-plt.show()
-
-
-# ANOTHER ATTEMPT:
-# ----------------------------------------------------------------------------------------
-from skimage.morphology import erosion, dilation, opening, closing, white_tophat
-from skimage.morphology import black_tophat, skeletonize, convex_hull_image
-
-from skimage.morphology import disk
-
-selem = disk(2)
-
-plt.figure(figsize=(20,10))
-
-# OPEN:
-plt.subplot(1,4,1)
-opened = opening(S_thresh, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(opened,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('opening')
-
-# CLOSE:
-plt.subplot(1,4,2)
-# closed = closing(opened, selem)
-closed = closing(opened, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(closed,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('closing')
-
-# OPEN2:
-plt.subplot(1,4,3)
-opened2 = closing(closed, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(opened2,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('re-opening')
-
-# DILATE:
-plt.subplot(1,4,4)
-dilated = dilation(opened2, selem)
-skel = skeletonize(abs(dilated))
-plt.imshow(surface, cmap='gray')
-plt.imshow(dilated,cmap='bwr', alpha=0.5);
-plt.imshow(skel,cmap='gray', alpha=0.5);
-plt.axis('off')
-plt.title('dilated')
 # plt.colorbar();
 
+# plt.show()
+
+# -------------------------------------------------------
+# MORPHOLOGY STEPS to get borders.
+# -------------------------------------------------------
+
+# Processing steps of Criterion 2 (S-thersh) split patches 
+# that are identified as being multiple areas...
+# Low threshold tends to let through background noise.
+
+# 1.  Doing a simple "opening" eliminates much of this (supposedly):
+# Opening is basically erosion + dilation. Good for getting rid of noise.
+# This sometimes misses borders.. (Criterion 2) -- see STEP 3. 
+
+import cv2
+
+first_kernel_sz = k1 #options.k1 #10 #10
+kernel = np.ones((first_kernel_sz,first_kernel_sz))
+
+first_open = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
+plt.subplot(1,3,2)
+plt.title('S_thresh, std: %s' % str(std_thresh))
+plt.imshow(S_thresh, cmap='bwr')
+plt.axis('off')
+
+plt.subplot(1,3,3)
+plt.title('first open, kernel %s' % first_kernel_sz)
+plt.imshow(first_open, cmap='bwr')
+plt.axis('off')
+
+
+
+# 2.  Additional morphology steps:
+# -------------------------------------------------------
+# These steps are to connect all regions that should be connected.
+# This can fail, see STEP 3.
+
+plt.figure()
+
+plt.subplot(1,5,1)
+plt.title('S_thresh, std: %s' % str(std_thresh))
+# plt.imshow(surface, cmap='gray')
+plt.imshow(S_thresh, cmap='bwr')
+plt.axis('off')
+
+plt.subplot(1,5,2)
+plt.title('first open, kernel %s' % first_kernel_sz)
+plt.imshow(first_open, cmap='bwr')
+plt.axis('off')
+
+# a.  Closing on abs(S-thresh)
+# Closing is dilation, then erosion. Good for closing small holes
+close_kernel = k2 #10
+kernel = np.ones((close_kernel,close_kernel))
+
+# This must be wrong -- abs() gets rid of all borders...
+# closing = cv2.morphologyEx(abs(S_thresh), cv2.MORPH_CLOSE, kernel)
+closing = cv2.morphologyEx(first_open, cv2.MORPH_CLOSE, kernel)
+
+plt.subplot(1,5,3)
+plt.imshow(closing, cmap='bwr')
+plt.axis('off')
+plt.title('closing, kernel %i' % close_kernel)
+
+
+open_kernel = 10
+kernel = np.ones((close_kernel,close_kernel))
+opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
+plt.subplot(1,5,4)
+plt.imshow(opening, cmap='bwr')
+plt.axis('off')
+plt.title('opening, k %i' % open_kernel)
+
+
+niter = 1
+dilate_kernel = 5
+kernel = np.ones((dilate_kernel,dilate_kernel))
+dilation = cv2.dilate(opening, kernel, iterations = niter)
+plt.subplot(1,5,5)
+plt.imshow(dilation, cmap='bwr')
+plt.axis('off')
+plt.title('dilation, k: %i' % dilate_kernel)
+
 plt.show()
 
 
+# --------------------------------------------------------------
+# Next, recompute areal borders using morphological “thinning,” 
+# iterating to infinity. Do this until boundaries between areas
+# is 1 pixel wide...
+# --------------------------------------------------------------
+
+# get canny edges
+
+cn_min = 0
+cn_max = 1
+dilationU8 = np.uint8(dilation)
+canny_edges = cv2.Canny(dilationU8, cn_min, cn_max)
+plt.subplot(1,2,1)
+plt.imshow(canny_edges, cmap='gray_r')
+plt.axis('off')
+plt.imshow(dilation, cmap='bwr', alpha=0.5)
+plt.axis('off')
+
+
+# DILATE to fill? # This is obviously wrong, 
+# but not sure best way to do "thinning"...
+# --------------------------------------------------------------
+canny_edge_kernel = np.ones((3,3))
+canny_close_kernel = np.ones((3,3))
+canny_dilate = cv2.dilate(canny_edges, canny_edge_kernel, iterations = niter)
+canny_closed = cv2.morphologyEx(canny_dilate, cv2.MORPH_CLOSE, canny_close_kernel)
+plt.imshow(canny_closed)
+
+# h, w = canny_edges.shape[:2]
+# contours0, hierarchy = cv2.findContours( canny_edges.copy(), cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_SIMPLE)
+
+# contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
+# vis = np.zeros((h, w, 3), np.uint8)
+# cv2.drawContours(vis,contours,0,255,-1)
+# vis = cv2.bitwise_not(vis)
+
+# plt.subplot(1,2,2)
+# plt.imshow(vis)
+# plt.axis('off')
+
+# -----------------------------------------------------------
+# SUMMARY:
+# -----------------------------------------------------------
+plt.figure()
+
+plt.subplot(2,3,1)
+plt.title('Horizontal')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(Hmap, alpha=0.8, vmin=vmin_val, vmax=vmax_val)
+plt.axis('off')
+
+
+plt.subplot(2,3,2)
+plt.title('Vertical')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(Vmap, alpha=0.8, vmin=vmin_val, vmax=vmax_val)
+plt.axis('off')
+
+plt.subplot(2,3,3)
+plt.title('VF Sign Map')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(O, alpha=0.8)
+plt.axis('off')
+
+plt.subplot(2,3,6)
+plt.title('VF Patches (post)')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(dilation, cmap='bwr', alpha=0.8)
+plt.axis('off')
+
+
+plt.subplot(2,3,4)
+plt.imshow(EL_legend, vmin=vmin_val, vmax=vmax_val)
+plt.axis('off')
+
+plt.subplot(2,3,5)
+plt.imshow(AZ_legend, vmin=vmin_val, vmax=vmax_val)
+plt.axis('off')
+
+im_info = 'std: %s, k1: %i, k2: %i' % (str(std_thresh), first_kernel_sz, close_kernel)
+title = [experiment, date, im_info]
+plt.suptitle(title)
 
 
 
-# --------------------------------------------------------------------------------------
-# GET JUST THE PHASE MAP FOR COREG:
-# --------------------------------------------------------------------------------------
-# This format saves png/fig without any borders:
-# Need this type of data-only image for COREG, for example.
+# Contours.
+# -------------------------------------------------------
+# Compare to Garrett et al., 2014 FIG.1
+# -------------------------------------------------------
 
-if get_clean is True:
+plt.figure()
 
-    # SURFACE 
-    # --------------------------------------------------------------------------------------
-    fig = plt.imshow(surface, cmap='gray')
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+boost_vmin_val = 2
+boost_vmax_val = 5
 
-    imname = 'avg_phase_AZ_HSV_SURFACE'
+plt.subplot(2,3,1)
+plt.title('Horizontal')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(Hmap, vmin=boost_vmin_val, vmax=boost_vmax_val, alpha=0.8)
+plt.axis('off')
 
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+plt.subplot(2,3,2)
+plt.title('Vertical')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(Vmap, vmin=boost_vmin_val, vmax=boost_vmax_val, alpha=0.8)
+plt.axis('off')
 
-    plt.show()
+plt.subplot(2,3,3)
+plt.title('VF Sign Map')
+plt.imshow(surface, cmap='gray')
+plt.axis('off')
+plt.imshow(O, alpha=0.8)
+plt.axis('off')
 
-    # AZ average 
-    # --------------------------------------------------------------------------------------
-    fig = plt.imshow(az_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+plt.subplot(2,3,6)
+plt.title('VF Patches (Sthresh)')
+# plt.imshow(S_thresh, cmap='bwr')
+plt.imshow(S_thresh, cmap='bwr')
+# plt.imshow(dilation, cmap='bwr')
+plt.axis('off')
 
-    imname = 'avg_phase_AZ_HSV_PHASE'
+# Contours over found-boundaries:
 
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+# canny_dilate[canny_dilate==0] = np.nan
+# canny_dilate = np.ma.array(canny_dilate)
 
-    plt.show()
+levels = np.arange(boost_vmin_val, boost_vmax_val, .2)  # Boost the upper limit to avoid truncation errors.
+# levels = np.arange(vmin_val, vmax_val, .2)  # Boost the upper limit to avoid truncation errors.
 
-    # EL average 
-    # --------------------------------------------------------------------------------------
+plt.subplot(2,3,4)
+plt.title('AZ contours')
+# plt.imshow(borders)...
+# plt.imshow(surface, cmap='gray', alpha=0.2)
+plt.contour(Vmap, levels, origin='lower', linewidths=2, alpha=0.8)
+plt.axis('off')
+plt.imshow(canny_closed, cmap='gray_r')
+plt.axis('off')
 
-    fig = plt.imshow(el_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+plt.subplot(2,3,5)
+plt.title('EL contours')
+# plt.imshow(borders)...
+# plt.imshow(surface, cmap='gray', alpha=0.2)
+plt.imshow(canny_closed, cmap='gray_r')
+plt.contour(Hmap, levels, origin='lower', linewidths=2, alpha=0.8)
+plt.axis('off')
 
-    imname = 'avg_phase_EL_HSV_PHASE'
 
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+im_info = 'phase thresh: %s, std: %s, k1: %i, k2: %i' % (str(threshold), str(std_thresh), first_kernel_sz, close_kernel)
+title = [experiment, date, im_info]
 
-    plt.show()
+plt.suptitle(title)
+
+plt.show()
+
+
+# # ----------------------------------------------------------------------------------------
+# # IMAGE DILATION and etc.....
+# # ----------------------------------------------------------------------------------------
+# from scipy import ndimage
+# # im2 = ndimage.grey_dilation(S_thresh)
+
+# import cv2
+# kernel = np.ones((2,2),np.uint8)
+
+# opening = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
+
+# closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
+# opening2 = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
+
+# dilation = cv2.dilate(opening2,kernel,iterations = 1)
+
+
+# plt.imshow(dilation,cmap='bwr', alpha=0.3);
+# plt.axis('off')
+# plt.colorbar();
+
+# plt.show()
+
+
+# # ANOTHER ATTEMPT:
+# # ----------------------------------------------------------------------------------------
+# from skimage.morphology import erosion, dilation, opening, closing, white_tophat
+# from skimage.morphology import black_tophat, skeletonize, convex_hull_image
+
+# from skimage.morphology import disk
+
+# selem = disk(2)
+
+# plt.figure(figsize=(20,10))
+
+# # OPEN:
+# plt.subplot(1,4,1)
+# opened = opening(abs(S_thresh), selem)
+# plt.imshow(surface, cmap='gray')
+# plt.imshow(opened,cmap='bwr', alpha=0.5);
+# plt.axis('off')
+# plt.title('opening')
+
+# # CLOSE:
+# plt.subplot(1,4,2)
+# # closed = closing(opened, selem)
+# closed = closing(opened, selem)
+# plt.imshow(surface, cmap='gray')
+# plt.imshow(closed,cmap='bwr', alpha=0.5);
+# plt.axis('off')
+# plt.title('closing')
+
+# # OPEN2:
+# plt.subplot(1,4,3)
+# opened2 = closing(closed, selem)
+# plt.imshow(surface, cmap='gray')
+# plt.imshow(opened2,cmap='bwr', alpha=0.5);
+# plt.axis('off')
+# plt.title('re-opening')
+
+# # DILATE:
+# plt.subplot(1,4,4)
+# dilated = dilation(opened2, selem)
+# skel = skeletonize(abs(dilated))
+# plt.imshow(surface, cmap='gray')
+# plt.imshow(dilated,cmap='bwr', alpha=0.5);
+# plt.imshow(skel,cmap='gray', alpha=0.5);
+# plt.axis('off')
+# plt.title('dilated')
+# # plt.colorbar();
+
+# plt.show()
+
+
+
+
+
+# # --------------------------------------------------------------------------------------
+# # GET JUST THE PHASE MAP FOR COREG:
+# # --------------------------------------------------------------------------------------
+# # This format saves png/fig without any borders:
+# # Need this type of data-only image for COREG, for example.
+
+# if get_clean is True:
+
+#     # SURFACE 
+#     # --------------------------------------------------------------------------------------
+#     fig = plt.imshow(surface, cmap='gray')
+#     plt.axis('off')
+#     fig.axes.get_xaxis().set_visible(False)
+#     fig.axes.get_yaxis().set_visible(False)
+
+#     imname = 'avg_phase_AZ_HSV_SURFACE'
+
+#     impath = os.path.join(figdir, imname+'.png')
+#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+#     plt.show()
+
+#     # AZ average 
+#     # --------------------------------------------------------------------------------------
+#     fig = plt.imshow(az_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+#     plt.axis('off')
+#     fig.axes.get_xaxis().set_visible(False)
+#     fig.axes.get_yaxis().set_visible(False)
+
+#     imname = 'avg_phase_AZ_HSV_PHASE'
+
+#     impath = os.path.join(figdir, imname+'.png')
+#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+#     plt.show()
+
+#     # EL average 
+#     # --------------------------------------------------------------------------------------
+
+#     fig = plt.imshow(el_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+#     plt.axis('off')
+#     fig.axes.get_xaxis().set_visible(False)
+#     fig.axes.get_yaxis().set_visible(False)
+
+#     imname = 'avg_phase_EL_HSV_PHASE'
+
+#     impath = os.path.join(figdir, imname+'.png')
+#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+#     plt.show()
