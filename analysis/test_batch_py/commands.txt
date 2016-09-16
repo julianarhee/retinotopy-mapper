@@ -1,0 +1,4 @@
+--path='/nas/volume1/widefield/data/JR016W/20160810/JR016W_bar_013Hz/Left_run1' --reduce=1 --freq=0.13 --format='tif' --append='rolling' --rolling --interpolate >/dev/null &
+--path='/nas/volume1/widefield/data/JR016W/20160810/JR016W_bar_013Hz/Right_run1' --reduce=1 --freq=0.13 --format='tif' --append='rolling' --rolling --interpolate >/dev/null &
+--path='/nas/volume1/widefield/data/JR016W/20160810/JR016W_bar_013Hz/Top_run1' --reduce=1 --freq=0.13 --format='tif' --append='rolling' --rolling --interpolate >/dev/null &
+--path='/nas/volume1/widefield/data/JR016W/20160810/JR016W_bar_013Hz/Bottom_run1' --reduce=1 --freq=0.13 --format='tif' --append='rolling' --rolling --interpolate >/dev/null &
