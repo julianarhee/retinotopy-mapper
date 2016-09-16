@@ -14,6 +14,8 @@ import itertools
 from scipy import ndimage
 import pandas as pd
 from scipy import ndimage
+import datetime
+import time
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
@@ -73,21 +75,29 @@ parser.add_option('--CW', action="store_true", dest="CW",
                   default=False, help="circle stim ONLY: CW or not?")
 parser.add_option('--average', action="store_true", dest="get_average_cycle",
                   default=False, help="average cycles or no?")
-parser.add_option('--detrend', action="store_true", dest="detrend",
+parser.add_option('--detrend-first', action="store_true", dest="detrend_first",
                   default=False, help="detrend first, then mean subtract?")
 parser.add_option('--smooth', action="store_true", dest="smooth", default=False, help="smooth? (default sig = 2)")
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 parser.add_option('--sum', action="store_true", dest="use_sum", default=False, help="if reduce, sum (otherwise func is np.mean)")
 parser.add_option('--global', action="store_true", dest="mean_subtract_global", default=False, help="subtract mean of each frame or subtract global mean")
-parser.add_option('--nomean', action="store_false", dest="mean_subtract", default=True, help="subtract mean at all or no")
+#parser.add_option('--nomean', action="store_false", dest="mean_subtract", default=True, help="subtract mean at all or no")
+
+parser.add_option('--rolling', action='store_true', default=False, help="Rolling average [window size is 2 cycles] or detrend.")
+parser.add_option('--meansub', action='store_true', default=False, help="Remove mean of each frame.")
+parser.add_option('--interpolate', action='store_true', default=False, help='Interpolate frames or no.')
 
 (options, args) = parser.parse_args()
 
 imdir = sys.argv[1]
 
-mean_subtract = options.mean_subtract
+#mean_subtract = options.mean_subtract
 mean_subtract_global = options.mean_subtract_global
 use_sum = options.use_sum
+
+rolling = options.rolling
+interpolate = options.interpolate
+meansub = options.meansub
 
 smooth = options.smooth
 sigma_val_num = options.sigma_val
@@ -98,7 +108,7 @@ sigma_val = (int(sigma_val_num), int(sigma_val_num))
 # if not os.path.exists(processed_dir):
 #     os.makedirs(processed_dir)
 
-detrend = options.detrend
+detrend_first = options.detrend_first
 circle = options.circle
 CW = options.CW
 get_average_cycle = options.get_average_cycle
@@ -134,8 +144,8 @@ if get_average_cycle:
     movie_type = 'avgcycle'
 else:
     movie_type = 'all'
-if detrend is True:
-    detrend_flag = '_detrend'
+if detrend_first is True:
+    detrend_flag = '_detrendfirst'
 else:
     detrend_flag = ''
 
@@ -149,10 +159,10 @@ if mean_subtract_global is True:
 else:
     mean_flag = ''
 
-if mean_subtract is True:
-    mean_sub_flag = ''
+if meansub is True:
+    mean_sub_flag = '_meansub'
 else:
-    mean_sub_flag = '_nomeansub'
+    mean_sub_flag = ''
 processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag, mean_sub_flag, mean_flag))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
@@ -233,11 +243,33 @@ nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_
 
 
 
+# INTERPOLATE FRAMES:
+ncycles = len(find_cycs) + 1
+if interpolate is True:
+    print "Interpolating!"
+    N = int((ncycles / target_freq) * sampling_rate)
+else:
+    N = len(files)
+
+FORMAT = '%Y%m%d%H%M%S%f'
+datetimes = [f.split('_')[1] for f in files]
+tstamps = [float(datetime.datetime.strptime(t, FORMAT).strftime("%H%m%s%f")) for t in datetimes]
+actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
+tpoints = np.linspace(0, ncycles/target_freq, N)
+
+if interpolate is True:
+    moving_win_sz = len(tpoints)/ncycles * 2
+    freqs = fft.fftfreq(N, 1 / sampling_rate)
+else:
+    moving_win_sz = min(nframes_per_cycle)*2
+    freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate) # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120, but freq correct (looks for closest matching target_bin )
+
+
 # READ IN THE FRAMES:
 if reduceit:
     sample = block_reduce(sample, reduce_factor, func=np.mean)
 
-stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
+tmp_stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
 print len(files)
 
 print('copying files')
@@ -256,14 +288,14 @@ for i, f in enumerate(files):
 	else:
             im_reduced = block_reduce(im, reduce_factor, func=np.mean)
         # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
-        stack[:, :, i] = im_reduced
+        tmp_stack[:, :, i] = im_reduced
     else:
-        stack[:, :, i] = im
+        tmp_stack[:, :, i] = im
 
     if smooth is True:
-        stack[:,:,i] = ndimage.gaussian_filter(stack[:,:,i], sigma=sigma_val, order=0)
+        tmp_stack[:,:,i] = ndimage.gaussian_filter(tmp_stack[:,:,i], sigma=sigma_val, order=0)
 
-average_stack = np.mean(stack, axis=2)
+average_stack = np.mean(tmp_stack, axis=2)
 
 
 # print "detrending..."
@@ -276,32 +308,53 @@ average_stack = np.mean(stack, axis=2)
 
 #         stack[x, y, :] = pix
 
-if detrend is True:
+if detrend_first is True:
     print "FIRST DETRENDING..."
     for x in range(sample.shape[0]):
         for y in range(sample.shape[1]):
-            pix = scipy.signal.detrend(stack[x, y, :], type='constant')
-	    stack[x, y, :] = pix
+            pix = scipy.signal.detrend(tmp_stack[x, y, :], type='constant')
+            tmp_stack[x, y, :] = pix
 
-if mean_subtract is True:
+if meansub is True:
     print "mean subtracting..."
     if mean_subtract_global is True:
         for i in range(stack.shape[2]):
-            stack[:,:,i] -= average_stack
+            tmp_stack[:,:,i] -= average_stack
     else:
         for i in range(stack.shape[2]):
-            stack[:,:,i] -= np.mean(stack[:,:,i].ravel()) 
+            tmp_stack[:,:,i] -= np.mean(tmp_stack[:,:,i].ravel()) 
+else:
+    print "Not doing a mean subtraction from each frame.  Select option --meansub if this is incorrect."
 
-if detrend is False:
-    print "detrending..."
 
-    for x in range(sample.shape[0]):
-        for y in range(sample.shape[1]):
+# if detrend is False:
+#     print "detrending..."
+stack = np.empty((sample.shape[0], sample.shape[1], N))
+for x in range(sample.shape[0]):
+    for y in range(sample.shape[1]):
 
-            # THIS IS BASICALLY MOVING AVG WINDOW...
-	    pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        if interpolate is True:
+            pix = np.interp(tpoints, actual_tpoints, tmp_stack[x, y, :])
 
-            stack[x, y, :] = pix
+        # # THIS IS BASICALLY MOVING AVG WINDOW...
+        # pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+
+        # THIS IS BASICALLY MOVING AVG WINDOW...
+        # curr_pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+        if rolling is True:
+            pix_padded = [np.ones(moving_win_sz)*pix[0], pix, np.ones(moving_win_sz)*pix[-1]]
+            tmp_pix = list(itertools.chain(*pix_padded))
+            tmp_pix_rolling = np.convolve(tmp_pix, np.ones(moving_win_sz)/moving_win_sz, 'same')
+            remove_pad = (len(tmp_pix_rolling) - len(pix) ) / 2
+            rpix = np.array(tmp_pix_rolling[remove_pad:-1*remove_pad])
+            pix -= rpix
+ 
+        else:
+            if detrend_first is False: # make sure don't do twice:
+                print "Now detrending (constant), no rolling avg."
+                pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
+
+        stack[x, y, :] = pix
 
 
 print "rescaling to 0-255..."
@@ -349,7 +402,7 @@ if get_average_cycle:
     print "averaging cycles..."
 
     idxs = strt_idxs[0:20]
-    min_nframes = min(nframes_per_cycle)
+    min_nframes = int(len(tpoints)/ncycles) #min(nframes_per_cycle)
     blocks = []
     for i, s in enumerate(idxs):
 
