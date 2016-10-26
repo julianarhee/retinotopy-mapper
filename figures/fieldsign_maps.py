@@ -822,7 +822,7 @@ else:
 
 
 # smooth = True
-# sigma_val = (2, 2)
+sigma_val = (3, 3)
 if smooth is True:
     Hmap = ndimage.gaussian_filter(Hmap, sigma=sigma_val, order=0)
     Vmap = ndimage.gaussian_filter(Vmap, sigma=sigma_val, order=0)
@@ -879,7 +879,7 @@ S=np.sign(O)
 O_sigma=np.nanstd(O)
 
 S_thresh=np.zeros(np.shape(O))
-std_thresh = float(options.std_thresh) #.2
+std_thresh = .3 #float(options.std_thresh) #.2
 S_thresh[O>(O_sigma*std_thresh)]=1
 S_thresh[O<(-1*O_sigma*std_thresh)]=-1
 
@@ -906,7 +906,7 @@ plt.axis('off')
 
 import cv2
 
-first_kernel_sz = k1 #options.k1 #10 #10
+first_kernel_sz = 5 #k1 #options.k1 #10 #10
 kernel = np.ones((first_kernel_sz,first_kernel_sz))
 
 first_open = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
@@ -942,7 +942,7 @@ plt.axis('off')
 
 # a.  Closing on abs(S-thresh)
 # Closing is dilation, then erosion. Good for closing small holes
-close_kernel = k2 #10
+close_kernel = 10 #k2 #10
 kernel = np.ones((close_kernel,close_kernel))
 
 # This must be wrong -- abs() gets rid of all borders...
