@@ -270,6 +270,7 @@ parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="1", help="block_reduce value")
 parser.add_option('--path', action="store", dest="path", default="", help="path to data directory")
+parser.add_option('--surface', action="store", dest="surface_path", default="", help="path to surface image")
 
 # -- specific condition options --
 parser.add_option('-r', '--run', action="store", dest="run", default=1, help="cutoff threshold value")
@@ -338,6 +339,8 @@ colormap = options.cmap
 
 threshold_type = options.mask_type #'blank'
 threshold = float(options.threshold)
+
+surface_path = options.surface_path
 outdir = options.path
 run_num = options.run
 
@@ -358,38 +361,44 @@ experiment = os.path.split(os.path.split(outdir)[0])[1]
 # Get blood vessel image:
 # --------------------------------------------------------------------
 
-folders = os.listdir(sessiondir)
-figpath = [f for f in folders if f == 'surface']
-if not figpath:
-    figpath = [f for f in folders if f == 'figures']
+if surface_path:
+    tiff = TIFF.open(surface_path, mode='r')
+    surface = tiff.read_image().astype('float')
+    tiff.close()
 
-print "path to surface: ", figpath
+else:
+    folders = os.listdir(sessiondir)
+    figpath = [f for f in folders if f == 'surface']
+    if not figpath:
+        figpath = [f for f in folders if f == 'figures']
 
-if figpath:
-    # figdir = figpath[0]
-    figpath=figpath[0]
-    tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
-    surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
-    ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
-    ims = [i for i in ims if '_' in i]
-    print ims
-    if ims:
-        impath = os.path.join(sessiondir, figpath, ims[0])
-        print os.path.splitext(impath)[1]
-        if os.path.splitext(impath)[1] == '.tif':
-            tiff = TIFF.open(impath, mode='r')
-            surface = tiff.read_image().astype('float')
-            tiff.close()
-            #plt.imshow(surface)
+    print "path to surface: ", figpath
+
+    if figpath:
+        # figdir = figpath[0]
+        figpath=figpath[0]
+        tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
+        surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
+        ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
+        ims = [i for i in ims if '_' in i]
+        print ims
+        if ims:
+            impath = os.path.join(sessiondir, figpath, ims[0])
+            print os.path.splitext(impath)[1]
+            if os.path.splitext(impath)[1] == '.tif':
+                tiff = TIFF.open(impath, mode='r')
+                surface = tiff.read_image().astype('float')
+                tiff.close()
+                #plt.imshow(surface)
+            else:
+                image = Image.open(impath) #.convert('L')
+                surface = np.asarray(image)
         else:
-            image = Image.open(impath) #.convert('L')
-            surface = np.asarray(image)
-    else:
-        surface = np.zeros([200,300])
+            surface = np.zeros([200,300])
 
-else: # NO BLOOD VESSEL IMAGE...
-    surface = np.zeros([200,300])
-    print "No blood vessel image found. Using empty."
+    else: # NO BLOOD VESSEL IMAGE...
+        surface = np.zeros([200,300])
+        print "No blood vessel image found. Using empty."
 
 if reduceit:
     surface = block_reduce(surface, reduce_factor, func=np.mean)
