@@ -302,7 +302,7 @@ while True:
         bar_color = -1 #1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
     else:
         bar_color = 1
-    bar_width = 8 #8 #2 # bar width in degrees 
+    bar_width = 1 #8 #2 # bar width in degrees 
 
     # SCREEN PARAMS:
     screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -343,8 +343,8 @@ while True:
     last_t = None
 
     report_period = 60 # frames
-    frame_rate = 60.000
-    refresh_rate = 60.000
+    frame_rate = 60.000 #60.000
+    refresh_rate = 60.000 #60.000
 
     if acquire_images:
         # Start acquiring
@@ -450,7 +450,7 @@ while True:
     else:
 
         bartex = np.ones([256,256,3])*bar_color;
-        bartex[:,:,0] = 0. # turn OFF red channel
+        #bartex[:,:,0] = 0. # turn OFF red channel
         barStim = visual.PatchStim(win=win,tex=bartex,mask='none',units='deg',pos=center_point,size=stim_size,ori=angle)
         barStim.setAutoDraw(False)
 

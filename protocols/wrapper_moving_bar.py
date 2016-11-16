@@ -9,9 +9,7 @@ import time
 # runEnd=2;
 #outPath='./outputFiles/'
 # outPath='/media/labuser/IMDATA1/widefield/JR015W/20160803'
-outPath='/media/labuser/dixie_widefield/data/JR016W/20160815'
-
-
+outPath='/media/labuser/dixie/volume1/widefield/data/JR027W/20161115'
 # outPath='/home/labuser/Desktop/test'
 
 # os.system("python getSurface.py \
@@ -19,10 +17,23 @@ outPath='/media/labuser/dixie_widefield/data/JR016W/20160815'
 #    --output-path "+outPath)
 #for run in range(runStart,runEnd+1):
 
-os.system("python moving_bar.py \
+# os.system("python moving_bar.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --output-path="+outPath)
+
+# os.system("python moving_bar_flash.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --flash\
+#     --output-path="+outPath)
+
+
+os.system("python moving_bar_flash.py \
     --save-images \
     --monitor='AQUOS' \
     --output-path="+outPath)
+
 
 # os.system("python stimCircle.py \
 #     --save-images \

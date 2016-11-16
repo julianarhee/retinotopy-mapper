@@ -9,7 +9,7 @@ import time
 # runEnd=2;
 #outPath='./outputFiles/'
 # outPath='/media/labuser/IMDATA1/widefield/JR015W/20160803'
-outPath='/media/labuser/dixie_widefield/data/JR016W/20160815'
+outPath='/media/labuser/dixie_widefield/data/JR017W/20160817'
 
 # outPath='/home/labuser/Desktop/test'
 
@@ -23,16 +23,16 @@ outPath='/media/labuser/dixie_widefield/data/JR016W/20160815'
 #     --monitor='AQUOS' \
 #     --output-path="+outPath)
 
-# os.system("python gabor_circle.py \
-#     --save-images \
-#     --monitor='AQUOS' \
-#     --use-images\
-#     --output-path="+outPath)
-
 os.system("python gabor_circle.py \
+    --save-images \
     --monitor='AQUOS' \
-    --save-images\
+    --use-images\
     --output-path="+outPath)
+
+# os.system("python gabor_circle.py \
+#     --monitor='AQUOS' \
+#     --save-images\
+#     --output-path="+outPath)
 
 
 
