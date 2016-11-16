@@ -6,7 +6,8 @@
 import numpy as np
 import os
 from skimage.measure import block_reduce
-from scipy.misc import imread
+# from scipy.misc import imread
+from scipy.ndimage import imread
 import cPickle as pkl
 import scipy.signal
 import numpy.fft as fft
@@ -269,34 +270,46 @@ parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="1", help="block_reduce value")
 parser.add_option('--path', action="store", dest="path", default="", help="path to data directory")
-# parser.add_option('-t', '--thresh', action="store", dest="threshold", default=0.5, help="cutoff threshold value")
+parser.add_option('--surface', action="store", dest="surface_path", default="", help="path to surface image")
+
+# -- specific condition options --
 parser.add_option('-r', '--run', action="store", dest="run", default=1, help="cutoff threshold value")
 parser.add_option('--append', action="store", dest="append", default="", help="appended label for analysis structs")
-parser.add_option('--mask-type', action="store", dest="mask_type", type="choice", choices=['DC', 'blank', 'magmax', 'ratio'], default='DC', help="mag map to use for thresholding: DC | blank | magmax [default: DC]")
-parser.add_option('--cmap', action="store", dest="cmap", default='spectral', help="colormap for summary figures [default: spectral]")
+
+# -- visualization and smoothing for maps --
+parser.add_option('--cmap', action="store", dest="cmap", default='gist_rainbow', help="colormap for summary figures [default: gist_rainbow]")
 parser.add_option('--smooth', action="store_true", dest="smooth", default=False, help="smooth? (default sig = 2)")
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
+# -- opts for checking out phase and mag maps (useful for thresholding) --
 # parser.add_option('--contour', action="store_true", dest="contour", default=False, help="Show contour lines for phase map")
 # parser.add_option('--power', action='store_true', dest='use_power', default=False, help="Use power or just magnitude?")
 
+# -- whether use right or left just constrains whether signs should be flipped for Blue vs. Red in sign map --
 parser.add_option('--right', action='store_false', dest='use_left', default=True, help="Use left-bottom or right-top config?")
 parser.add_option('--noclean', action='store_false', dest='get_clean', default=True, help="Save borderless, clean maps for COREG")
 
+# -- phase map starting point options (threshold/mask or not, use average of two maps, etc.) --
 parser.add_option('--avg', action='store_true', dest='use_avg', default=False, help="Use averaged maps or single runs?")
 parser.add_option('--mask', action='store_true', dest='use_mask', default=False, help="Use masked phase maps")
-parser.add_option('--threshold', action="store", dest="threshold", default=0.2, help="Threshold (max of ratio map)")
+parser.add_option('--mask-type', action="store", dest="mask_type", type="choice", choices=['DC', 'blank', 'magmax', 'ratio'], default='DC', help="mag map to use for thresholding: DC | blank | magmax [default: DC]")
+parser.add_option('--threshold', action="store", dest="threshold", default=0.2, help="Threshold for valid phase results (max of ratio map)")
 
+# -- opts for tweaking how VF sign areas are smoothed/demarcated --
 parser.add_option('--std', action="store", dest="std_thresh", default=0.3, help="STD threshold for VF sign map")
 
 parser.add_option('--k1', action="store", dest="k1", default=5, help="kernel size for first opening")
 parser.add_option('--k2', action="store", dest="k2", default=5, help="kernel size for morphol. steps")
+parser.add_option('--kcanny', action="store", dest="k_canny", default=3, help="kernel size for dumb canny edge detection")
 
 
 (options, args) = parser.parse_args()
 
 k1 = int(options.k1)
 k2 = int(options.k2)
+k_canny = int(options.k_canny)
+
+std_thresh = float(options.std_thresh)
 
 use_avg = options.use_avg
 use_left = options.use_left
@@ -326,6 +339,8 @@ colormap = options.cmap
 
 threshold_type = options.mask_type #'blank'
 threshold = float(options.threshold)
+
+surface_path = options.surface_path
 outdir = options.path
 run_num = options.run
 
@@ -346,38 +361,44 @@ experiment = os.path.split(os.path.split(outdir)[0])[1]
 # Get blood vessel image:
 # --------------------------------------------------------------------
 
-folders = os.listdir(sessiondir)
-figpath = [f for f in folders if f == 'surface']
-if not figpath:
-    figpath = [f for f in folders if f == 'figures']
+if surface_path:
+    tiff = TIFF.open(surface_path, mode='r')
+    surface = tiff.read_image().astype('float')
+    tiff.close()
 
-print "path to surface: ", figpath
+else:
+    folders = os.listdir(sessiondir)
+    figpath = [f for f in folders if f == 'surface']
+    if not figpath:
+        figpath = [f for f in folders if f == 'figures']
 
-if figpath:
-    # figdir = figpath[0]
-    figpath=figpath[0]
-    tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
-    surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
-    ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
-    ims = [i for i in ims if '_' in i]
-    print ims
-    if ims:
-        impath = os.path.join(sessiondir, figpath, ims[0])
-        print os.path.splitext(impath)[1]
-        if os.path.splitext(impath)[1] == '.tif':
-            tiff = TIFF.open(impath, mode='r')
-            surface = tiff.read_image().astype('float')
-            tiff.close()
-            #plt.imshow(surface)
+    print "path to surface: ", figpath
+
+    if figpath:
+        # figdir = figpath[0]
+        figpath=figpath[0]
+        tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
+        surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
+        ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
+        ims = [i for i in ims if '_' in i]
+        print ims
+        if ims:
+            impath = os.path.join(sessiondir, figpath, ims[0])
+            print os.path.splitext(impath)[1]
+            if os.path.splitext(impath)[1] == '.tif':
+                tiff = TIFF.open(impath, mode='r')
+                surface = tiff.read_image().astype('float')
+                tiff.close()
+                #plt.imshow(surface)
+            else:
+                image = Image.open(impath) #.convert('L')
+                surface = np.asarray(image)
         else:
-            image = Image.open(impath) #.convert('L')
-            surface = np.asarray(image)
-    else:
-        surface = np.zeros([200,300])
+            surface = np.zeros([200,300])
 
-else: # NO BLOOD VESSEL IMAGE...
-    surface = np.zeros([200,300])
-    print "No blood vessel image found. Using empty."
+    else: # NO BLOOD VESSEL IMAGE...
+        surface = np.zeros([200,300])
+        print "No blood vessel image found. Using empty."
 
 if reduceit:
     surface = block_reduce(surface, reduce_factor, func=np.mean)
@@ -436,9 +457,14 @@ print "AZ keys: ", az_keys
 print "EL keys: ", el_keys
 
 
-
+# --------------------------------------------------------------------
 # --------------------------------------------------------------------
 # Make legends:
+# --------------------------------------------------------------------
+# TODO:  fix this -- this is super janky way of getting accurate legends
+# Physical screen mapping is dependent on the size of the monitor, and
+# where the stimulus begins/ends on the visible screen.
+# --------------------------------------------------------------------
 # --------------------------------------------------------------------
 
 use_corrected_screen = True
@@ -478,15 +504,13 @@ else:
     V_right_legend = imread(os.path.join(legend_dir, legend_name))
 
 # ----------------------------------------------------------------------------------------------
-# ----------------------------------------------------------------------------------------------
-# FIX THIS:
+# TODO ---- FIX THIS:
 # ----------------------------------------------------------------------------------------------
 # This adjustment needs to be fixed for cases of using the older Samsung monitor (smaller)
 # Also, any scripts in which horizontal condition started at the edge of the screen, rather than
 # being centered around the screen middle.
 
 ratio_factor = .5458049 # This is true / hardcoded only for AQUOS monitor.
-# ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------
 
 if use_corrected_screen is True:
@@ -525,6 +549,9 @@ else:
     H_bottom_legend = imread(os.path.join(legend_dir, legend_name))
 
 # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+
+
 
 
 # -------------------------------------------------------------------------
@@ -576,10 +603,11 @@ if threshold_type=='ratio':
 # else:
 
 
-
-# Quick checkout:
-colormap = 'gist_rainbow'
-
+# ----------------------- FIRST FIGURE -----------------------------------
+# -------------------------------------------------------------------------
+# Quick checkout of each condition:
+# -------------------------------------------------------------------------
+# colormap = 'gist_rainbow'
 plt.subplot(2,4,1)
 plt.title('left')
 plt.imshow(np.angle(leftmap), cmap=colormap)
@@ -621,8 +649,11 @@ plt.show()
 
 
 # -------------------------------------------------------
+# -------------------------------------------------------
 # Get phase maps, shift pi for averaging.  Then, AVERAGE.
 # -------------------------------------------------------
+# -------------------------------------------------------
+
 
 # 1.  AZIMUTH maps --------------------------------------
 # -------------------------------------------------------
@@ -673,8 +704,9 @@ vmax_val = 2*math.pi
 az_avg = (left_phase + right_phase) / 2.
 
 
-# QUICK PLOTS: --------------------------------------
-# ---------------------------------------------------------
+# ----------------------- SECOND FIGURE ----------------------------------
+# QUICK PLOTS: -----------------------------------------------------------
+# ------------------------------------------------------------------------
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -749,8 +781,9 @@ if smooth is True:
 el_avg = (bottom_phase + top_phase) / 2.
 
 
-# QUICK PLOTS: -------------------------------------------
-# --------------------------------------------------------
+# ----------------------- THIRD FIGURE ----------------------------------
+# QUICK PLOTS: ----------------------------------------------------------
+# -----------------------------------------------------------------------
 
 # surface
 plt.subplot(2,2,1)
@@ -780,13 +813,15 @@ if threshold_type=='ratio':
 
     # legend
     plt.subplot(2,2,4)
-    plt.imshow(EL_legend, cmap=colormap)
+    plt.imshow(EL_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
     plt.axis('off')
     plt.suptitle('EL AVG')
     plt.show()
 
 # -------------------------------------------------------
+# -------------------------------------------------------
 # Calculate gradients, make field sign map.
+# -------------------------------------------------------
 # -------------------------------------------------------
 
 # az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold) # reduce thresh to 0.10
@@ -871,15 +906,17 @@ S=np.sign(O)
 # # plt.colorbar()
 
 
-
+# ----------------------- FOURTH FIGURE ----------------------------------
 # -------------------------------------------------------
-# Calculate STD, and threshold to separate areas
+# -------------------------------------------------------
+# Calculate STD, and threshold to separate areas (simple morph. step)
+# -------------------------------------------------------
 # -------------------------------------------------------
 
 O_sigma=np.nanstd(O)
 
 S_thresh=np.zeros(np.shape(O))
-std_thresh = .3 #float(options.std_thresh) #.2
+# std_thresh = float(options.std_thresh) #.2
 S_thresh[O>(O_sigma*std_thresh)]=1
 S_thresh[O<(-1*O_sigma*std_thresh)]=-1
 
@@ -888,12 +925,13 @@ plt.subplot(1,3,1)
 plt.imshow(surface, cmap='gray')
 plt.imshow(S_thresh,cmap='bwr', alpha=0.5);
 plt.axis('off')
+plt.title('Threshold to separate areas by sign.')
 # plt.colorbar();
 
-# plt.show()
-
+# -------------------------------------------------------
 # -------------------------------------------------------
 # MORPHOLOGY STEPS to get borders.
+# -------------------------------------------------------
 # -------------------------------------------------------
 
 # Processing steps of Criterion 2 (S-thersh) split patches 
@@ -906,7 +944,7 @@ plt.axis('off')
 
 import cv2
 
-first_kernel_sz = 5 #k1 #options.k1 #10 #10
+first_kernel_sz = k1 #options.k1 #10 #10
 kernel = np.ones((first_kernel_sz,first_kernel_sz))
 
 first_open = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
@@ -920,7 +958,10 @@ plt.title('first open, kernel %s' % first_kernel_sz)
 plt.imshow(first_open, cmap='bwr')
 plt.axis('off')
 
+plt.suptitle('Threshold and open to separate areas.')
 
+
+# ----------------------- FIFTH FIGURE ----------------------------------
 
 # 2.  Additional morphology steps:
 # -------------------------------------------------------
@@ -942,7 +983,7 @@ plt.axis('off')
 
 # a.  Closing on abs(S-thresh)
 # Closing is dilation, then erosion. Good for closing small holes
-close_kernel = 10 #k2 #10
+close_kernel = k2 #10
 kernel = np.ones((close_kernel,close_kernel))
 
 # This must be wrong -- abs() gets rid of all borders...
@@ -955,7 +996,7 @@ plt.axis('off')
 plt.title('closing, kernel %i' % close_kernel)
 
 
-open_kernel = 10
+open_kernel = k2 #10
 kernel = np.ones((close_kernel,close_kernel))
 opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
 plt.subplot(1,5,4)
@@ -965,7 +1006,7 @@ plt.title('opening, k %i' % open_kernel)
 
 
 niter = 1
-dilate_kernel = 5
+dilate_kernel = k2 #5
 kernel = np.ones((dilate_kernel,dilate_kernel))
 dilation = cv2.dilate(opening, kernel, iterations = niter)
 plt.subplot(1,5,5)
@@ -975,6 +1016,17 @@ plt.title('dilation, k: %i' % dilate_kernel)
 
 plt.show()
 
+
+# --------------------------------------------------------------
+# --------------------------------------------------------------
+# Use space between found regions to demarcate borders.
+# Likely, this can be better done with some kind of watershed...
+# Possible to do this also in a dumb way with canny edge detection.
+# --------------------------------------------------------------
+# --------------------------------------------------------------
+
+
+# ----------------------- SIXTH FIGURE ----------------------------------
 
 # --------------------------------------------------------------
 # Next, recompute areal borders using morphological “thinning,” 
@@ -993,16 +1045,20 @@ plt.imshow(canny_edges, cmap='gray_r')
 plt.axis('off')
 plt.imshow(dilation, cmap='bwr', alpha=0.5)
 plt.axis('off')
-
+plt.title('canny edge detect on dilation')
 
 # DILATE to fill? # This is obviously wrong, 
 # but not sure best way to do "thinning"...
 # --------------------------------------------------------------
-canny_edge_kernel = np.ones((3,3))
-canny_close_kernel = np.ones((3,3))
+canny_edge_kernel = np.ones((k_canny, k_canny)) #np.ones((3,3))
+canny_close_kernel = np.ones((k_canny, k_canny)) #np.ones((3,3))
 canny_dilate = cv2.dilate(canny_edges, canny_edge_kernel, iterations = niter)
 canny_closed = cv2.morphologyEx(canny_dilate, cv2.MORPH_CLOSE, canny_close_kernel)
+plt.subplot(1,2,2)
 plt.imshow(canny_closed)
+plt.title('morph steps to clean up borders')
+
+plt.show()
 
 # h, w = canny_edges.shape[:2]
 # contours0, hierarchy = cv2.findContours( canny_edges.copy(), cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_SIMPLE)
@@ -1016,9 +1072,16 @@ plt.imshow(canny_closed)
 # plt.imshow(vis)
 # plt.axis('off')
 
+
+
+# ----------------------- SEVENTH FIGURE ----------------------------------
+
 # -----------------------------------------------------------
-# SUMMARY:
 # -----------------------------------------------------------
+# SUMMARY PLOTS:
+# -----------------------------------------------------------
+# -----------------------------------------------------------
+
 plt.figure()
 
 plt.subplot(2,3,1)
@@ -1065,10 +1128,13 @@ plt.suptitle(title)
 
 
 
-# Contours.
-# -------------------------------------------------------
+
+# ----------------------- EIGHTH FIGURE ----------------------------------
+
+# Contours -- figures made to psuedo-match the original paper
+# -----------------------------------------------------------
 # Compare to Garrett et al., 2014 FIG.1
-# -------------------------------------------------------
+# -----------------------------------------------------------
 
 plt.figure()
 
@@ -1103,8 +1169,9 @@ plt.imshow(S_thresh, cmap='bwr')
 # plt.imshow(dilation, cmap='bwr')
 plt.axis('off')
 
-# Contours over found-boundaries:
 
+# Overlay contours over found-boundaries:
+# ------------------------------------------
 # canny_dilate[canny_dilate==0] = np.nan
 # canny_dilate = np.ma.array(canny_dilate)
 
@@ -1210,57 +1277,3 @@ plt.show()
 
 # plt.show()
 
-
-
-
-
-# # --------------------------------------------------------------------------------------
-# # GET JUST THE PHASE MAP FOR COREG:
-# # --------------------------------------------------------------------------------------
-# # This format saves png/fig without any borders:
-# # Need this type of data-only image for COREG, for example.
-
-# if get_clean is True:
-
-#     # SURFACE 
-#     # --------------------------------------------------------------------------------------
-#     fig = plt.imshow(surface, cmap='gray')
-#     plt.axis('off')
-#     fig.axes.get_xaxis().set_visible(False)
-#     fig.axes.get_yaxis().set_visible(False)
-
-#     imname = 'avg_phase_AZ_HSV_SURFACE'
-
-#     impath = os.path.join(figdir, imname+'.png')
-#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-#     plt.show()
-
-#     # AZ average 
-#     # --------------------------------------------------------------------------------------
-#     fig = plt.imshow(az_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-#     plt.axis('off')
-#     fig.axes.get_xaxis().set_visible(False)
-#     fig.axes.get_yaxis().set_visible(False)
-
-#     imname = 'avg_phase_AZ_HSV_PHASE'
-
-#     impath = os.path.join(figdir, imname+'.png')
-#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-#     plt.show()
-
-#     # EL average 
-#     # --------------------------------------------------------------------------------------
-
-#     fig = plt.imshow(el_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-#     plt.axis('off')
-#     fig.axes.get_xaxis().set_visible(False)
-#     fig.axes.get_yaxis().set_visible(False)
-
-#     imname = 'avg_phase_EL_HSV_PHASE'
-
-#     impath = os.path.join(figdir, imname+'.png')
-#     plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-#     plt.show()
