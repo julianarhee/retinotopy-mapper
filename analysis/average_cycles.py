@@ -214,7 +214,7 @@ else:
     if 'H-Down' in cond or 'Top' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[1] for p in positions]) > 0)))
-    if 'V-Left' in cond or 'Left' in cond:
+    if 'V-Left' in cond or 'Left' in cond or 'Blank' in cond:
         find_cycs = list(itertools.chain.from_iterable(
             np.where(np.diff([p[0] for p in positions]) < 0)))
     if 'V-Right' in cond or 'Right' in cond:
