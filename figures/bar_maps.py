@@ -175,14 +175,14 @@ for f in dstructs:
 #         elif int(user_input)==1:
 #             threshold_type = 'blank'
 
-if threshold_type=='blank':
-    blank_keys = [k for k in dstructs if 'blank_' in k] #[0]
-    if not blank_keys:
-        print "Blank condition not found. Using DC."
-        threshold_type = 'DC'
-    else:
-        blank_key = blank_keys[0]
-        print "Using BLANK key: ", blank_key
+#if threshold_type=='blank':
+blank_keys = [k for k in dstructs if 'blank_' in k or 'Blank_' in k] #[0]
+if not blank_keys:
+    print "Blank condition not found. Using DC."
+    threshold_type = 'DC'
+else:
+    blank_key = blank_keys[0]
+    print "Using BLANK key: ", blank_key
 
 # Get specific keys:
 
@@ -357,6 +357,7 @@ for cond in cond_types:
             ax = fig.add_subplot(2,2,4)
             plt.imshow(legend, cmap='spectral')
             plt.axis('off')
+
 
             fig.add_subplot(2,2,1)
             plt.imshow(surface, cmap='gray')
@@ -558,6 +559,8 @@ for cond in cond_types:
             if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
                 plt.title('power')
+                plt.colorbar()
+                plt.axis('off')
             else:
                 plt.imshow(mag_map, cmap='hot')
                 plt.title('magnitude')
@@ -755,18 +758,45 @@ for cond in cond_types:
                     
             plt.figure(figsize=(10,10))
 
-            plt.subplot(1,3,1)
-            plt.imshow(surface, 'gray')
+            # plt.subplot(1,3,1)
+            # plt.imshow(surface, 'gray')
+            # plt.axis('off')
+            plt.subplot(2,3,1)
+            plt.imshow(ratio_map, 'hot')
+            plt.title("ratio")
+            plt.colorbar()
             plt.axis('off')
 
-            plt.subplot(1,3,2)
+            
+            if blank_key:
+                blank_mag_map = D[blank_key]['mag_map']/Ny
+                blank_intensity = D[blank_key]['mean_intensity']
+
+            deltaF_mag = (mag_map - blank_mag_map) / blank_mag_map
+
+            deltaF_intensity = (mean_intensity - blank_intensity) / blank_intensity
+
+            plt.subplot(2,3,2)
+            plt.imshow(deltaF_mag, 'hot')
+            plt.title("mag rel. to blank")
+            plt.colorbar()
+            plt.axis('off')
+
+            plt.subplot(2,3,3)
+            plt.imshow(deltaF_intensity, 'hot')
+            plt.title("intensity rel. to blank")
+            plt.colorbar()
+            plt.axis('off')
+
+            # plt.subplot(1,3,2)
+            plt.subplot(2,3,4)
             plt.imshow(surface, 'gray')
             plt.imshow(composite, 'hsv')
             plt.axis('off')
-            plt.title(tit)
+            plt.title(cond)
             # plt.colorbar()
 
-            plt.subplot(1,3,3)
+            plt.subplot(2,3,5)
             plt.imshow(legend, cmap='hsv')
             plt.axis('off')
 
@@ -794,6 +824,28 @@ for cond in cond_types:
 
             plt.show()
 
+
+
+            # ----------------------------------------------
+            # OVERLAY surface w/ composite phase map
+            # ----------------------------------------------
+            plt.figure()
+            plt.subplot(1,2,1)
+            
+            plt.imshow(composite, 'hsv', alpha=1)
+            plt.imshow(surface, 'gray', alpha=0.3)
+            plt.axis('off')
+
+            plt.subplot(1,2,2)
+            plt.imshow(legend, cmap='hsv', alpha=1)
+            plt.axis('off')
+            
+            plt.title('overlay '+cond)
+
+            impath = os.path.join(figdir, cond+'_OVERLAY_'+power_flag+threshold_type+'.png')
+            plt.savefig(impath, format='png')
+            print impath
+            plt.show()
             # In[1376]:
 
             # Checkout the threshold map...

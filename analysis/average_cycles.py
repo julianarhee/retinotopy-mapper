@@ -247,7 +247,7 @@ nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_
 ncycles = len(find_cycs) + 1
 if interpolate is True:
     print "Interpolating!"
-    N = int((ncycles / target_freq) * sampling_rate)
+    N = int(round((ncycles / target_freq) * sampling_rate))
 else:
     N = len(files)
 
