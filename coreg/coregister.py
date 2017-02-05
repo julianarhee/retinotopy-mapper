@@ -27,7 +27,7 @@ def click_and_crop(event, x, y, flags, param):
 #     if cropROI is False:
     if event == cv2.EVENT_LBUTTONDOWN:
         refPt.append((x, y))
-        cv2.circle(image, refPt[-1], 3, (0,0,255), -1)
+        cv2.circle(image, refPt[-1], 1, (0,0,255), -1)
         cv2.imshow("image", image)
 
 #     else:
@@ -84,6 +84,7 @@ def warp_im(im, M, dshape):
                    flags=cv2.WARP_INVERSE_MAP)
     return output_im
 
+import cPickle as pkl
 
 parser = optparse.OptionParser()
 
@@ -95,6 +96,14 @@ parser.add_option('-o', '--outpath', action="store", dest="outpath",
                   default="/tmp", help="Path to the save ROIs")
 parser.add_option('-m', '--map', action="store", dest="map",
                   default="", help="Path to retino map for overlay")
+parser.add_option('-c', '--cmap', action="store", dest="cmap",
+                  default="spectral", help="Colormap for phase map")
+
+parser.add_option('-S', '--struct', action="store_true", dest="use_struct",
+                  default=False, help="Use struct from phase-map images instead of image path.")
+parser.add_option('-p', '--structpath', action="store", dest="structpath",
+                  default="", help="Path to struct.")
+
 parser.add_option('--C', '--crop', action="store_true", dest="crop", default=False, help="Path to save ROI")
 
 (options, args) = parser.parse_args()
@@ -107,8 +116,48 @@ parser.add_option('--C', '--crop', action="store_true", dest="crop", default=Fal
 # sample_path = '/nas/volume1/2photon/RESDATA/TEFO/20161219_JR030W/COREG/test/tefo.png'
 # out_path = '/nas/volume1/2photon/RESDATA/TEFO/20161219_JR030W/COREG/test'
 
-map_path = options.map
-template_path = options.template
+colormap = options.cmap
+use_struct = options.use_struct
+if use_struct is True:
+    print "Using struct..."
+    structpath = options.structpath
+    import cPickle as pkl
+
+    with open(structpath,'rb') as fp:
+        I = pkl.load(fp)
+
+        # I['az_phase'] = az_avg
+        # I['vmin'] = vmin_val
+        # I['vmax'] = vmax_val
+        # I['az_legend'] = AZ_legend
+        # I['surface'] = surface
+
+    # template = I['surface']
+    # from PIL import Image
+    # template = Image.fromarray(template)
+    # # image = Image.open(impath) #.convert('L')
+    # surface = np.asarray(image)
+
+    rmap = I['az_phase']
+    vmin_val = I['vmin']
+    vmax_val = I['vmax']
+    legend = I['az_legend']
+
+else:
+    template_path = options.template
+    template = cv2.imread(template_path, 0)
+    map_path = options.map
+    if map_path:
+
+        rmap = cv2.imread(map_path)
+    else:
+        rmap = np.zeros(template.shape)
+
+
+
+
+#map_path = options.map
+#template_path = options.template
 sample_path = options.sample
 
 out_path = options.outpath
@@ -117,12 +166,16 @@ if not os.path.exists(out_path):
 
 # Load images:
 template = cv2.imread(template_path, 0)
+# tiff = TIFF.open(template_path, mode='r')
+# template = tiff.read_image().astype('float')
+# tiff.close()
+
 sample = cv2.imread(sample_path, 0)
 
-if map_path:
-    rmap = cv2.imread(map_path, 0)
-else:
-    rmap = np.zeros(template.shape)
+# if map_path:
+#     rmap = cv2.imread(map_path)
+# else:
+#     rmap = np.zeros(template.shape)
 
 # # too big:
 # new_sz = 1024.0
@@ -135,7 +188,7 @@ else:
 
 print "Template size is: ", template.shape
 print "Sample to align is: ", sample.shape
-
+print "MAP size is: ", rmap.shape
 
 
 # First get SAMPLE points:
@@ -147,7 +200,9 @@ cropping = False
 clone = image.copy()
 
 cv2.startWindowThread()
-cv2.namedWindow("image")
+cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+
+
 cv2.setMouseCallback("image", click_and_crop)
 
 # keep looping until the 'q' key is pressed
@@ -262,9 +317,27 @@ sample_mat = np.matrix([i for i in sample_pts])
 template_mat = np.matrix([i for i in template_pts])
 M = transformation_from_points(template_mat, sample_mat)
 
+
 #out = warp_im(SAMPLE, M, REF.shape)
 out = warp_im(sample, M, template.shape)
 # out_map = warp_im(retinomap, M, SAMPLE.shape)
+
+
+
+T = dict()
+T['tMAT'] = M
+T['sample'] = sample_path
+T['template'] = template_path
+
+mat_fn = 'temp2sample'+'.mat'
+# scipy.io.savemat(os.path.join(source_dir, condition, tif_fn), mdict=pydict)
+
+import scipy.io
+scipy.io.savemat(os.path.join(out_path, mat_fn), mdict=T)
+print os.path.join(out_path, 'mw_data', mat_fn)
+
+
+
 
 
 print "Making figure..."
@@ -332,8 +405,9 @@ out_map_mask = np.ma.masked_where(out_map == 0, out_map)
 
 plt.figure()
 plt.imshow(template, cmap='gray')
-plt.imshow(out_map_mask, cmap='gray', alpha=.5)
-plt.imshow(rmap, cmap='spectral', alpha=0.5)
+plt.imshow(out_map_mask, cmap='gray', alpha=.7)
+plt.imshow(rmap, cmap=colormap, alpha=0.5)
+
 #plt.imshow(out_map_mask, cmap='gray', alpha=.75)
 
 plt.axis('off')
