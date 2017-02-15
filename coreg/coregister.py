@@ -106,6 +106,9 @@ parser.add_option('-p', '--structpath', action="store", dest="structpath",
 
 parser.add_option('--C', '--crop', action="store_true", dest="crop", default=False, help="Path to save ROI")
 
+parser.add_option('--no-map', action="store_true", dest="no_map", default=False, help="No phase map to overlay.")
+
+
 (options, args) = parser.parse_args()
 
 
@@ -115,7 +118,7 @@ parser.add_option('--C', '--crop', action="store_true", dest="crop", default=Fal
 # template_path = '/nas/volume1/2photon/RESDATA/TEFO/20161219_JR030W/COREG/test/widefield_surface.png'
 # sample_path = '/nas/volume1/2photon/RESDATA/TEFO/20161219_JR030W/COREG/test/tefo.png'
 # out_path = '/nas/volume1/2photon/RESDATA/TEFO/20161219_JR030W/COREG/test'
-
+no_map = options.no_map
 colormap = options.cmap
 use_struct = options.use_struct
 if use_struct is True:
@@ -165,12 +168,21 @@ if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 # Load images:
-template = cv2.imread(template_path, 0)
+template = cv2.imread(template_path)
 # tiff = TIFF.open(template_path, mode='r')
 # template = tiff.read_image().astype('float')
 # tiff.close()
 
-sample = cv2.imread(sample_path, 0)
+sample = cv2.imread(sample_path)
+if len(template.shape)==2: # not RGB
+    template = cv2.cvtColor(template, cv2.COLOR_GRAY2RGB) # make it 3D
+else:
+    template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
+
+if len(sample.shape)==2:
+    sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
+else:
+    sample = cv2.cvtColor(sample, cv2.COLOR_BGR2RGB)
 
 # if map_path:
 #     rmap = cv2.imread(map_path)
@@ -260,7 +272,7 @@ cropping = False
 clone = image.copy()
 
 cv2.startWindowThread()
-cv2.namedWindow("image")
+cv2.namedWindow("image", cv2.WINDOW_NORMAL)
 cv2.setMouseCallback("image", click_and_crop)
 
 # keep looping until the 'q' key is pressed
@@ -317,7 +329,8 @@ sample_mat = np.matrix([i for i in sample_pts])
 template_mat = np.matrix([i for i in template_pts])
 M = transformation_from_points(template_mat, sample_mat)
 
-
+#Re-read sample image as grayscale for warping:
+#sampleG = cv2.imread(sample_path, 0)
 #out = warp_im(SAMPLE, M, REF.shape)
 out = warp_im(sample, M, template.shape)
 # out_map = warp_im(retinomap, M, SAMPLE.shape)
@@ -336,7 +349,9 @@ import scipy.io
 scipy.io.savemat(os.path.join(out_path, mat_fn), mdict=T)
 print os.path.join(out_path, 'mw_data', mat_fn)
 
-
+pkl_fn = 'temp2sample'+'.pkl'
+with open(os.path.join(out_path,pkl_fn), 'wb') as fn:
+    pkl.dump(T, fn)
 
 
 
@@ -364,8 +379,8 @@ plt.subplot(224)
 # plt.imshow(SAMPLE, cmap='gray')
 # plt.imshow(out, cmap='jet', alpha=0.2)
 merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
-merged[:,:,0] = template
-merged[:,:,1] = out
+merged[:,:,0] = cv2.cvtColor(template, cv2.COLOR_RGB2GRAY)
+merged[:,:,1] = cv2.cvtColor(out, cv2.COLOR_RGB2GRAY)
 plt.imshow(merged)
 plt.axis('off')
 plt.title('combined')
@@ -385,9 +400,9 @@ plt.show()
 print "Getting MERGED figure..."
 
 plt.figure()
-merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
-merged[:,:,0] = template
-merged[:,:,1] = out
+#merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
+#merged[:,:,0] = template
+#merged[:,:,1] = out
 plt.imshow(merged)
 plt.axis('off')
 
@@ -400,13 +415,23 @@ plt.show()
 
 # Overlay phase map
 print "Displaying PHASE map onto figure..."
-out_map = np.ma.masked_where(out == 0, out)
-out_map_mask = np.ma.masked_where(out_map == 0, out_map)
+#out_map = np.ma.masked_where(out == 0, out)
+#out_map_mask = np.ma.masked_where(out_map == 0, out_map)
+gray = cv2.cvtColor(out, cv2.COLOR_RGB2GRAY)
+#out_mask = np.full((out.shape[0], out.shape[1]), 0, dtype=np.uint8)
+mask1 = np.full((out.shape[0], out.shape[1]), 0, dtype=np.uint8)
+mask1[np.where(gray>0)] = 255
+fg = cv2.bitwise_or(out, out, mask=mask1)
+mask1 = cv2.bitwise_not(mask1)
+background = np.full(out.shape, 255, dtype=np.uint8)
+bk = cv2.bitwise_or(background, background, mask=mask1)
+final=cv2.bitwise_or(fg, bk)
 
 plt.figure()
-plt.imshow(template, cmap='gray')
-plt.imshow(out_map_mask, cmap='gray', alpha=.7)
-plt.imshow(rmap, cmap=colormap, alpha=0.5)
+plt.imshow(template)
+plt.imshow(final, alpha=.5555)
+if no_map is False:
+    plt.imshow(rmap, cmap=colormap, alpha=0.5)
 
 #plt.imshow(out_map_mask, cmap='gray', alpha=.75)
 

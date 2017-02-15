@@ -18,15 +18,19 @@ import PIL.Image as Image
 import libtiff
 import optparse
 
-imdir = sys.argv[1]
+#imdir = sys.argv[1]
 
 parser = optparse.OptionParser()
 parser.add_option('--ext', action="store", dest="ext",
                   default="tif", help="frame image type (.tiff, .tif, .png)")
+parser.add_option('--path', action="store",
+                  dest="path", default="", help="input dir")
+
 
 (options, args) = parser.parse_args()
 
 ext = '.' + options.ext
+imdir = options.path
 
 outdir = os.path.join(os.path.split(imdir)[0], 'surface')
 if not os.path.exists(outdir):
