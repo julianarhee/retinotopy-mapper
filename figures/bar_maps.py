@@ -48,8 +48,11 @@ parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="
 parser.add_option('--contour', action="store_true", dest="contour", default=False, help="show contour lines for phase map")
 parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use power or just magnitude?")
 
+parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Used short-axis instead of long?")
 
 (options, args) = parser.parse_args()
+use_long_axis = options.use_long_axis
+
 
 use_power = options.use_power
 
@@ -257,7 +260,7 @@ ratio_factor = .5458049 # This is true / hardcoded only for AQUOS monitor.
 # ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------
 
-if use_corrected_screen is True:
+if (use_corrected_screen is True) and (use_long_axis is True):
     screen_edge = math.pi - (math.pi*ratio_factor)
 else:
     screen_edge = 0

@@ -292,8 +292,6 @@ parser.add_option('--short-axis', action="store_false", dest="use_long_axis", de
 
 (options, args) = parser.parse_args()
 
-use_long_axis = options.use_long_axis
-
 use_avg = options.use_avg
 use_left = options.use_left
 get_clean = options.get_clean
@@ -325,40 +323,42 @@ threshold = float(options.threshold)
 outdir = options.path
 run_num = options.run
 
-exptdir = os.path.split(outdir)[0]
-sessiondir = os.path.split(exptdir)[0]
-print "EXPT: ", exptdir
-print "SESSION: ", sessiondir
+subject = os.path.split(os.path.split(outdir)[0])[1]
+date = os.path.split(outdir)[1]
+conditions = os.listdir(outdir)
+conditions = [i for i in conditions if subject in i and 'Hz' in i]
 
-savedir = os.path.split(outdir)[0]
-figdir = os.path.join(savedir, 'figures')
-if not os.path.exists(figdir):
-    os.makedirs(figdir)
+print "EXPT: ", date
+print "CONDITIONS: ", conditions
 
-date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
-experiment = os.path.split(os.path.split(outdir)[0])[1]
+composite_dir = os.path.join(outdir, 'composite')
+fig_dir = os.path.join(composite_dir, 'figures')
+if not os.path.exists(fig_dir):
+    os.makedirs(fig_dir)
+
+#date = os.path.split(os.path.split(os.path.split(outdir)[0])[0])[1]
+#experiment = os.path.split(os.path.split(outdir)[0])[1]
 
 # --------------------------------------------------------------------
 # Get blood vessel image:
 # --------------------------------------------------------------------
 
-folders = os.listdir(sessiondir)
+folders = os.listdir(outdir)
 figpath = [f for f in folders if f == 'surface']
 if not figpath:
     figpath = [f for f in folders if f == 'figures']
-
 print "path to surface: ", figpath
 
 if figpath:
     # figdir = figpath[0]
     figpath=figpath[0]
-    tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
+    tmp_ims = os.listdir(os.path.join(outdir, figpath))
     surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
     ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
-    ims = [i for i in ims if '_' in i]
+    ims = [i for i in ims if exptdate in i]
     print ims
     if ims:
-        impath = os.path.join(sessiondir, figpath, ims[0])
+        impath = os.path.join(outdir, figpath, ims[0])
         print os.path.splitext(impath)[1]
         if os.path.splitext(impath)[1] == '.tif':
             tiff = TIFF.open(impath, mode='r')
@@ -370,16 +370,14 @@ if figpath:
             surface = np.asarray(image)
     else:
         surface = np.zeros([200,300])
-
     print surface.shape
-
 else: # NO BLOOD VESSEL IMAGE...
     surface = np.zeros([200,300])
     print "No blood vessel image found. Using empty."
 
 if reduceit:
     surface = block_reduce(surface, reduce_factor, func=np.mean)
-
+    print "Reduced image to: ", surface.shape
 
 
 # --------------------------------------------------------------------
@@ -388,50 +386,117 @@ if reduceit:
 
 append = options.append
 
-files = os.listdir(outdir)
-files = [f for f in files if os.path.splitext(f)[1] == '.pkl']
+struct_fns = os.listdir(outdir)
+struct_fns = [f for f in struct_fns if os.path.splitext(f)[1] == '.pkl']
 
+if len(files) > 0:
+    if len(files) == 1: # composite struct exists
+        composite_struct_fn = os.path.join(outdir, struct_fns[0])
 
-dstructs = [f for f in files if 'Target_fft' in f and str(reduce_factor) in f and append in f]
-print dstructs
-D = dict()
-for f in dstructs:
-    outfile = os.path.join(outdir, f)
-    with open(outfile,'rb') as fp:
-        D[f] = pkl.load(fp)
+    elif len(files) > 1:
+        print "Found more than 1 composite struct file for session %s: " % date
+        for struct_idx, struct_fn in enumerate(struct_fns):
+            print struct_idx, struct_fn
+        user_input=raw_input("\nChoose one [0,1...]:\n")
+        if user_input=='':
+            composite_struct_fn = struct_fns[0] # just take first cond key 
+        else:
+            composite_struct_fn = struct_fns[int(user_input)]
 
-# astructs = [f for f in files if 'Amplitude' in f and str(reduce_factor) and append in f]
-# print astructs
-# A = dict()
-# for f in astructs:
-#     outfile = os.path.join(outdir, f)
-#     with open(outfile,'rb') as fp:
-#         A[f] = pkl.load(fp)
+    with open(composite_struct_fn, 'rb') as rf:
+        D = pkl.load(rf)
 
-
-# --------------------------------------------------------------------
-# Get condition key names:
-# --------------------------------------------------------------------
-
-bottomkeys = [k for k in D.keys() if 'Bottom' in k or 'Up' in k]
-topkeys = [k for k in D.keys() if 'Top' in k or 'Down' in k]
-if len([i for i in bottomkeys if 'Up' in i])>0:
-    oldflag = True
 else:
-    oldflag = False
+    print "No composite struct found. Creating new."
+    composite_struct_fn = '{date}_{animal}_struct.pkl'.format(date=date, animal=subject)
+    print "New struct name is: %s" % composite_struct_fn
 
-leftkeys = [k for k in D.keys() if 'Left' in k]
-rightkeys = [k for k in D.keys() if 'Right' in k]
-if threshold_type=='blank':
-    blank_key = [k for k in dstructs if 'blank_' in k][0]
-    print "BLANK: ", blank_key
+    D = dict()
+    for condition in conditions:
+        condition_dir = os.path.join(outdir, condition, 'structs')
+        condition_structs = os.listdir(condition_dir)
+        condition_structs = [f for f in condition_structs if '.pkl' in f and 'fft' in f]
+        D[condition] = dict()
+        for condition_struct in condition_structs:
+            curr_condition_struct = os.path.join(condition_dir, condition_struct)
+            curr_cond_key = condition_struct.split('Target_fft_')[1].split('_.pkl')[0]
+            with open(curr_condition_struct, 'rb') as f:
+                D[condition][curr_cond_key] = pkl.load(f)
 
-el_keys = [topkeys, bottomkeys]
-az_keys = [leftkeys, rightkeys]
+    path_to_composite_struct_fn = os.path.join(outdir, composite_struct_fn)
+    with open(path_to_composite_struct_fn, 'wb') as wf:
+        pkl.dump(D, wf, protocol=pkl.HIGHEST_PROTOCOL)
+    print "New struct name is: %s" % path_to_composite_struct_fn
 
-print "COND KEYS: "
-print "AZ keys: ", az_keys
-print "EL keys: ", el_keys
+
+
+AZ = dict()
+condition_keys = D.keys()
+
+print "Select session for AZIMUTH maps (LEFT):"
+for cond_idx, cond_fn in enumerate(condition_keys):
+    print cond_idx, cond_fn
+user_input=raw_input("\nChoose a session [0,1...]:\n")
+
+selected_left_condition = condition_keys[int(user_input)]
+
+run_keys = D[selected_left_condition].keys()
+run_keys = [r for r in run_keys if 'Left' in r]
+for run_idx, run_fn in enumerate(run_keys):
+    print run_idx, run_fn
+user_input=raw_input("\nChoose LEFT run [0,1...]:\n")
+selected_left_run = run_keys[int(user_input)]
+AZ['left'] = D[selected_left_condition][selected_left_run]
+
+
+print "Select session for AZIMUTH maps (RIGHT):"
+for cond_idx, cond_fn in enumerate(condition_keys):
+    print cond_idx, cond_fn
+user_input=raw_input("\nChoose a session [0,1...]:\n")
+selected_right_condition = condition_keys[int(user_input)]
+
+run_keys = D[selected_right_condition].keys()
+run_keys = [r for r in run_keys if 'Right' in r]
+for run_idx, run_fn in enumerate(run_keys):
+    print run_idx, run_fn
+user_input=raw_input("\nChoose RIGHT run [0,1...]:\n")
+selected_right_run = run_keys[int(user_input)]
+AZ['right'] = D[selected_right_condition][selected_right_run]
+
+
+
+EL = dict()
+
+print "Select session for ELEVATION maps (TOP):"
+for cond_idx, cond_fn in enumerate(condition_keys):
+    print cond_idx, cond_fn
+user_input=raw_input("\nChoose a session [0,1...]:\n")
+
+selected_top_condition = condition_keys[int(user_input)]
+
+run_keys = D[selected_top_condition].keys()
+run_keys = [r for r in run_keys if 'Top' in r]
+for run_idx, run_fn in enumerate(run_keys):
+    print run_idx, run_fn
+user_input=raw_input("\nChoose TOP run [0,1...]:\n")
+selected_top_run = run_keys[int(user_input)]
+EL['top'] = D[selected_top_condition][selected_top_run]
+
+
+print "Select session for ELEVATION maps (BOTTOM):"
+for cond_idx, cond_fn in enumerate(condition_keys):
+    print cond_idx, cond_fn
+user_input=raw_input("\nChoose a session [0,1...]:\n")
+selected_bottom_condition = condition_keys[int(user_input)]
+
+run_keys = D[selected_bottom_condition].keys()
+run_keys = [r for r in run_keys if 'Bottom' in r]
+for run_idx, run_fn in enumerate(run_keys):
+    print run_idx, run_fn
+user_input=raw_input("\nChoose BOTTOM run [0,1...]:\n")
+selected_bottom_run = run_keys[int(user_input)]
+EL['bottom'] = D[selected_bottom_condition][selected_bottom_run]
+
 
 
 
@@ -439,7 +504,7 @@ print "EL keys: ", el_keys
 # Make legends:
 # --------------------------------------------------------------------
 
-use_corrected_screen = True
+use_corrected_screen = False
 # legend_dir = '/home/juliana/Repositories/retinotopy-mapper/tests/simulation'
 winsize = [1920, 1200]
 screen_size = [int(i*0.25) for i in winsize]
@@ -486,8 +551,7 @@ else:
 ratio_factor = .5458049 # This is true / hardcoded only for AQUOS monitor.
 # ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------
-
-if (use_corrected_screen is True) and (use_long_axis is True):
+if use_corrected_screen is True:
     screen_edge = math.pi - (math.pi*ratio_factor)
 else:
     screen_edge = 0
@@ -521,434 +585,201 @@ if create_legend:
 else:
     legend_name = 'H-Up_legend.tif'
     H_bottom_legend = imread(os.path.join(legend_dir, legend_name))
-
 # -------------------------------------------------------------------------
 
 
 # -------------------------------------------------------------------------
 # GET CONDS:
 # -------------------------------------------------------------------------
+left_map = AZ['left']['ft']
+right_map = AZ['right']['ft']
+top_map = EL['top']['ft']
+bottom_map = EL['bottom']['ft']
 
-az_conds = ['Left', 'Right']
-AZ = dict()
-for az_idx,az_key in enumerate(az_keys):
-    condkey = az_conds[az_idx]
-    if len(az_key) > 1:
-        print "Found more than 1 condition each for AZ-%s keys:" % condkey
-        for run_idx, run_key in enumerate(az_key):
-            print run_idx, run_key
-        user_input=raw_input("\nChoose one [0,1...]:\n")
-        if user_input=='':
-            AZ[condkey] = az_key[0] # just take first cond key 
-        else:
-            AZ[condkey] = az_key[int(user_input)]
-    else:
-        AZ[condkey] = az_key[0]
+ratio_left = AZ['left']['ratio_map']
+ratio_right = AZ['right']['ratio_map']
+ratio_top = EL['top']['ratio_map']
+ratio_bottom = EL['bottom']['ratio_map']
 
-el_conds = ['Top', 'Bottom']
-EL = dict()
-for el_idx,el_key in enumerate(el_keys):
-    condkey = el_conds[el_idx]
-    if len(el_key) > 1:
-        print "Found more than 1 condition each for EL-%s keys:" % condkey
-        for run_idx, run_key in enumerate(el_key):
-            print run_idx, run_key
-        user_input=raw_input("\nChoose one [0,1...]:\n")
-        if user_input=='':
-            EL[condkey] = el_key[0] # just take first cond key 
-        else:
-            EL[condkey] = el_key[int(user_input)]
-    else:
-        EL[condkey] = el_key[0]
+threshold = 0.001
+thresh_left_phase = np.angle(left_map)
+thresh_left_phase[np.where(ratio_left < threshold)] = np.nan
 
-leftmap = D[AZ['Left']]['ft']
-rightmap = D[AZ['Right']]['ft']
-topmap = D[EL['Top']]['ft']
-bottommap = D[EL['Bottom']]['ft']
+thresh_right_phase = np.angle(right_map)
+thresh_right_phase[np.where(ratio_right < threshold)] = np.nan
 
-ratio_left = D[AZ['Left']]['ratio_map']
-ratio_right = D[AZ['Right']]['ratio_map']
-ratio_top = D[EL['Top']]['ratio_map']
-ratio_bottom = D[EL['Bottom']]['ratio_map']
+thresh_top_phase = np.angle(top_map)
+thresh_top_phase[np.where(ratio_top < threshold)] = np.nan
+
+thresh_bottom_phase = np.angle(bottom_map)
+thresh_bottom_phase[np.where(ratio_bottom < threshold)] = np.nan
 
 
 # Quick checkout:
 #colormap = 'gist_rainbow'
 
+alpha_val = 0.5
 plt.subplot(2,4,1)
 plt.title('left')
-plt.imshow(np.angle(leftmap), cmap=colormap)
+plt.imshow(surface, cmap='gray')
+plt.imshow(thresh_left_phase, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 plt.subplot(2,4,5)
-plt.imshow(V_left_legend, cmap=colormap)
+plt.imshow(V_left_legend, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 plt.tight_layout()
 
 plt.subplot(2,4,2)
 plt.title('right')
-plt.imshow(np.angle(rightmap), cmap=colormap)
+plt.imshow(surface, cmap='gray')
+plt.imshow(thresh_right_phase, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 plt.subplot(2,4,6)
-plt.imshow(V_right_legend, cmap=colormap)
+plt.imshow(V_right_legend, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 
 plt.subplot(2,4,3)
 plt.title('top')
-plt.imshow(np.angle(topmap), cmap=colormap)
+plt.imshow(surface, cmap='gray')
+plt.imshow(thresh_top_phase, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 plt.subplot(2,4,7)
-plt.imshow(H_top_legend, cmap=colormap)
+plt.imshow(H_top_legend, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 
 plt.subplot(2,4,4)
 plt.title('bottom')
-plt.imshow(np.angle(bottommap), cmap=colormap)
+plt.imshow(surface, cmap='gray')
+plt.imshow(thresh_bottom_phase, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 plt.subplot(2,4,8)
-plt.imshow(H_bottom_legend, cmap=colormap)
+plt.imshow(H_bottom_legend, cmap=colormap, alpha=alpha_val)
 plt.axis('off')
 
 plt.tight_layout()
 
-plt.suptitle([experiment, date])
+plt.suptitle([date, subject])
 
 plt.show()
+
+imname = 'thresholded_maps_thresh%0.4f' % threshold
+imname.replace('.', 'x')
+
+impath = os.path.join(fig_dir, imname+'.png')
+plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+plt.show()
+
 
 
 # -------------------------------------------------------
 # Get phase maps, shift pi for averaging.  Then, AVERAGE.
 # -------------------------------------------------------
-
-# 1.  AZIMUTH maps --------------------------------------
-# -------------------------------------------------------
-
-# left_phase = np.angle(leftmap) #D[leftkey]['phase_map']
-# right_phase = np.angle(rightmap.conjugate()) #D[rightkey]['phase_map']
-
-# left_phase[left_phase<0] += 2*math.pi
-# right_phase[right_phase<0] += 2*math.pi
-# V_left_legend[V_left_legend<0] += 2*math.pi
-
-if use_left is True:
-    # For SIGN-MAP, need to combine left w/ bottom (or reverse sign of 0)
-    # or, can combine right w/ top 
-    # For LEGEND, need to use legend of map that is NOT conjugated for average.
-    left_phase = np.angle(leftmap) #D[leftkey]['phase_map']
-    right_phase = np.angle(rightmap.conjugate()) #D[rightkey]['phase_map']
-    AZ_legend = copy.deepcopy(V_left_legend)
-
-    top_phase = np.angle(topmap.conjugate()) #D[leftkey]['phase_map']
-    bottom_phase = np.angle(bottommap) #D[rightkey]['phase_map']
-    EL_legend = copy.deepcopy(H_bottom_legend)
-
-else:
-    left_phase = np.angle(leftmap.conjugate())
-    right_phase = np.angle(rightmap)
-    AZ_legend = copy.deepcopy(V_right_legend)
-
-    top_phase = np.angle(topmap)
-    bottom_phase = np.angle(bottommap.conjugate())
-    EL_legend = copy.deepcopy(H_top_legend)
-
-
-left_phase[left_phase<0] += 2*math.pi
-right_phase[right_phase<0] += 2*math.pi
-AZ_legend[AZ_legend<0] += 2*math.pi
-
-
-# smooth = True
-# sigma_val = (3,3)
-if smooth is True:
-    left_phase = ndimage.gaussian_filter(left_phase, sigma=sigma_val, order=0)
-    right_phase = ndimage.gaussian_filter(right_phase, sigma=sigma_val, order=0)
-    
-vmin_val = 0
+vmin_val = 0 #-1*math.pi # 0
 vmax_val = 2*math.pi
 
-az_avg = (left_phase + right_phase) / 2.
+shift_left_phase = np.angle(left_map)
+shift_right_phase = np.angle(right_map.conjugate())
+shift_left_phase[shift_left_phase<0] += 2*math.pi
+shift_right_phase[shift_right_phase<0] += 2*math.pi
+shift_az_legend = copy.deepcopy(V_left_legend)
+shift_az_legend[shift_az_legend<0] += 2*math.pi
+shift_other_az_legend = copy.deepcopy(V_right_legend)
+shift_other_az_legend[shift_other_legend<0] += 2*math.pi
 
 
-# QUICK PLOTS: --------------------------------------
-# ---------------------------------------------------------
+shift_top_phase = np.angle(top_map) 
+shift_bottom_phase = np.angle(bottom_map.conjugate())
+shift_top_phase[shift_top_phase<0] += 2*math.pi
+shift_bottom_phase[shift_bottom_phase<0] += 2*math.pi
+shift_el_legend = copy.deepcopy(H_top_legend)
+shift_el_legend[shift_el_legend<0] += 2*math.pi
+shift_other_el_legend = copy.deepcopy(H_bottom_legend)
+shift_other_el_legend[shift_other_el_legend<0] += 2*math.pi
 
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+avg_az_phase = (shift_left_phase + shift_right_phase) * 0.5
+avg_el_phase = (top_phase + bottom_phase) * 0.5
 
-# surface:
-plt.subplot(2,2,1)
-plt.imshow(az_avg, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
+if show_avg is True:
+    plt.subplot(2,2,1)
+    plt.imshow(avg_az_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
+    plt.subplot(2,2,3)
+    plt.imshow(az_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
 
-# ratio of stimulation freq vs. all other:
-# threshold = 0.2
-az_ratio_map = (ratio_left + ratio_right) / 2.
-plt.subplot(2,2,2)
-plt.axis('off')
-ax = plt.gca()
-im = ax.imshow(az_ratio_map, cmap='hot')
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-plt.colorbar(im, cax=cax)
+    avg_el_phase = (top_phase + bottom_phase) * 0.5
+    plt.subplot(2,2,2)
+    plt.imshow(avg_el_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
+    plt.subplot(2,2,4)
+    plt.imshow(el_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
+    plt.axis('off')
 
-# mask phase with ratio:
-az_phase_mask = get_ratio_mask(az_avg, az_ratio_map, threshold)
-plt.subplot(2,2,3)
-plt.title('Threshold: %s of ratio max' % str(threshold))
-plt.imshow(surface, cmap='gray')
-plt.imshow(az_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
+    plt.tight_layout()
 
-# legend
-plt.subplot(2,2,4)
-plt.imshow(AZ_legend, cmap=colormap)
-plt.axis('off')
-plt.suptitle('AZ AVG')
-plt.show()
+    plt.suptitle(['AVG', date, subject])
+
+    plt.show()
 
 
-# 2.  ELEVATION maps --------------------------------------
-# ---------------------------------------------------------
+    imname = 'avg_phases'
 
-# if use_left is True:
-#     # For SIGN-MAP, need to combine left w/ bottom (or reverse sign of 0)
-#     # or, can combine right w/ top 
-#     # For LEGEND, need to use legend of map that is NOT conjugated for average.
-#     top_phase = np.angle(topmap.conjugate()) #D[leftkey]['phase_map']
-#     bottom_phase = np.angle(bottommap) #D[rightkey]['phase_map']
-#     EL_legend = copy.deepcopy(H_bottom_legend)
-# else:
-#     top_phase = np.angle(topmap)
-#     bottom_base = np.angle(bottom_map.conjugate())
-#     EL_legend = copy.deepcopy(H_top_legend)
+    impath = os.path.join(fig_dir, imname+'.png')
+    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+    plt.show()
 
 
 
-# Do the thing to deal with averaging across -pi and pi:
-# Vmap[Vmap<0]=2*math.pi+Vmap[Vmap<0]
-top_phase[top_phase<0] += 2*math.pi
-bottom_phase[bottom_phase<0] += 2*math.pi
-EL_legend[EL_legend<0] += 2*math.pi
+maps = dict()
+cond_names = ['left', 'right', 'top', 'bottom']
+for cond_name in cond_names:
+    maps[cond_name] = dict()
 
-vmin_val = 0
-vmax_val = 2*math.pi
+maps['left']['threshold_phase'] = thresh_left_phase
+maps['right']['threshold_phase'] = thresh_right_phase
+maps['top']['threshold_phase'] = thresh_top_phase
+maps['bottom']['threshold_phase'] = thresh_bottom_phase
 
-# smooth = True
-# sigma_val = (3,3)
-# smooth = True
-if smooth is True:
-    top_phase = ndimage.gaussian_filter(top_phase, sigma=sigma_val, order=0)
-    bottom_phase = ndimage.gaussian_filter(bottom_phase, sigma=sigma_val, order=0)
+maps['left']['legend'] = V_left_legend
+maps['right']['legend'] = V_right_legend
+maps['top']['legend'] = H_top_legend
+maps['bottom']['legend'] = H_bottom_legend
+
+
+maps['left']['shift_phase'] = shift_left_phase
+maps['right']['shift_phase'] = shift_right_phase
+maps['top']['shift_phase'] = shift_top_phase
+maps['bottom']['shift_phase'] = shift_bottom_phase
+
+maps['threshold'] = threshold
+maps['shift_az_legend'] = shift_az_legend
+maps['shift_other_az_legend'] = shift_other_az_legend
+maps['shift_el_legend'] = shift_el_legend
+maps['shift_other_el_legend'] = shift_other_el_legend
+
+
+path_to_map_struct = os.path.join(composite_dir, 'maps.pkl')
+with open(path_to_map_struct, 'wb') as wm:
+    pkl.dump(maps, wm, protocol=pkl.HIGHEST_PROTOCOL)
+
+# # smooth = True
+# # sigma_val = (3,3)
+# if smooth is True:
+#     left_phase = ndimage.gaussian_filter(left_phase, sigma=sigma_val, order=0)
+#     right_phase = ndimage.gaussian_filter(right_phase, sigma=sigma_val, order=0)
     
-# To calculate average for 
-el_avg = (bottom_phase + top_phase) / 2.
+# vmin_val = 0 #-1*math.pi # 0
+# vmax_val = 2*math.pi
 
 
-# QUICK PLOTS: -------------------------------------------
-# --------------------------------------------------------
-
-# surface
-plt.subplot(2,2,1)
-plt.imshow(el_avg, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
-
-# ratio of stimulation freq vs. all other:
-# threshold = 0.2
-el_ratio_map = (ratio_top + ratio_bottom) / 2.
-plt.subplot(2,2,2)
-plt.axis('off')
-ax = plt.gca()
-im = ax.imshow(el_ratio_map, cmap='hot')
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-plt.colorbar(im, cax=cax)
-
-# mask phase with ratio:
-el_phase_mask = get_ratio_mask(el_avg, el_ratio_map, threshold)
-
-plt.subplot(2,2,3)
-plt.title('Threshold: %s of ratio max' % str(threshold))
-plt.imshow(surface, cmap='gray')
-plt.imshow(el_phase_mask, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-plt.axis('off')
-
-# legend
-plt.subplot(2,2,4)
-plt.imshow(EL_legend, cmap=colormap)
-plt.axis('off')
-plt.suptitle('EL AVG')
-plt.show()
-
-# -------------------------------------------------------
-# Calculate gradients, make field sign map.
-# -------------------------------------------------------
-
-if use_avg is True:
-    if use_mask is True:
-        Hmap = el_phase_mask
-        Vmap = az_phase_mask
-    else:
-        Hmap = el_avg
-        Vmap = az_avg
-else:
-    if use_left is True:
-        if use_mask is True:
-            Hmap = get_ratio_mask(bottom_phase, ratio_bottom, threshold)
-            Vmap = get_ratio_mask(left_phase, ratio_left, threshold)
-        else:
-            Hmap = bottom_phase
-            Vmap = left_phase
-    else:
-        if use_mask is True:
-            Hmap = get_ratio_mask(top_phase, ratio_top, threshold)
-            Vmap = get_ratio_mask(right_phase, ratio_right, threshold)
-        else:
-            Hmap = top_phase
-            Vmap = right_phase
-
-smooth = True
-sigma_val = (3, 3)
-if smooth is True:
-    Hmap = ndimage.gaussian_filter(Hmap, sigma=sigma_val, order=0)
-    Vmap = ndimage.gaussian_filter(Vmap, sigma=sigma_val, order=0)
-
-[Hgy,Hgx]=np.array(gradient_phase(Hmap))
-
-# Hgy =(Hgy + math.pi) % (2*math.pi) - math.pi
-# Hgx =(Hgx + math.pi) % (2*math.pi) - math.pi
-
-[Vgy,Vgx]=np.array(gradient_phase(Vmap))
-
-Hgdir=np.arctan2(Hgy,Hgx) # gradient direction
-Vgdir=np.arctan2(Vgy,Vgx)
-# Hgdir[Hgdir<0]=2*math.pi+Hgdir[Hgdir<0]
-# Vgdir[Vgdir<0]=2*math.pi+Vgdir[Vgdir<0]
-
-
-gdiff = Vgdir-Hgdir
-gdiff = (gdiff + math.pi) % (2*math.pi) - math.pi
-
-# O=-1*np.sin(gdiff)
-O=np.sin(gdiff) # LEFT goes w/ BOTTOM.  RIGHT goes w/ TOP.
-S=np.sign(O)
-
-
-# PLOT:
-# -----------------------------------------------------
-plt.subplot(131)
-plt.imshow(Hgdir,cmap='jet');
-# plt.colorbar();
-plt.axis('off')
-plt.title('Hgdir')
-
-plt.subplot(132)
-plt.imshow(Vgdir,cmap='jet');
-# plt.colorbar();
-plt.axis('off')
-plt.title('Vgdir')
-
-
-plt.subplot(133)
-plt.imshow(S,cmap='jet');
-plt.axis('off')
-plt.title('sign')
-# plt.colorbar()
-
-
-
-# -------------------------------------------------------
-# Calculate STD, and threshold to separate areas
-# -------------------------------------------------------
-
-O_sigma=np.nanstd(O)
-
-S_thresh=np.zeros(np.shape(O))
-std_thresh = .5
-S_thresh[O>(O_sigma*std_thresh)]=1
-S_thresh[O<(-1*O_sigma*std_thresh)]=-1
-
-plt.figure()
-plt.imshow(surface, cmap='gray')
-plt.imshow(S_thresh,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.colorbar();
-
-plt.show()
-
-
-# ----------------------------------------------------------------------------------------
-# IMAGE DILATION and etc.....
-# ----------------------------------------------------------------------------------------
-from scipy import ndimage
-# im2 = ndimage.grey_dilation(S_thresh)
-
-import cv2
-kernel = np.ones((2,2),np.uint8)
-
-opening = cv2.morphologyEx(S_thresh, cv2.MORPH_OPEN, kernel)
-
-closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-opening2 = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
-
-dilation = cv2.dilate(opening2,kernel,iterations = 1)
-
-
-plt.imshow(dilation,cmap='bwr', alpha=0.3);
-plt.axis('off')
-plt.colorbar();
-
-plt.show()
-
-
-# ANOTHER ATTEMPT:
-# ----------------------------------------------------------------------------------------
-from skimage.morphology import erosion, dilation, opening, closing, white_tophat
-from skimage.morphology import black_tophat, skeletonize, convex_hull_image
-
-from skimage.morphology import disk
-
-selem = disk(2)
-
-plt.figure(figsize=(20,10))
-
-# OPEN:
-plt.subplot(1,4,1)
-opened = opening(S_thresh, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(opened,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('opening')
-
-# CLOSE:
-plt.subplot(1,4,2)
-# closed = closing(opened, selem)
-closed = closing(opened, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(closed,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('closing')
-
-# OPEN2:
-plt.subplot(1,4,3)
-opened2 = closing(closed, selem)
-plt.imshow(surface, cmap='gray')
-plt.imshow(opened2,cmap='bwr', alpha=0.5);
-plt.axis('off')
-plt.title('re-opening')
-
-# DILATE:
-plt.subplot(1,4,4)
-dilated = dilation(opened2, selem)
-skel = skeletonize(abs(dilated))
-plt.imshow(surface, cmap='gray')
-plt.imshow(dilated,cmap='bwr', alpha=0.5);
-plt.imshow(skel,cmap='gray', alpha=0.5);
-plt.axis('off')
-plt.title('dilated')
-# plt.colorbar();
-
-plt.show()
-
-
-
+# # smooth = True
+# # sigma_val = (3,3)
+# # smooth = True
+# if smooth is True:
+#     top_phase = ndimage.gaussian_filter(top_phase, sigma=sigma_val, order=0)
+#     bottom_phase = ndimage.gaussian_filter(bottom_phase, sigma=sigma_val, order=0)
 
 
 # --------------------------------------------------------------------------------------
@@ -976,7 +807,7 @@ if get_clean is True:
     # AZ average 
     # --------------------------------------------------------------------------------------
     fig = plt.imshow(surface, cmap='gray')
-    plt.imshow(az_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val, alpha=0.5)
+    plt.imshow(right_phase, cmap='hsv', vmin=vmin_val, vmax=vmax_val, alpha=0.5)
     plt.axis('off')
     fig.axes.get_xaxis().set_visible(False)
     fig.axes.get_yaxis().set_visible(False)
