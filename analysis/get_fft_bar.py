@@ -46,7 +46,13 @@ parser.add_option('--interpolate', action='store_true', default=False, help='Int
 parser.add_option('--path', action="store",
                   dest="path", default="", help="input dir")
 
+parser.add_option('--ncycles', action="store",
+                  dest="ncycles", default=20, help="ncycles (default 20)")
+parser.add_option('--motion', action='store_true', dest="motion_corrected", default=False, help="Motion corrected with WiPy or no?")
+
+
 (options, args) = parser.parse_args()
+motion_corrected = options.motion_corrected
 
 #imdir = sys.argv[1]
 imdir = options.path
@@ -134,7 +140,7 @@ if reduceit:
 
 # INTERPOLATE FRAMES:
 ncycles = len(find_cycs) + 1
-N = int((ncycles / target_freq) * sampling_rate)
+N = int(round((ncycles / target_freq) * sampling_rate))
 
 FORMAT = '%Y%m%d%H%M%S%f'
 datetimes = [f.split('_')[1] for f in files]
@@ -175,26 +181,38 @@ window = sampling_rate * cycle_dur * 2
 
 
 
-# READ IN THE FRAMES:times 
-stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
-print len(files)
+# READ IN THE FRAMES:times
+if motion_corrected is True:
+    session_dir = os.path.split(imdir)[0]
+    curr_cond = os.path.split(imdir)[1]
+    motion_dir = os.path.join(session_dir, 'mCorrected', 'Motion', 'Registration')
+    mfiles = os.listdir(motion_dir)
+    mfiles = [m for m in mfiles if '_correctedFrames.npz' in m and curr_cond in m]
+    data = np.load(os.path.join(motion_dir, mfiles[0]))
+    stack = data['correctedFrameArray']
+    sample = stack[:,:,0]
+    print "Stack is: ", stack.shape
+else:
+    #    
+    stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
+    print len(files)
 
-print('copying files')
+    print('copying files')
 
-for i, f in enumerate(files):
+    for i, f in enumerate(files):
 
-    if i % 100 == 0:
-        print('%d images processed...' % i)
-    tiff = TIFF.open(os.path.join(imdir, f), mode='r')
-    im = tiff.read_image().astype('float')
-    tiff.close()
+	if i % 100 == 0:
+	    print('%d images processed...' % i)
+	tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	im = tiff.read_image().astype('float')
+	tiff.close()
 
-    if reduceit:
-        im_reduced = block_reduce(im, reduce_factor, func=np.mean)
-        # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
-        stack[:, :, i] = im_reduced
-    else:
-        stack[:, :, i] = im
+	if reduceit:
+	    im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+	    # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
+	    stack[:, :, i] = im_reduced
+	else:
+	    stack[:, :, i] = im
 
 average_stack = np.mean(stack, axis=2)
 
