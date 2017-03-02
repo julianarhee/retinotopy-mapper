@@ -60,13 +60,24 @@ map_path = options.map
 image_path = options.image
 ref_path = options.ref
 
+# image_path = '/media/juliana/IMDATA/TEFO/20161218_CE025/COREG/widefield_surface.png'
+# ref_path = '/media/juliana/IMDATA/TEFO/20161218_CE025/COREG/TEFO_surface.png'
+
+
+# image_path = '/media/juliana/IMDATA/TEFO/20161219_JR030W/COREG/widefield_surface.png'
+# ref_path = '/media/juliana/IMDATA/TEFO/20161219_JR030W/COREG/tefo.png'
+# map_path = '/media/juliana/IMDATA/TEFO/20161219_JR030W/COREG/avg_az.png'
+
 outpath = options.outpath
 
 
-retinomap = cv2.imread(map_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+# retinomap = cv2.imread(map_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+retinomap = cv2.imread(map_path, 0)
+
 print retinomap.shape
 # './JR015W_test/20160906_REF.png'
-img1 = cv2.imread(ref_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+# img1 = cv2.imread(ref_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+img1 = cv2.imread(ref_path, 0)
 
 
 # In[6]:
@@ -77,7 +88,11 @@ img1 = cv2.imread(ref_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
 # fim = 'lens_RGB_500ms.png'
 # fim = 'surgery_bright.JPG'
 # img2 = cv2.imread('./JR015W_test/tests/%s' % fim, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-img2 = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+
+
+# img2 = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+img2 = cv2.imread(image_path, 0)
+
 
 fim = os.path.split(image_path)[1]
 # In[8]:
