@@ -16,6 +16,7 @@ import pandas as pd
 from scipy import ndimage
 import datetime
 import time
+import copy
 
 def movingaverage(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
@@ -87,10 +88,19 @@ parser.add_option('--rolling', action='store_true', default=False, help="Rolling
 parser.add_option('--meansub', action='store_true', default=False, help="Remove mean of each frame.")
 parser.add_option('--interpolate', action='store_true', default=False, help='Interpolate frames or no.')
 
+parser.add_option('--path', action="store",
+                  dest="path", default="", help="input dir")
+parser.add_option('--ncycles', action="store",
+                  dest="ncycles", default=20, help="ncycles (default 20)")
+parser.add_option('--motion', action='store_true', dest="motion_corrected", default=False, help="Motion corrected with WiPy or no?")
+parser.add_option('--altpath', action="store", dest="altpath", default="", help="alt path for date-time file names?")
+
 (options, args) = parser.parse_args()
 
-imdir = sys.argv[1]
-
+altpath = options.altpath
+motion_corrected = options.motion_corrected
+#imdir = sys.argv[1]
+imdir = options.path
 #mean_subtract = options.mean_subtract
 mean_subtract_global = options.mean_subtract_global
 use_sum = options.use_sum
@@ -163,21 +173,31 @@ if meansub is True:
     mean_sub_flag = '_meansub'
 else:
     mean_sub_flag = ''
-processed_dir = os.path.join(os.path.split(imdir)[0], 'processed_%s_reduce%s_%s_%s%s%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag, mean_sub_flag, mean_flag))
+processed_dir = os.path.join(os.path.split(imdir)[0], 'movies', 'processed_%s_reduce%s_%s_%s%s%s%s%s' % (cond, str(reduce_factor[0]), append_to_name, movie_type, detrend_flag, smooth_flag, mean_sub_flag, mean_flag))
 if not os.path.exists(processed_dir):
     os.makedirs(processed_dir)
 
 
 files = os.listdir(imdir)
 print len(files)
+#if motion_corrected is True:
+#    files = [f for f in files if '_correctedFrames.npz' in f]   
+#else:
 files = sorted([f for f in files if os.path.splitext(f)[1] == str(im_format)])
-print len(files)
+#print len(files)
 
-tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
-sample = tiff.read_image().astype('float')
+if 'tif' in im_format:
+    tiff = TIFF.open(os.path.join(imdir, files[0]), mode='r')
+    sample = tiff.read_image().astype('float')
+
+else:
+    sample = imread(os.path.join(imdir, files[0]))
+
+#sample = tiff.read_image().astype('float')
 print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.min()]))
 print "sample shape: %s" % str(sample.shape)
-tiff.close()
+if 'tif' in im_format:
+    tiff.close()
 
 # FIND CYCLE STARTS:
 if circle:
@@ -185,22 +205,22 @@ if circle:
     plist = list(itertools.chain.from_iterable(positions))
     pos = []
     for i in plist:
-        split_string = i.split(' ')
-        split_num = [float(s) for s in split_string if s is not '']
-        pos.append([split_num[0], split_num[1]])
+	split_string = i.split(' ')
+	split_num = [float(s) for s in split_string if s is not '']
+	pos.append([split_num[0], split_num[1]])
 
     degs = [cart2pol(p[0], p[1], units='deg') for p in pos]
 
     degrees = [i[0] for i in degs]
     shift_degrees = [i[0] for i in degs]
     for x in range(len(shift_degrees)):
-        if shift_degrees[x] < 0:
-            shift_degrees[x] += 360.
+	if shift_degrees[x] < 0:
+	    shift_degrees[x] += 360.
 
     if CW:
-        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) > 0)))
     else:
-        find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
+	find_cycs = list(itertools.chain.from_iterable(np.where(np.diff(shift_degrees) < 0)))
     print "CYC STARTS: ", find_cycs
 
 else:
@@ -209,23 +229,24 @@ else:
     plist = list(itertools.chain.from_iterable(positions))
     positions = [map(float, i.split(',')) for i in plist]
     if 'H-Up' in cond or 'Bottom' in cond:
-        find_cycs = list(itertools.chain.from_iterable(
-            np.where(np.diff([p[1] for p in positions]) < 0)))
+	find_cycs = list(itertools.chain.from_iterable(
+	    np.where(np.diff([p[1] for p in positions]) < 0)))
     if 'H-Down' in cond or 'Top' in cond:
-        find_cycs = list(itertools.chain.from_iterable(
-            np.where(np.diff([p[1] for p in positions]) > 0)))
+	find_cycs = list(itertools.chain.from_iterable(
+	    np.where(np.diff([p[1] for p in positions]) > 0)))
     if 'V-Left' in cond or 'Left' in cond or 'Blank' in cond:
-        find_cycs = list(itertools.chain.from_iterable(
-            np.where(np.diff([p[0] for p in positions]) < 0)))
+	find_cycs = list(itertools.chain.from_iterable(
+	    np.where(np.diff([p[0] for p in positions]) < 0)))
     if 'V-Right' in cond or 'Right' in cond:
-        find_cycs = list(itertools.chain.from_iterable(
-            np.where(np.diff([p[0] for p in positions]) > 0)))
+	find_cycs = list(itertools.chain.from_iterable(
+	    np.where(np.diff([p[0] for p in positions]) > 0)))
 
-strt_idxs = [i + 1 for i in find_cycs]
-strt_idxs.append(0)
-strt_idxs.append(len(positions))
-strt_idxs = sorted(strt_idxs)
-nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
+if interpolate is False:
+    strt_idxs = [i + 1 for i in find_cycs]
+    strt_idxs.append(0)
+    strt_idxs.append(len(positions))
+    strt_idxs = sorted(strt_idxs)
+    nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_idxs))]
 
 
 
@@ -241,21 +262,31 @@ nframes_per_cycle = [strt_idxs[i] - strt_idxs[i - 1] for i in range(1, len(strt_
 #     print i
 #     chunks.append(files[strt_idxs[i]:strt_idxs[i+step]])
 
-
+if altpath=="":
+    altpath = copy.copy(imdir)
 
 # INTERPOLATE FRAMES:
-ncycles = len(find_cycs) + 1
-if interpolate is True:
-    print "Interpolating!"
-    N = int((ncycles / target_freq) * sampling_rate)
-else:
+if interpolate is False:
+    ncycles = len(find_cycs) + 1
     N = len(files)
-
-FORMAT = '%Y%m%d%H%M%S%f'
-datetimes = [f.split('_')[1] for f in files]
-tstamps = [float(datetime.datetime.strptime(t, FORMAT).strftime("%H%m%s%f")) for t in datetimes]
-actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
+else:
+    ncycles = float(options.ncycles)
+#if interpolate is True:
+    print "Interpolating!"
+    #N = int(round((ncycles / target_freq) * sampling_rate))
+    N = int(round((ncycles / target_freq) * sampling_rate))
+    nframes_per_cycle_interp = int(round((1/target_freq)*sampling_rate))
+    FORMAT = '%Y%m%d%H%M%S%f'
+    if imdir!=altpath:
+	tfiles = os.listdir(altpath)
+	tfiles = [i for i in tfiles if i.endswith('tif')]
+    else:
+	tfiles = copy.copy(files)
+    datetimes = [f.split('_')[1] for f in tfiles]
+    tstamps = [float(datetime.datetime.strptime(t, FORMAT).strftime("%H%m%s%f")) for t in datetimes]
+    actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
 tpoints = np.linspace(0, ncycles/target_freq, N)
+print "N points: ", len(tpoints)
 
 if interpolate is True:
     moving_win_sz = len(tpoints)/ncycles * 2
@@ -264,36 +295,59 @@ else:
     moving_win_sz = min(nframes_per_cycle)*2
     freqs = fft.fftfreq(len(stack[0, 0, :]), 1 / sampling_rate) # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120, but freq correct (looks for closest matching target_bin )
 
-
-# READ IN THE FRAMES:
-if reduceit:
-    sample = block_reduce(sample, reduce_factor, func=np.mean)
-
-tmp_stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
-print len(files)
-
-print('copying files')
-
-for i, f in enumerate(files):
-
-    if i % 100 == 0:
-        print('%d images processed...' % i)
-    tiff = TIFF.open(os.path.join(imdir, f), mode='r')
-    im = tiff.read_image().astype('float')
-    tiff.close()
-
-    if reduceit:
-	if use_sum is True:
-	    im_reduced = block_reduce(im, reduce_factor, func=np.sum)
+if motion_corrected is True:
+    session_dir = os.path.split(imdir)[0]
+    curr_cond = os.path.split(imdir)[1]
+    motion_dir = os.path.join(session_dir, 'mCorrected', 'Motion', 'Registration')
+    mfiles = os.listdir(motion_dir)
+    mfiles = [m for m in mfiles if '_correctedFrames.npz' in m and curr_cond in m]
+    data = np.load(os.path.join(motion_dir, mfiles[0]))
+    mstack = data['correctedFrameArray']
+    sample = mstack[:,:,0]
+    print "Stack is: ", mstack.shape
+    print "Reducing to: ", sample.shape
+    tmp_stack = np.empty((sample.shape[0], sample.shape[1], mstack.shape[2]))
+    for i in range(tmp_stack.shape[2]):
+        if reduceit:
+            if use_sum is True:
+		im_reduced = block_reduce(mstack[:,:,i], reduce_factor, func=np.sum)
+	    else:
+		im_reduced = block_reduce(mstack[:,:,i], reduce_factor, func=np.mean)
 	else:
-            im_reduced = block_reduce(im, reduce_factor, func=np.mean)
-        # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
-        tmp_stack[:, :, i] = im_reduced
-    else:
-        tmp_stack[:, :, i] = im
+	    tmp_stack[:,:,i] = mstack[:,:,i]
+else:
+    # READ IN THE FRAMES:
+    if reduceit:
+	sample = block_reduce(sample, reduce_factor, func=np.mean)
 
-    if smooth is True:
-        tmp_stack[:,:,i] = ndimage.gaussian_filter(tmp_stack[:,:,i], sigma=sigma_val, order=0)
+    tmp_stack = np.empty((sample.shape[0], sample.shape[1], len(files)))
+    print len(files)
+
+    print('copying files')
+
+    for i, f in enumerate(files):
+
+	if i % 100 == 0:
+	    print('%d images processed...' % i)
+	if 'tif' in im_format:
+	    tiff = TIFF.open(os.path.join(imdir, f), mode='r')
+	    im = tiff.read_image().astype('float')
+	    tiff.close()
+	else:
+	    im = imread(os.path.join(imdir, f))
+
+	if reduceit:
+	    if use_sum is True:
+		im_reduced = block_reduce(im, reduce_factor, func=np.sum)
+	    else:
+		im_reduced = block_reduce(im, reduce_factor, func=np.mean)
+	    # ndimage.gaussian_filter(im_reduced, sigma=gsigma)
+	    tmp_stack[:, :, i] = im_reduced
+	else:
+	    tmp_stack[:, :, i] = im
+
+	if smooth is True:
+	    tmp_stack[:,:,i] = ndimage.gaussian_filter(tmp_stack[:,:,i], sigma=sigma_val, order=0)
 
 average_stack = np.mean(tmp_stack, axis=2)
 
@@ -312,23 +366,23 @@ if detrend_first is True:
     print "FIRST DETRENDING..."
     for x in range(sample.shape[0]):
         for y in range(sample.shape[1]):
-            pix = scipy.signal.detrend(tmp_stack[x, y, :], type='constant')
-            tmp_stack[x, y, :] = pix
+	    pix = scipy.signal.detrend(tmp_stack[x, y, :], type='constant')
+	    tmp_stack[x, y, :] = pix
 
 if meansub is True:
     print "mean subtracting..."
     if mean_subtract_global is True:
         for i in range(stack.shape[2]):
-            tmp_stack[:,:,i] -= average_stack
+	    tmp_stack[:,:,i] -= average_stack
     else:
         for i in range(stack.shape[2]):
-            tmp_stack[:,:,i] -= np.mean(tmp_stack[:,:,i].ravel()) 
+	    tmp_stack[:,:,i] -= np.mean(tmp_stack[:,:,i].ravel()) 
 else:
     print "Not doing a mean subtraction from each frame.  Select option --meansub if this is incorrect."
 
 
-# if detrend is False:
-#     print "detrending..."
+    # if detrend is False:
+    #     print "detrending..."
 stack = np.empty((sample.shape[0], sample.shape[1], N))
 for x in range(sample.shape[0]):
     for y in range(sample.shape[1]):
@@ -401,12 +455,22 @@ if get_average_cycle:
 
     print "averaging cycles..."
 
-    idxs = strt_idxs[0:20]
-    min_nframes = int(len(tpoints)/ncycles) #min(nframes_per_cycle)
+    #idxs = strt_idxs[0:20]
+    if interpolate is True:
+	nframes_per_cycle_use = nframes_per_cycle_interp
+	idxs = []
+        cyc = 0
+	for c in range(int(ncycles)):
+	    idxs.append(cyc)
+	    cyc += (nframes_per_cycle_use-1)
+
+    else:
+	idxs = strt_idxs[0:int(ncycles)]
+	nframes_per_cycle_use = min(nframes_per_cycle) #round(len(tpoints)/ncycles) #min(nframes_per_cycle)
     blocks = []
     for i, s in enumerate(idxs):
 
-        block = stack[:,:,s:s+min_nframes]  #[s:s+min_nframes]
+        block = stack[:,:,s:s+nframes_per_cycle_use]  #[s:s+min_nframes]
         blocks.append(block)
 
     average_cycle = sum(blocks) / len(blocks)
