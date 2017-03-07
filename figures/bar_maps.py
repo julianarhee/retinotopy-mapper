@@ -46,7 +46,8 @@ parser.add_option('--smooth', action="store_true", dest="smooth", default=False,
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
 parser.add_option('--contour', action="store_true", dest="contour", default=False, help="show contour lines for phase map")
-parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use power or just magnitude?")
+parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use POWER or just magnitude?")
+parser.add_option('--ratio', action='store_true', dest='use_ratio', default=False, help="use RATIO or just magnitude?")
 
 parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Used short-axis instead of long?")
 
@@ -55,6 +56,7 @@ use_long_axis = options.use_long_axis
 
 
 use_power = options.use_power
+use_ratio = options.use_ratio
 
 #use_norm = options.use_norm
 smooth = options.smooth
@@ -403,6 +405,7 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             power_map = mag_map**2 #D[curr_key]['mag_map']**2
+            ratio_map = D[curr_key]['ratio_map']
             DC_mag_map = D[curr_key]['DC_mag']/Ny
             
             # ------------------------------------------------------------------
@@ -562,6 +565,11 @@ for cond in cond_types:
             if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
                 plt.title('power')
+                plt.colorbar()
+                plt.axis('off')
+            elif use_ratio is True:
+                plt.imshow(ratio_map, cmap='hot') #, vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
+                plt.title('mag ratio')
                 plt.colorbar()
                 plt.axis('off')
             else:
@@ -818,8 +826,10 @@ for cond in cond_types:
         
             if use_power is True:
               power_flag = 'power_'
+            elif use_ratio is True:
+              power_flag = 'ratio'
             else:
-              power_flag = ''
+              power_flag = 'magnitude'
 
             impath = os.path.join(figdir, imname+'_'+power_flag+threshold_type+'.png')
             plt.savefig(impath, format='png')

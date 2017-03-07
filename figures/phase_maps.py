@@ -43,228 +43,6 @@ import numpy.linalg as la
 import scipy.ndimage as ndimage
  
 
-def py_ang(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'    """
-    cosang = np.dot(v1, v2)
-    sinang = la.norm(np.cross(v1, v2))
-    return np.arctan2(sinang, cosang)
-def gradient_phase(f, *varargs, **kwargs):
-    """
-    Return the gradient of an N-dimensional array.
-
-    The gradient is computed using second order accurate central differences
-    in the interior and either first differences or second order accurate
-    one-sides (forward or backwards) differences at the boundaries. The
-    returned gradient hence has the same shape as the input array.
-
-    Parameters
-    ----------
-    f : array_like
-        An N-dimensional array containing samples of a scalar function.
-    varargs : scalar or list of scalar, optional
-        N scalars specifying the sample distances for each dimension,
-        i.e. `dx`, `dy`, `dz`, ... Default distance: 1.
-        single scalar specifies sample distance for all dimensions.
-        if `axis` is given, the number of varargs must equal the number of axes.
-    edge_order : {1, 2}, optional
-        Gradient is calculated using N\ :sup:`th` order accurate differences
-        at the boundaries. Default: 1.
-
-        .. versionadded:: 1.9.1
-
-    axis : None or int or tuple of ints, optional
-        Gradient is calculated only along the given axis or axes
-        The default (axis = None) is to calculate the gradient for all the axes of the input array.
-        axis may be negative, in which case it counts from the last to the first axis.
-
-        .. versionadded:: 1.11.0
-
-    Returns
-    -------
-    gradient : list of ndarray
-        Each element of `list` has the same shape as `f` giving the derivative
-        of `f` with respect to each dimension.
-
-    Examples
-    --------
-    >>> x = np.array([1, 2, 4, 7, 11, 16], dtype=np.float)
-    >>> np.gradient(x)
-    array([ 1. ,  1.5,  2.5,  3.5,  4.5,  5. ])
-    >>> np.gradient(x, 2)
-    array([ 0.5 ,  0.75,  1.25,  1.75,  2.25,  2.5 ])
-
-    For two dimensional arrays, the return will be two arrays ordered by
-    axis. In this example the first array stands for the gradient in
-    rows and the second one in columns direction:
-
-    >>> np.gradient(np.array([[1, 2, 6], [3, 4, 5]], dtype=np.float))
-    [array([[ 2.,  2., -1.],
-            [ 2.,  2., -1.]]), array([[ 1. ,  2.5,  4. ],
-            [ 1. ,  1. ,  1. ]])]
-
-    >>> x = np.array([0, 1, 2, 3, 4])
-    >>> dx = np.gradient(x)
-    >>> y = x**2
-    >>> np.gradient(y, dx, edge_order=2)
-    array([-0.,  2.,  4.,  6.,  8.])
-
-    The axis keyword can be used to specify a subset of axes of which the gradient is calculated
-    >>> np.gradient(np.array([[1, 2, 6], [3, 4, 5]], dtype=np.float), axis=0)
-    array([[ 2.,  2., -1.],
-           [ 2.,  2., -1.]])
-    """
-    f = np.asanyarray(f)
-    N = len(f.shape)  # number of dimensions
-
-    axes = kwargs.pop('axis', None)
-    if axes is None:
-        axes = tuple(range(N))
-    # check axes to have correct type and no duplicate entries
-    if isinstance(axes, int):
-        axes = (axes,)
-    if not isinstance(axes, tuple):
-        raise TypeError("A tuple of integers or a single integer is required")
-
-    # normalize axis values:
-    axes = tuple(x + N if x < 0 else x for x in axes)
-    if max(axes) >= N or min(axes) < 0:
-        raise ValueError("'axis' entry is out of bounds")
-
-    if len(set(axes)) != len(axes):
-        raise ValueError("duplicate value in 'axis'")
-
-    n = len(varargs)
-    if n == 0:
-        dx = [1.0]*N
-    elif n == 1:
-        dx = [varargs[0]]*N
-    elif n == len(axes):
-        dx = list(varargs)
-    else:
-        raise SyntaxError(
-            "invalid number of arguments")
-
-    edge_order = kwargs.pop('edge_order', 1)
-    if kwargs:
-        raise TypeError('"{}" are not valid keyword arguments.'.format(
-                                                  '", "'.join(kwargs.keys())))
-    if edge_order > 2:
-        raise ValueError("'edge_order' greater than 2 not supported")
-
-    # use central differences on interior and one-sided differences on the
-    # endpoints. This preserves second order-accuracy over the full domain.
-
-    outvals = []
-
-    # create slice objects --- initially all are [:, :, ..., :]
-    slice1 = [slice(None)]*N
-    slice2 = [slice(None)]*N
-    slice3 = [slice(None)]*N
-    slice4 = [slice(None)]*N
-
-    otype = f.dtype.char
-    if otype not in ['f', 'd', 'F', 'D', 'm', 'M']:
-        otype = 'd'
-
-    # Difference of datetime64 elements results in timedelta64
-    if otype == 'M':
-        # Need to use the full dtype name because it contains unit information
-        otype = f.dtype.name.replace('datetime', 'timedelta')
-    elif otype == 'm':
-        # Needs to keep the specific units, can't be a general unit
-        otype = f.dtype
-
-    # Convert datetime64 data into ints. Make dummy variable `y`
-    # that is a view of ints if the data is datetime64, otherwise
-    # just set y equal to the array `f`.
-    if f.dtype.char in ["M", "m"]:
-        y = f.view('int64')
-    else:
-        y = f
-
-    for i, axis in enumerate(axes):
-
-        if y.shape[axis] < 2:
-            raise ValueError(
-                "Shape of array too small to calculate a numerical gradient, "
-                "at least two elements are required.")
-        
-        # Numerical differentiation: 1st order edges, 2nd order interior
-        if y.shape[axis] == 2 or edge_order == 1:
-            
-            # Use first order differences for time data
-            out = np.empty_like(y, dtype=otype)
-
-            slice1[axis] = slice(1, -1)
-            slice2[axis] = slice(2, None)
-            slice3[axis] = slice(None, -2)
-            # 1D equivalent -- out[1:-1] = (y[2:] - y[:-2])/2.0
-            out[slice1] = (y[slice2] - y[slice3])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-            out[slice1]=out[slice1]/2.0
-
-            slice1[axis] = 0
-            slice2[axis] = 1
-            slice3[axis] = 0
-            # 1D equivalent -- out[0] = (y[1] - y[0])
-            out[slice1] = (y[slice2] - y[slice3])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-
-            slice1[axis] = -1
-            slice2[axis] = -1
-            slice3[axis] = -2
-            # 1D equivalent -- out[-1] = (y[-1] - y[-2])
-            out[slice1] = (y[slice2] - y[slice3])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-
-        # Numerical differentiation: 2st order edges, 2nd order interior
-        else:
-            # Use second order differences where possible
-            out = np.empty_like(y, dtype=otype)
-
-            slice1[axis] = slice(1, -1)
-            slice2[axis] = slice(2, None)
-            slice3[axis] = slice(None, -2)
-            # 1D equivalent -- out[1:-1] = (y[2:] - y[:-2])/2.0
-            out[slice1] = (y[slice2] - y[slice3])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-            out[slice1] = out[slice1]/2
-
-            slice1[axis] = 0
-            slice2[axis] = 0
-            slice3[axis] = 1
-            slice4[axis] = 2
-            # 1D equivalent -- out[0] = -(3*y[0] - 4*y[1] + y[2]) / 2.0
-            out[slice1] = -(3.0*y[slice2] - 4.0*y[slice3] + y[slice4])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-            out[slice1]=out[slice1]/2.0
-
-            slice1[axis] = -1
-            slice2[axis] = -1
-            slice3[axis] = -2
-            slice4[axis] = -3
-            # 1D equivalent -- out[-1] = (3*y[-1] - 4*y[-2] + y[-3])
-            out[slice1] = (3.0*y[slice2] - 4.0*y[slice3] + y[slice4])
-            out[slice1] = (out[slice1] + math.pi) % (2*math.pi) - math.pi
-            out[slice1]=out[slice1]/2.0
-
-        # divide by step size
-        out /= dx[i]
-        outvals.append(out)
-
-        # reset the slice object in this dimension to ":"
-        slice1[axis] = slice(None)
-        slice2[axis] = slice(None)
-        slice3[axis] = slice(None)
-        slice4[axis] = slice(None)
-
-    if len(axes) == 1:
-        return outvals[0]
-    else:
-        return outvals
-
-
-
 parser = optparse.OptionParser()
 parser.add_option('--headless', action="store_true", dest="headless", default=False, help="run in headless mode, no figs")
 parser.add_option('--reduce', action="store", dest="reduce_val", default="1", help="block_reduce value")
@@ -285,13 +63,17 @@ parser.add_option('--noclean', action='store_false', dest='get_clean', default=T
 
 parser.add_option('--avg', action='store_true', dest='use_avg', default=False, help="Use averaged maps or single runs?")
 parser.add_option('--mask', action='store_true', dest='use_mask', default=False, help="Use masked phase maps")
-parser.add_option('--threshold', action="store", dest="threshold", default=0.2, help="Threshold (max of ratio map)")
+parser.add_option('--threshold', action="store", dest="threshold", default=0.01, help="Threshold (max of ratio map)")
+parser.add_option('--alpha', action="store", dest="alpha_val", default=0.5, help="Alpha value for overlays")
 
 parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Used short-axis instead of long?")
-
+parser.add_option('--average', action="store_true", dest="show_avg", default=False, help="Show averaged maps or only save single runs?")
+parser.add_option('--new', action="store_true", dest="create_new", default=False, help="Create new map struct or no?")
 
 (options, args) = parser.parse_args()
 
+create_new = options.create_new
+show_avg = options.show_avg
 use_avg = options.use_avg
 use_left = options.use_left
 get_clean = options.get_clean
@@ -305,6 +87,7 @@ sigma_val = (int(sigma_val_num), int(sigma_val_num))
 # use_power = options.use_power
 
 headless = options.headless
+reduce_val = int(options.reduce_val)
 reduce_factor = (int(options.reduce_val), int(options.reduce_val))
 if reduce_factor[0] > 1:
     reduceit=1
@@ -355,7 +138,7 @@ if figpath:
     tmp_ims = os.listdir(os.path.join(outdir, figpath))
     surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
     ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
-    ims = [i for i in ims if exptdate in i]
+    ims = [i for i in ims if date in i]
     print ims
     if ims:
         impath = os.path.join(outdir, figpath, ims[0])
@@ -387,13 +170,13 @@ if reduceit:
 append = options.append
 
 struct_fns = os.listdir(outdir)
-struct_fns = [f for f in struct_fns if os.path.splitext(f)[1] == '.pkl']
+struct_fns = [f for f in struct_fns if os.path.splitext(f)[1] == '.pkl' and 'r'+str(reduce_val) in f]
 
-if len(files) > 0:
-    if len(files) == 1: # composite struct exists
+if len(struct_fns) > 1:
+    if len(struct_fns) == 1: # composite struct exists
         composite_struct_fn = os.path.join(outdir, struct_fns[0])
 
-    elif len(files) > 1:
+    elif len(struct_fns) > 1:
         print "Found more than 1 composite struct file for session %s: " % date
         for struct_idx, struct_fn in enumerate(struct_fns):
             print struct_idx, struct_fn
@@ -406,16 +189,18 @@ if len(files) > 0:
     with open(composite_struct_fn, 'rb') as rf:
         D = pkl.load(rf)
 
-else:
+elif len(struct_fns)==0 or create_new is True:
     print "No composite struct found. Creating new."
-    composite_struct_fn = '{date}_{animal}_struct.pkl'.format(date=date, animal=subject)
+    composite_struct_fn = '{date}_{animal}_r{reduceval}_struct.pkl'.format(date=date, animal=subject, reduceval=reduce_val)
     print "New struct name is: %s" % composite_struct_fn
 
     D = dict()
     for condition in conditions:
         condition_dir = os.path.join(outdir, condition, 'structs')
+	if not os.path.exists(condition_dir):
+	    continue
         condition_structs = os.listdir(condition_dir)
-        condition_structs = [f for f in condition_structs if '.pkl' in f and 'fft' in f]
+        condition_structs = [f for f in condition_structs if '.pkl' in f and 'fft' in f and append in f]
         D[condition] = dict()
         for condition_struct in condition_structs:
             curr_condition_struct = os.path.join(condition_dir, condition_struct)
@@ -430,76 +215,162 @@ else:
 
 
 
-AZ = dict()
+CONDS = dict()
 condition_keys = D.keys()
+condition_types = ['Left', 'Right', 'Top', 'Bottom']
 
-print "Select session for AZIMUTH maps (LEFT):"
-for cond_idx, cond_fn in enumerate(condition_keys):
-    print cond_idx, cond_fn
-user_input=raw_input("\nChoose a session [0,1...]:\n")
+for condition_type in condition_types:
+    condkey = condition_type.lower()
+    if 'Left' in condition_type or 'Right' in condition_type:
+	direction = 'AZIMUTH'
+    else:
+        direction = 'ELEVATION'
 
-selected_left_condition = condition_keys[int(user_input)]
+    print "Select session for %s maps (%s):" % (direction, condition_type)
 
-run_keys = D[selected_left_condition].keys()
-run_keys = [r for r in run_keys if 'Left' in r]
-for run_idx, run_fn in enumerate(run_keys):
-    print run_idx, run_fn
-user_input=raw_input("\nChoose LEFT run [0,1...]:\n")
-selected_left_run = run_keys[int(user_input)]
-AZ['left'] = D[selected_left_condition][selected_left_run]
+    for cond_idx, cond_fn in enumerate(condition_keys):
+	print cond_idx, cond_fn
+    user_input=raw_input("\nChoose a session [0,1...]:\n")
+    selected_condition = condition_keys[int(user_input)]
 
+    run_keys = D[selected_condition].keys()
+    run_keys = [r for r in run_keys if condition_type in r and str(reduce_factor) in r]
+    for run_idx, run_fn in enumerate(run_keys):
+	print run_idx, run_fn
+    using_average = False
+    user_input=raw_input("\nChoose %s run [0,1...]:\n" % condition_type)
+    if len(user_input)==1:
+	selected_run = run_keys[int(user_input)]
+    elif len(user_input)>1:
+	using_average = True
+	run_idxs = [int(r) for r in user_input]
+	runs_to_use = [run_keys[r] for r in run_idxs]
+    elif user_input=='':
+	using_average = True
+	runs_to_use = copy.copy(run_keys)
+    
+    if using_average is False:
+	CONDS[condkey] = D[selected_condition][selected_run]
+    else:
+        CONDS[condkey] = dict()
+	sample = D[selected_condition][runs_to_use[0]]['phase_map']
+	combined_phase = np.zeros((sample.shape[0], sample.shape[1], len(runs_to_use)))
+        combined_ratio = np.zeros(combined_phase.shape)
+	for ridx,curr_runkey in enumerate(runs_to_use):
+	    combined_phase[:,:,ridx] = D[selected_condition][curr_runkey]['phase_map']
+	    combined_ratio[:,:,ridx] = D[selected_condition][curr_runkey]['ratio_map']
+	combined_phase_x = np.sum(np.cos(combined_phase), 2)
+	combined_phase_y = np.sum(np.sin(combined_phase), 2)
+	CONDS[condkey]['phase'] = np.arctan2(combined_phase_y, combined_phase_x)
+	CONDS[condkey]['ratio'] = np.mean(combined_ratio, 2)
+	CONDS[condkey]['averaging'] = True
+	CONDS[condkey]['runs_used'] = runs_to_use
 
-print "Select session for AZIMUTH maps (RIGHT):"
-for cond_idx, cond_fn in enumerate(condition_keys):
-    print cond_idx, cond_fn
-user_input=raw_input("\nChoose a session [0,1...]:\n")
-selected_right_condition = condition_keys[int(user_input)]
-
-run_keys = D[selected_right_condition].keys()
-run_keys = [r for r in run_keys if 'Right' in r]
-for run_idx, run_fn in enumerate(run_keys):
-    print run_idx, run_fn
-user_input=raw_input("\nChoose RIGHT run [0,1...]:\n")
-selected_right_run = run_keys[int(user_input)]
-AZ['right'] = D[selected_right_condition][selected_right_run]
-
-
-
-EL = dict()
-
-print "Select session for ELEVATION maps (TOP):"
-for cond_idx, cond_fn in enumerate(condition_keys):
-    print cond_idx, cond_fn
-user_input=raw_input("\nChoose a session [0,1...]:\n")
-
-selected_top_condition = condition_keys[int(user_input)]
-
-run_keys = D[selected_top_condition].keys()
-run_keys = [r for r in run_keys if 'Top' in r]
-for run_idx, run_fn in enumerate(run_keys):
-    print run_idx, run_fn
-user_input=raw_input("\nChoose TOP run [0,1...]:\n")
-selected_top_run = run_keys[int(user_input)]
-EL['top'] = D[selected_top_condition][selected_top_run]
-
-
-print "Select session for ELEVATION maps (BOTTOM):"
-for cond_idx, cond_fn in enumerate(condition_keys):
-    print cond_idx, cond_fn
-user_input=raw_input("\nChoose a session [0,1...]:\n")
-selected_bottom_condition = condition_keys[int(user_input)]
-
-run_keys = D[selected_bottom_condition].keys()
-run_keys = [r for r in run_keys if 'Bottom' in r]
-for run_idx, run_fn in enumerate(run_keys):
-    print run_idx, run_fn
-user_input=raw_input("\nChoose BOTTOM run [0,1...]:\n")
-selected_bottom_run = run_keys[int(user_input)]
-EL['bottom'] = D[selected_bottom_condition][selected_bottom_run]
-
-
-
-
+#
+#print "Select session for AZIMUTH maps (RIGHT):"
+#for cond_idx, cond_fn in enumerate(condition_keys):
+#    print cond_idx, cond_fn
+#user_input=raw_input("\nChoose a session [0,1...]:\n")
+#selected_right_condition = condition_keys[int(user_input)]
+#
+#run_keys = D[selected_right_condition].keys()
+#run_keys = [r for r in run_keys if 'Right' in r and str(reduce_factor) in r]
+#for run_idx, run_fn in enumerate(run_keys):
+#    print run_idx, run_fn
+#user_input=raw_input("\nChoose RIGHT run [0,1...]:\n")
+#
+#if user_input=='':
+#    # average all found runs
+#    if len(run_keys) > 1:
+#        CONDS['right'] = dict()
+#        sample = D[selected_right_condition][run_keys[0]]['phase_map']
+#        combined_right = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        combined_ratio = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        for ridx,run_key in enumerate(run_keys):
+#            combined_right[:,:,ridx] = D[selected_right_condition][run_key]['phase_map']
+#            combined_ratio[:,:,ridx] = D[selected_right_condition][run_key]['ratio_map']
+#        combined_right_x = np.sum(np.cos(combined_right), 2)
+#        combined_right_y = np.sum(np.sin(combined_right), 2)
+#        CONDS['right']['phase'] = np.arctan2(combined_right_y, combined_right_x)
+#        CONDS['right']['ratio'] = np.mean(combined_ratio, 2)    
+#        CONDS['right']['averaging'] = True
+#    else:
+#        CONDS['right'] = D[selected_right_condition][run_keys[0]]
+#else:
+#    selected_right_run = run_keys[int(user_input)]
+#    CONDS['right'] = D[selected_right_condition][selected_right_run]
+#
+#
+## EL = dict()
+#
+#print "Select session for ELEVATION maps (TOP):"
+#for cond_idx, cond_fn in enumerate(condition_keys):
+#    print cond_idx, cond_fn
+#user_input=raw_input("\nChoose a session [0,1...]:\n")
+#
+#selected_top_condition = condition_keys[int(user_input)]
+#
+#run_keys = D[selected_top_condition].keys()
+#run_keys = [r for r in run_keys if 'Top' in r and str(reduce_factor) in r]
+#for run_idx, run_fn in enumerate(run_keys):
+#    print run_idx, run_fn
+#user_input=raw_input("\nChoose TOP run [0,1...]:\n")
+#
+#if user_input=='':
+#    # average all found runs
+#    if len(run_keys) > 1:
+#        CONDS['top'] = dict()
+#        sample = D[selected_top_condition][run_keys[0]]['phase_map']
+#        combined_top = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        combined_ratio = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        for ridx,run_key in enumerate(run_keys):
+#            combined_top[:,:,ridx] = D[selected_top_condition][run_key]['phase_map']
+#            combined_ratio[:,:,ridx] = D[selected_top_condition][run_key]['ratio_map']
+#        combined_top_x = np.sum(np.cos(combined_top), 2)
+#        combined_top_y = np.sum(np.sin(combined_top), 2)
+#        CONDS['top']['phase'] = np.arctan2(combined_top_y, combined_top_x)
+#        CONDS['top']['ratio'] = np.mean(combined_ratio, 2)
+#        CONDS['top']['averaging'] = True
+#    else:
+#        CONDS['top'] = D[selected_top_condition][run_keys[0]]
+#else:
+#    selected_top_run = run_keys[int(user_input)]
+#    CONDS['top'] = D[selected_top_condition][selected_top_run]
+#
+#print "Select session for ELEVATION maps (BOTTOM):"
+#for cond_idx, cond_fn in enumerate(condition_keys):
+#    print cond_idx, cond_fn
+#user_input=raw_input("\nChoose a session [0,1...]:\n")
+#selected_bottom_condition = condition_keys[int(user_input)]
+#
+#run_keys = D[selected_bottom_condition].keys()
+#run_keys = [r for r in run_keys if 'Bottom' in r and str(reduce_factor) in r]
+#for run_idx, run_fn in enumerate(run_keys):
+#    print run_idx, run_fn
+#user_input=raw_input("\nChoose BOTTOM run [0,1...]:\n")
+#
+#if user_input=='':
+#    # average all found runs
+#    if len(run_keys) > 1:
+#        CONDS['bottom'] = dict()
+#        sample = D[selected_bottom_condition][run_keys[0]]['phase_map']
+#        combined_bottom = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        combined_ratio = np.zeros((sample.shape[0], sample.shape[1], len(run_keys)))
+#        for ridx,run_key in enumerate(run_keys):
+#            combined_bottom[:,:,ridx] = D[selected_bottom_condition][run_key]['phase_map']
+#            combined_ratio[:,:,ridx] = D[selected_bottom_condition][run_key]['ratio_map']
+#        combined_bottom_x = np.sum(np.cos(combined_bottom), 2)
+#        combined_bottom_y = np.sum(np.sin(combined_bottom), 2)
+#        CONDS['bottom']['phase'] = np.arctan2(combined_bottom_y, combined_bottom_x)
+#        CONDS['bottom']['ratio'] = np.mean(combined_ratio, 2)
+#        CONDS['bottom']['averaging'] = True
+#    else:
+#        CONDS['bottom'] = D[selected_bottom_condition][run_keys[0]]
+#else:
+#    selected_bottom_run = run_keys[int(user_input)]
+#    CONDS['bottom'] = D[selected_bottom_condition][selected_bottom_run]
+#
+#
 # --------------------------------------------------------------------
 # Make legends:
 # --------------------------------------------------------------------
@@ -591,178 +462,190 @@ else:
 # -------------------------------------------------------------------------
 # GET CONDS:
 # -------------------------------------------------------------------------
-left_map = AZ['left']['ft']
-right_map = AZ['right']['ft']
-top_map = EL['top']['ft']
-bottom_map = EL['bottom']['ft']
+maps = dict()
+ratios = dict()
+legends = dict()
+for condkey in CONDS.keys():
+    if 'averaging' in CONDS[condkey].keys():
+        maps[condkey] = CONDS[condkey]['phase']
+        ratios[condkey] = CONDS[condkey]['ratio']
+    else:
+        maps[condkey] = np.angle(CONDS[condkey]['ft'])
+        ratios[condkey] = CONDS[condkey]['ratio_map']
 
-ratio_left = AZ['left']['ratio_map']
-ratio_right = AZ['right']['ratio_map']
-ratio_top = EL['top']['ratio_map']
-ratio_bottom = EL['bottom']['ratio_map']
+    if 'left' in condkey:
+        legends[condkey] = V_left_legend
+    elif 'right' in condkey:
+        legends[condkey] = V_right_legend
+    elif 'top' in condkey:
+        legends[condkey] = H_top_legend
+    else:
+        legends[condkey] = H_bottom_legend
 
-threshold = 0.001
-thresh_left_phase = np.angle(left_map)
-thresh_left_phase[np.where(ratio_left < threshold)] = np.nan
+# Fix legends:
+for condkey in CONDS.keys():
+    if 'averaging' in CONDS[condkey].keys():
+	tmp_leg = np.dstack((legends[condkey], legends[condkey]))
+	tmp_leg_x = np.sum(np.cos(tmp_leg), 2)
+	tmp_leg_y = np.sum(np.sin(tmp_leg), 2)
+	legends[condkey] = np.arctan2(tmp_leg_y, tmp_leg_x)
+   
+tmaps = dict()
+nconds = len(maps.keys())
+threshold = float(options.threshold)
+alpha_val = float(options.alpha_val)
+plt.figure()
+for cidx,condkey in enumerate(maps.keys()):
+    tmaps[condkey] = copy.copy(maps[condkey])
+    tmaps[condkey][np.where(ratios[condkey] < threshold)] = np.nan
 
-thresh_right_phase = np.angle(right_map)
-thresh_right_phase[np.where(ratio_right < threshold)] = np.nan
-
-thresh_top_phase = np.angle(top_map)
-thresh_top_phase[np.where(ratio_top < threshold)] = np.nan
-
-thresh_bottom_phase = np.angle(bottom_map)
-thresh_bottom_phase[np.where(ratio_bottom < threshold)] = np.nan
-
-
-# Quick checkout:
-#colormap = 'gist_rainbow'
-
-alpha_val = 0.5
-plt.subplot(2,4,1)
-plt.title('left')
-plt.imshow(surface, cmap='gray')
-plt.imshow(thresh_left_phase, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-plt.subplot(2,4,5)
-plt.imshow(V_left_legend, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-plt.tight_layout()
-
-plt.subplot(2,4,2)
-plt.title('right')
-plt.imshow(surface, cmap='gray')
-plt.imshow(thresh_right_phase, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-plt.subplot(2,4,6)
-plt.imshow(V_right_legend, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-
-plt.subplot(2,4,3)
-plt.title('top')
-plt.imshow(surface, cmap='gray')
-plt.imshow(thresh_top_phase, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-plt.subplot(2,4,7)
-plt.imshow(H_top_legend, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-
-plt.subplot(2,4,4)
-plt.title('bottom')
-plt.imshow(surface, cmap='gray')
-plt.imshow(thresh_bottom_phase, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
-plt.subplot(2,4,8)
-plt.imshow(H_bottom_legend, cmap=colormap, alpha=alpha_val)
-plt.axis('off')
+    plt.subplot(2,nconds,cidx+1)
+    plt.title(condkey)
+    plt.imshow(surface, cmap='gray')
+    plt.imshow(tmaps[condkey], cmap=colormap, alpha=alpha_val)
+    plt.axis('off')
+    plt.subplot(2,nconds, cidx+nconds+1)
+    plt.imshow(legends[condkey], cmap=colormap, alpha=alpha_val)
+    plt.axis('off')
 
 plt.tight_layout()
-
 plt.suptitle([date, subject])
 
-plt.show()
-
-imname = 'thresholded_maps_thresh%0.4f' % threshold
-imname.replace('.', 'x')
+imname = 'thresholded_maps_thresh%0.4f_%s' % (threshold, colormap)
+imname = imname.replace('.', 'x')
 
 impath = os.path.join(fig_dir, imname+'.png')
 plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
 
 plt.show()
 
+print impath
 
+if using_average is False:
+    iminfo_fn = impath.replace('.png', '.txt')
+    iminfo = open(iminfo_fn, 'w')
+    iminfo.write('LeftCond\t LeftRun\t RightCond\t RightRun\t TopCond\t TopRun\t BottomCond\t BottomRun\t Threshold\t Colormap\n')
+    iminfo.write('%s\t %s\t %s\t %s\t %s\t %s\t %s\t %s\t %f\t %s\n' % (selected_left_condition, selected_left_run, selected_right_condition, selected_right_run, selected_top_condition, selected_top_run, selected_bottom_condition, selected_bottom_run, threshold, colormap))
+    iminfo.close()
 
 # -------------------------------------------------------
 # Get phase maps, shift pi for averaging.  Then, AVERAGE.
 # -------------------------------------------------------
-vmin_val = 0 #-1*math.pi # 0
-vmax_val = 2*math.pi
+vmin_val = -1*math.pi # 0
+vmax_val = math.pi
 
-shift_left_phase = np.angle(left_map)
-shift_right_phase = np.angle(right_map.conjugate())
-shift_left_phase[shift_left_phase<0] += 2*math.pi
-shift_right_phase[shift_right_phase<0] += 2*math.pi
-shift_az_legend = copy.deepcopy(V_left_legend)
-shift_az_legend[shift_az_legend<0] += 2*math.pi
-shift_other_az_legend = copy.deepcopy(V_right_legend)
-shift_other_az_legend[shift_other_legend<0] += 2*math.pi
+# shift_left_phase = np.angle(left_map)
+# shift_right_phase = np.angle(right_map.conjugate())
+# shift_left_phase[shift_left_phase<0] += 2*math.pi
+# shift_right_phase[shift_right_phase<0] += 2*math.pi
+# shift_az_legend = copy.deepcopy(V_left_legend)
+# shift_az_legend[shift_az_legend<0] += 2*math.pi
+# shift_other_az_legend = copy.deepcopy(V_right_legend)
+# shift_other_az_legend[shift_other_az_legend<0] += 2*math.pi
 
+# shift_top_phase = np.angle(top_map) 
+# shift_bottom_phase = np.angle(bottom_map.conjugate())
+# shift_top_phase[shift_top_phase<0] += 2*math.pi
+# shift_bottom_phase[shift_bottom_phase<0] += 2*math.pi
+# shift_el_legend = copy.deepcopy(H_top_legend)
+# shift_el_legend[shift_el_legend<0] += 2*math.pi
+# shift_other_el_legend = copy.deepcopy(H_bottom_legend)
+# shift_other_el_legend[shift_other_el_legend<0] += 2*math.pi
 
-shift_top_phase = np.angle(top_map) 
-shift_bottom_phase = np.angle(bottom_map.conjugate())
-shift_top_phase[shift_top_phase<0] += 2*math.pi
-shift_bottom_phase[shift_bottom_phase<0] += 2*math.pi
-shift_el_legend = copy.deepcopy(H_top_legend)
-shift_el_legend[shift_el_legend<0] += 2*math.pi
-shift_other_el_legend = copy.deepcopy(H_bottom_legend)
-shift_other_el_legend[shift_other_el_legend<0] += 2*math.pi
+#avg_az_phase = (shift_left_phase + shift_right_phase) * 0.5
+#avg_el_phase = (shift_top_phase + shift_bottom_phase) * 0.5
 
-avg_az_phase = (shift_left_phase + shift_right_phase) * 0.5
-avg_el_phase = (top_phase + bottom_phase) * 0.5
+#------ average phases correctly ------------
+if using_average is False:
+    left_phase = np.angle(left_map)
+    right_phase = np.angle(right_map.conjugate())
+    tmp_az_combined = np.dstack((left_phase, right_phase))
+    tmp_az_cos = np.sum(np.cos(tmp_az_combined), 2)
+    tmp_az_sin = np.sum(np.sin(tmp_az_combined), 2)
+    avg_az_phase = np.arctan2(tmp_az_sin, tmp_az_cos)
+    print avg_az_phase.shape
 
-if show_avg is True:
-    plt.subplot(2,2,1)
-    plt.imshow(avg_az_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    plt.subplot(2,2,3)
-    plt.imshow(az_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
+    top_phase = np.angle(top_map)
+    bottom_phase = np.angle(bottom_map.conjugate())
+    tmp_el_combined = np.dstack((top_phase, bottom_phase))
+    tmp_el_x = np.sum(np.cos(tmp_el_combined), 2)
+    tmp_el_y = np.sum(np.sin(tmp_el_combined), 2)
+    avg_el_phase = np.arctan2(tmp_el_y, tmp_el_x)
 
-    avg_el_phase = (top_phase + bottom_phase) * 0.5
-    plt.subplot(2,2,2)
-    plt.imshow(avg_el_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    plt.subplot(2,2,4)
-    plt.imshow(el_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
+    ratio_avg_az = (ratio_left + ratio_right) / 2.
+    thresh_avg_az_phase = copy.copy(avg_az_phase)
+    thresh_avg_az_phase[np.where(ratio_avg_az < threshold)] = np.nan
 
-    plt.tight_layout()
-
-    plt.suptitle(['AVG', date, subject])
-
-    plt.show()
-
-
-    imname = 'avg_phases'
-
-    impath = os.path.join(fig_dir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-    plt.show()
+    ratio_avg_el = (ratio_top + ratio_bottom) / 2.
+    thresh_avg_el_phase = copy.copy(avg_el_phase)
+    thresh_avg_el_phase[np.where(ratio_avg_el < threshold)] = np.nan
 
 
 
-maps = dict()
-cond_names = ['left', 'right', 'top', 'bottom']
-for cond_name in cond_names:
-    maps[cond_name] = dict()
+    plt.figure()
 
-maps['left']['threshold_phase'] = thresh_left_phase
-maps['right']['threshold_phase'] = thresh_right_phase
-maps['top']['threshold_phase'] = thresh_top_phase
-maps['bottom']['threshold_phase'] = thresh_bottom_phase
+    if show_avg is True:
+        plt.subplot(2,2,1)
+        plt.imshow(surface, cmap='gray')
+        plt.imshow(thresh_avg_az_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val, alpha=alpha_val)
+        plt.axis('off')
+        plt.subplot(2,2,3)
+        plt.imshow(V_left_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val, alpha=alpha_val)
+        plt.axis('off')
 
-maps['left']['legend'] = V_left_legend
-maps['right']['legend'] = V_right_legend
-maps['top']['legend'] = H_top_legend
-maps['bottom']['legend'] = H_bottom_legend
+        plt.subplot(2,2,2)
+        plt.imshow(surface, cmap='gray')
+        plt.imshow(thresh_avg_el_phase, cmap=colormap, vmin=vmin_val, vmax=vmax_val, alpha=alpha_val)
+        plt.axis('off')
+        plt.subplot(2,2,4)
+        plt.imshow(H_top_legend, cmap=colormap, vmin=vmin_val, vmax=vmax_val, alpha=alpha_val)
+        plt.axis('off')
+
+        plt.tight_layout()
+
+        avg_figname = 'AVG, thr: %0.4f' % threshold
+        plt.suptitle([avg_figname, date, subject])
+
+        imname = 'avg_phases_%s' % colormap
+
+        impath = os.path.join(fig_dir, imname+'.png')
+        plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+        plt.show()
 
 
-maps['left']['shift_phase'] = shift_left_phase
-maps['right']['shift_phase'] = shift_right_phase
-maps['top']['shift_phase'] = shift_top_phase
-maps['bottom']['shift_phase'] = shift_bottom_phase
 
-maps['threshold'] = threshold
-maps['shift_az_legend'] = shift_az_legend
-maps['shift_other_az_legend'] = shift_other_az_legend
-maps['shift_el_legend'] = shift_el_legend
-maps['shift_other_el_legend'] = shift_other_el_legend
+    maps = dict()
+    cond_names = ['left', 'right', 'top', 'bottom']
+    for cond_name in cond_names:
+        maps[cond_name] = dict()
+
+    maps['left']['threshold_phase'] = thresh_left_phase
+    maps['right']['threshold_phase'] = thresh_right_phase
+    maps['top']['threshold_phase'] = thresh_top_phase
+    maps['bottom']['threshold_phase'] = thresh_bottom_phase
+
+    maps['left']['legend'] = V_left_legend
+    maps['right']['legend'] = V_right_legend
+    maps['top']['legend'] = H_top_legend
+    maps['bottom']['legend'] = H_bottom_legend
 
 
-path_to_map_struct = os.path.join(composite_dir, 'maps.pkl')
-with open(path_to_map_struct, 'wb') as wm:
-    pkl.dump(maps, wm, protocol=pkl.HIGHEST_PROTOCOL)
+    maps['left']['shift_phase'] = shift_left_phase
+    maps['right']['shift_phase'] = shift_right_phase
+    maps['top']['shift_phase'] = shift_top_phase
+    maps['bottom']['shift_phase'] = shift_bottom_phase
+
+    maps['threshold'] = threshold
+    maps['shift_az_legend'] = shift_az_legend
+    maps['shift_other_az_legend'] = shift_other_az_legend
+    maps['shift_el_legend'] = shift_el_legend
+    maps['shift_other_el_legend'] = shift_other_el_legend
+
+
+    path_to_map_struct = os.path.join(composite_dir, 'maps%i.pkl' % reduce_val)
+    with open(path_to_map_struct, 'wb') as wm:
+        pkl.dump(maps, wm, protocol=pkl.HIGHEST_PROTOCOL)
 
 # # smooth = True
 # # sigma_val = (3,3)
@@ -788,108 +671,109 @@ with open(path_to_map_struct, 'wb') as wm:
 # This format saves png/fig without any borders:
 # Need this type of data-only image for COREG, for example.
 
-if get_clean is True:
+    if get_clean is True:
 
-    # SURFACE 
-    # --------------------------------------------------------------------------------------
-    fig = plt.imshow(surface, cmap='gray')
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
-
-    imname = 'avg_phase_AZ_HSV_SURFACE'
-
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-    plt.show()
-
-    # AZ average 
-    # --------------------------------------------------------------------------------------
-    fig = plt.imshow(surface, cmap='gray')
-    plt.imshow(right_phase, cmap='hsv', vmin=vmin_val, vmax=vmax_val, alpha=0.5)
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
-
-    imname = 'overlay_avg_phase_AZ_HSV_PHASE'
-
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-    plt.show()
-
-    if use_left is False:
-        # plt.imshow(np.angle(rightmap), cmap=colormap)
-        fig = plt.imshow(np.angle(rightmap), cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+        # SURFACE 
+        # --------------------------------------------------------------------------------------
+        fig = plt.imshow(surface, cmap='gray')
+        plt.imshow(thresh_avg_az_phase, cmap='hsv', vmin=vmin_val, vmax=vmax_val, alpha=alpha_val)
         plt.axis('off')
         fig.axes.get_xaxis().set_visible(False)
         fig.axes.get_yaxis().set_visible(False)
 
-        imname = 'right_phase_AZ_HSV_PHASE'
+        imname = 'overlay_avg_phase_AZ_HSV_SURFACE'
 
-        impath = os.path.join(figdir, imname+'.png')
+        impath = os.path.join(fig_dir, imname+'.png')
         plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
 
         plt.show()
+
+        # AZ average 
+        # --------------------------------------------------------------------------------------
+        fig = plt.imshow(surface, cmap='gray')
+        plt.imshow(thresh_avg_el_phase, cmap='hsv', vmin=vmin_val, vmax=vmax_val, alpha=0.5)
+        plt.axis('off')
+        fig.axes.get_xaxis().set_visible(False)
+        fig.axes.get_yaxis().set_visible(False)
+
+        imname = 'overlay_avg_phase_EL_HSV_PHASE'
+
+        impath = os.path.join(fig_dir, imname+'.png')
+        plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+        plt.show()
+
+        if use_left is False:
+            # plt.imshow(np.angle(rightmap), cmap=colormap)
+            fig = plt.imshow(np.angle(rightmap), cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+            plt.axis('off')
+            fig.axes.get_xaxis().set_visible(False)
+            fig.axes.get_yaxis().set_visible(False)
+
+            imname = 'right_phase_AZ_HSV_PHASE'
+
+            impath = os.path.join(figdir, imname+'.png')
+            plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+            plt.show()
+
+            fig = plt.imshow(AZ_legend, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+            plt.axis('off')
+            fig.axes.get_xaxis().set_visible(False)
+            fig.axes.get_yaxis().set_visible(False)
+
+            imname = 'right_phase_AZ_HSV_PHASE_LEGEND'
+
+            impath = os.path.join(fig_dir, imname+'.png')
+            plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+            plt.show()
+
 
         fig = plt.imshow(AZ_legend, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
         plt.axis('off')
         fig.axes.get_xaxis().set_visible(False)
         fig.axes.get_yaxis().set_visible(False)
 
-        imname = 'right_phase_AZ_HSV_PHASE_LEGEND'
+        imname = 'avg_phase_AZ_HSV_PHASE_LEGEND'
 
-        impath = os.path.join(figdir, imname+'.png')
+        impath = os.path.join(fig_dir, imname+'.png')
+        plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+
+        plt.show()
+        # EL average 
+        # --------------------------------------------------------------------------------------
+
+        fig = plt.imshow(el_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
+        plt.axis('off')
+        fig.axes.get_xaxis().set_visible(False)
+        fig.axes.get_yaxis().set_visible(False)
+
+        imname = 'avg_phase_EL_HSV_PHASE'
+
+        impath = os.path.join(fig_dir, imname+'.png')
         plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
 
         plt.show()
 
 
-    fig = plt.imshow(AZ_legend, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+    I = dict()
+    I['az_phase'] = az_avg
+    I['vmin'] = vmin_val
+    I['vmax'] = vmax_val
+    I['az_legend'] = AZ_legend
+    I['surface'] = surface
 
-    imname = 'avg_phase_AZ_HSV_PHASE_LEGEND'
-
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-    plt.show()
-    # EL average 
-    # --------------------------------------------------------------------------------------
-
-    fig = plt.imshow(el_avg, cmap='hsv', vmin=vmin_val, vmax=vmax_val)
-    plt.axis('off')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
-
-    imname = 'avg_phase_EL_HSV_PHASE'
-
-    impath = os.path.join(figdir, imname+'.png')
-    plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
-
-    plt.show()
+    fext = 'clean_fig_info.pkl'
+    fname = os.path.join(fig_dir, fext)
+    with open(fname, 'wb') as f:
+        # protocol=pkl.HIGHEST_PROTOCOL)
+        pkl.dump(I, f, protocol=pkl.HIGHEST_PROTOCOL)
 
 
-I = dict()
-I['az_phase'] = az_avg
-I['vmin'] = vmin_val
-I['vmax'] = vmax_val
-I['az_legend'] = AZ_legend
-I['surface'] = surface
+    # mat_fn = 'temp2sample'+'.pkl'
+    # # scipy.io.savemat(os.path.join(source_dir, condition, tif_fn), mdict=pydict)
 
-fext = 'clean_fig_info.pkl'
-fname = os.path.join(figdir, fext)
-with open(fname, 'wb') as f:
-    # protocol=pkl.HIGHEST_PROTOCOL)
-    pkl.dump(I, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-
-# mat_fn = 'temp2sample'+'.pkl'
-# # scipy.io.savemat(os.path.join(source_dir, condition, tif_fn), mdict=pydict)
-
-# import scipy.io
-# scipy.io.savemat(os.path.join(out_path, mat_fn), mdict=T)
-# print os.path.join(out_path, 'mw_data', mat_fn)
+    # import scipy.io
+    # scipy.io.savemat(os.path.join(out_path, mat_fn), mdict=T)
+    # print os.path.join(out_path, 'mw_data', mat_fn)
