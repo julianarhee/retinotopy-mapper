@@ -39,12 +39,13 @@ def average_runs(session_path, condition):
         tmp_files = os.listdir(os.path.join(session_path, run))
         tmp_files = [f for f in tmp_files if f.endswith(imformat)]
         fnames[run] = tmp_files
-        tmp_N, tmp_ncycles, tmp_nframes_per_cycle, tmp_ts, tmp_actual_tpoints = get_tpoints(os.path.join(session_path, run))
+        tmp_N, tmp_ncycles, tmp_nframes_per_cycle, tmp_strt_idxs, tmp_ts, tmp_actual_tpoints = get_tpoints(os.path.join(session_path, run))
         tpoints[run]['ts'] = tmp_ts
         tpoints[run]['actual_ts'] = tmp_actual_tpoints
         tpoints[run]['N'] = tmp_N
         tpoints[run]['ncycles'] = tmp_ncycles
         tpoints[run]['nframes_per_cycle'] = tmp_nframes_per_cycle
+	tpoints[run]['start_idxs'] = tmp_strt_idxs
         print len(tpoints[run]['actual_ts'])
     
     tiff = TIFF.open(os.path.join(session_path, run, tmp_files[0]), mode='r')
@@ -54,29 +55,58 @@ def average_runs(session_path, condition):
     print "Expected frame count for averaged run: %i" % expected_nframes
     stack = np.zeros((sample.shape[0], sample.shape[1], expected_nframes))
     curr_sidx = 0
+    AVG = dict()
+    AVG['nframes_per_cycle'] = []
+    AVG['ts'] = []
+    AVG['actual_ts'] = []
     for n in range(tmp_ncycles):
         curr_cycle_nframes = [tpoints[run]['nframes_per_cycle'][n] for run in runs]
         curr_cycle_minframes = min(curr_cycle_nframes)
-        ref_run = [run for run in runs if len(tpoints[run]['nframes_per_cycle'][n])==curr_cycle_minframes][0]
+        ref_run = [run for run in runs if tpoints[run]['nframes_per_cycle'][n]==curr_cycle_minframes][0]
         
         curr_cycle_stack = np.zeros((sample.shape[0], sample.shape[1], curr_cycle_minframes)) 
-        for frame in range(curr_cycle_stack.shape[2]):
-            curr_ref_tstamp = tpoints[ref_run]['actual_ts'][frame]
+	curr_ts = []
+	curr_actual_ts = []
+        for fidx,frame in enumerate(np.arange(curr_sidx, curr_sidx+curr_cycle_minframes)):#range(curr_cycle_stack.shape[2]):
+            #curr_ref_tstamp = tpoints[ref_run]['actual_ts'][frame]
             curr_frame_avg = np.zeros((curr_cycle_stack.shape[0], curr_cycle_stack.shape[1], len(runs)))
+	    tmp_curr_ts = []
+	    tmp_curr_actual_ts = []
             for ridx,run in enumerate(runs):
-                if tpoints[run]['nframes_per_cycle'][n]==curr_cycle_minframes:
-                    curr_frame_avg[:,:,ridx] = imread(os.path.join(session_path, run, fnames[run][frame]))
-                else:
-                    curr_tstamp_idx = ((np.array(tpoints[run]['actual_ts']) - curr_ref_tstamp)**2).argmin()
-                    curr_frame_avg[:,:,ridx] = imread(os.path.join(session_path, run, fnames[run][curr_tstamp_idx]))
-            curr_cycle_stack[:,:,frame] = np.mean(curr_frame_avg,2)
+		curr_cyc_idx = tpoints[run]['start_idxs'][n]
+		print curr_cyc_idx
+		curr_frame_avg[:,:,ridx] = imread(os.path.join(session_path, run, fnames[run][curr_cyc_idx+fidx]))
+		try:
+		    tmp_curr_ts.append(tpoints[run]['ts'][curr_cyc_idx+fidx])
+		    tmp_curr_actual_ts.append(tpoints[run]['actual_ts'][curr_cyc_idx+fidx])
+		except IndexError as e:
+		    print e
+		    tmp_curr_ts.append(tpoints[run]['ts'][-1])
+		    tmp_curr_actual_ts.append(tpoints[run]['actual_ts'][-1])
+#		curr_tstamp_idx = ((np.array(tpoints[run]['actual_ts']) - curr_ref_tstamp)**2).argmin()
+#                if tpoints[run]['nframes_per_cycle'][n]==curr_cycle_minframes:
+#                    curr_frame_avg[:,:,ridx] = imread(os.path.join(session_path, run, fnames[run][frame]))
+#		    tmp_curr_ts.append(tpoints[run]['ts'][frame])
+#		    tmp_curr_actual_ts.append(tpoints[run]['actual_ts'][frame])
+#                else:
+#                    curr_frame_avg[:,:,ridx] = imread(os.path.join(session_path, run, fnames[run][curr_tstamp_idx]))
+#		    tmp_curr_ts.append(tpoints[run]['ts'][curr_tstamp_idx])
+#		    tmp_curr_actual_ts.append(tpoints[run]['actual_ts'][curr_tstamp_idx])
+#            
+	    curr_cycle_stack[:,:,fidx] = np.mean(curr_frame_avg,2)
+            curr_ts.append(np.mean(np.array(tmp_curr_ts)))
+	    curr_actual_ts.append(np.mean(np.array(tmp_curr_actual_ts)))
         
-        stack[:,:,curr_sidx:curr_sidx+curr_cycle_minframes] = curr_cycle_stack  
+	stack[:,:,curr_sidx:curr_sidx+curr_cycle_minframes] = curr_cycle_stack  
         curr_sidx += curr_cycle_minframes 
         AVG['nframes_per_cycle'].append(curr_cycle_minframes)
-        AVG['ts'].append(tpoints[ref_run]['ts'])
-        AVG['actual_ts'].append(tpoints[ref_run]['actual_ts'])
-    avg_nframes_per_cycle = list(itertools.chain.from_iterable(AVG['nframes_per_cycle']))
+        #AVG['ts'].append(tpoints[ref_run]['ts'][curr_sidx:curr_sidx+curr_cycle_minframes])
+        #AVG['actual_ts'].append(tpoints[ref_run]['actual_ts'][curr_sidx:curr_sidx+curr_cycle_minframes])
+	AVG['ts'].append(curr_ts)
+	AVG['actual_ts'].append(curr_actual_ts)
+    print AVG['nframes_per_cycle']
+
+    avg_nframes_per_cycle = AVG['nframes_per_cycle']
     avg_tstamps = list(itertools.chain.from_iterable(AVG['ts']))
     avg_actual_ts = list(itertools.chain.from_iterable(AVG['actual_ts']))    
 
@@ -98,11 +128,13 @@ def average_runs(session_path, condition):
 #    
 #    return stack, tpoints[ref_run]['N'], tpoints[ref_run]['ncycles'], tpoints[ref_run]['nframes_per_cycle'],  tpoints[ref_run]['ts'], tpoints[ref_run]['actual_ts']
     return stack, tpoints[ref_run]['N'], tpoints[ref_run]['ncycles'], avg_nframes_per_cycle, avg_tstamps, avg_actual_ts   
+
+
  
 def process_averaged_run(session_path, condition, sample_rate, target_freq, append_to_name):
 
 
-    stack, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints = average_runs(session_path, condition)
+    stack, N, ncycles, nframes_per_cycle, start_idxs, tpoints, actual_tpoints = average_runs(session_path, condition)
     curr_cond_name = condition+'_avg'
   
     D = get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints)
@@ -120,6 +152,8 @@ def process_averaged_run(session_path, condition, sample_rate, target_freq, appe
 
 
 def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints):
+    
+    tpoints = np.linspace(0, ncycles/target_freq, N)
 
     if interpolate is True:
         moving_win_sz = len(tpoints)/ncycles * 2
@@ -139,6 +173,7 @@ def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoi
         freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
     print "DC: ", DC_freq, freqs[DC_bin]
 
+    tpoints = np.linspace(0, ncycles/target_freq, N)
 
 
     D = dict()
@@ -218,6 +253,8 @@ def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoi
     D['target_freq'] = target_freq
     D['fps'] = sampling_rate
     D['freqs'] = freqs  # fft.fftfreq(len(pix), 1 / sampling_rate)
+    D['tpoints'] = tpoints
+    D['N'] = N
 
     D['binsize'] = freqs[1] - freqs[0]
     D['nframes'] = nframes_per_cycle
@@ -297,7 +334,7 @@ def get_tpoints(run_path):
     actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
     tpoints = np.linspace(0, ncycles/target_freq, N)
     
-    return N, ncycles, nframes_per_cycle, tpoints, actual_tpoints
+    return N, ncycles, nframes_per_cycle, strt_idxs, tpoints, actual_tpoints
 
 
 def get_fft_by_run(run_path):
