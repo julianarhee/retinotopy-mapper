@@ -369,9 +369,11 @@ for cond in cond_types:
             plt.axis('off')
 
             fig.add_subplot(2,2,2)
-            plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
-            plt.axis('off')
+            # plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
+            plt.imshow(D[curr_key]['ratio_map'], cmap='hot') 
+	    plt.axis('off')
             plt.colorbar()
+
 
             plt.tight_layout()
             plt.suptitle(curr_key)
