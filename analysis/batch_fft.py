@@ -39,6 +39,7 @@ def average_runs(session_path, condition):
         tmp_files = os.listdir(os.path.join(session_path, run))
         tmp_files = [f for f in tmp_files if f.endswith(imformat)]
         fnames[run] = tmp_files
+
         tmp_N, tmp_ncycles, tmp_nframes_per_cycle, tmp_strt_idxs, tmp_ts, tmp_actual_tpoints = get_tpoints(os.path.join(session_path, run))
         tpoints[run]['ts'] = tmp_ts
         tpoints[run]['actual_ts'] = tmp_actual_tpoints
@@ -46,7 +47,7 @@ def average_runs(session_path, condition):
         tpoints[run]['ncycles'] = tmp_ncycles
         tpoints[run]['nframes_per_cycle'] = tmp_nframes_per_cycle
 	tpoints[run]['start_idxs'] = tmp_strt_idxs
-        print len(tpoints[run]['actual_ts'])
+       print len(tpoints[run]['actual_ts'])
     
     tiff = TIFF.open(os.path.join(session_path, run, tmp_files[0]), mode='r')
     sample = tiff.read_image().astype('float')
@@ -55,6 +56,7 @@ def average_runs(session_path, condition):
     print "Expected frame count for averaged run: %i" % expected_nframes
     stack = np.zeros((sample.shape[0], sample.shape[1], expected_nframes))
     curr_sidx = 0
+
     AVG = dict()
     AVG['nframes_per_cycle'] = []
     AVG['ts'] = []
@@ -130,12 +132,11 @@ def average_runs(session_path, condition):
     return stack, tpoints[ref_run]['N'], tpoints[ref_run]['ncycles'], avg_nframes_per_cycle, avg_tstamps, avg_actual_ts   
 
 
- 
 def process_averaged_run(session_path, condition, sample_rate, target_freq, append_to_name):
 
 
     stack, N, ncycles, nframes_per_cycle, start_idxs, tpoints, actual_tpoints = average_runs(session_path, condition)
-    curr_cond_name = condition+'_avg'
+   curr_cond_name = condition+'_avg'
   
     D = get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints)
 
@@ -154,7 +155,6 @@ def process_averaged_run(session_path, condition, sample_rate, target_freq, appe
 def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints):
     
     tpoints = np.linspace(0, ncycles/target_freq, N)
-
     if interpolate is True:
         moving_win_sz = len(tpoints)/ncycles * 2
         freqs = fft.fftfreq(N, 1 / sample_rate)
@@ -173,8 +173,7 @@ def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoi
         freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
     print "DC: ", DC_freq, freqs[DC_bin]
 
-    tpoints = np.linspace(0, ncycles/target_freq, N)
-
+   tpoints = np.linspace(0, ncycles/target_freq, N)
 
     D = dict()
 
@@ -255,7 +254,6 @@ def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoi
     D['freqs'] = freqs  # fft.fftfreq(len(pix), 1 / sampling_rate)
     D['tpoints'] = tpoints
     D['N'] = N
-
     D['binsize'] = freqs[1] - freqs[0]
     D['nframes'] = nframes_per_cycle
     D['reduce_factor'] = reduce_factor

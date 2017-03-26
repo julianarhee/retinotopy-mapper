@@ -84,8 +84,8 @@ def warp_im(im, M, dshape):
                    flags=cv2.WARP_INVERSE_MAP)
     return output_im
 
-import cPickle as pkl
 
+import cPickle as pkl
 parser = optparse.OptionParser()
 
 parser.add_option('-t', '--template', action="store", dest="template",
@@ -96,6 +96,7 @@ parser.add_option('-o', '--outpath', action="store", dest="outpath",
                   default="/tmp", help="Path to the save ROIs")
 parser.add_option('-m', '--map', action="store", dest="map",
                   default="", help="Path to retino map for overlay")
+<<<<<<< HEAD
 parser.add_option('-c', '--cmap', action="store", dest="cmap",
                   default="spectral", help="Colormap for phase map")
 
@@ -108,8 +109,7 @@ parser.add_option('--C', '--crop', action="store_true", dest="crop", default=Fal
 
 parser.add_option('--no-map', action="store_true", dest="no_map", default=False, help="No phase map to overlay.")
 
-
-(options, args) = parser.parse_args()
+options, args) = parser.parse_args()
 
 
 # Get paths from options:
@@ -168,7 +168,7 @@ if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 # Load images:
-template = cv2.imread(template_path)
+emplate = cv2.imread(template_path)
 # tiff = TIFF.open(template_path, mode='r')
 # template = tiff.read_image().astype('float')
 # tiff.close()
@@ -188,7 +188,6 @@ else:
 #     rmap = cv2.imread(map_path)
 # else:
 #     rmap = np.zeros(template.shape)
-
 # # too big:
 # new_sz = 1024.0
 # r = new_sz / img2.shape[1]
@@ -202,7 +201,6 @@ print "Template size is: ", template.shape
 print "Sample to align is: ", sample.shape
 print "MAP size is: ", rmap.shape
 
-
 # First get SAMPLE points:
 image = copy.copy(sample)
 
@@ -213,7 +211,6 @@ clone = image.copy()
 
 cv2.startWindowThread()
 cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-
 
 cv2.setMouseCallback("image", click_and_crop)
 
@@ -400,9 +397,9 @@ plt.show()
 print "Getting MERGED figure..."
 
 plt.figure()
-#merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
-#merged[:,:,0] = template
-#merged[:,:,1] = out
+merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
+merged[:,:,0] = template
+merged[:,:,1] = out
 plt.imshow(merged)
 plt.axis('off')
 
@@ -433,6 +430,14 @@ plt.imshow(final, alpha=.5555)
 if no_map is False:
     plt.imshow(rmap, cmap=colormap, alpha=0.5)
 
+#=======
+#out_map = np.ma.masked_where(out == 0, out)
+#out_map_mask = np.ma.masked_where(out_map == 0, out_map)
+#
+#plt.figure()
+plt.imshow(template, cmap='gray')
+plt.imshow(out_map_mask, cmap='gray', alpha=.5)
+plt.imshow(rmap, cmap='spectral', alpha=0.5)
 #plt.imshow(out_map_mask, cmap='gray', alpha=.75)
 
 plt.axis('off')

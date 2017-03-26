@@ -371,6 +371,7 @@ if figpath:
     else:
         surface = np.zeros([200,300])
 
+
     print surface.shape
 
 else: # NO BLOOD VESSEL IMAGE...
@@ -574,7 +575,6 @@ ratio_bottom = D[EL['Bottom']]['ratio_map']
 
 # Quick checkout:
 #colormap = 'gist_rainbow'
-
 plt.subplot(2,4,1)
 plt.title('left')
 plt.imshow(np.angle(leftmap), cmap=colormap)
@@ -1062,3 +1062,4 @@ with open(fname, 'wb') as f:
 # import scipy.io
 # scipy.io.savemat(os.path.join(out_path, mat_fn), mdict=T)
 # print os.path.join(out_path, 'mw_data', mat_fn)
+

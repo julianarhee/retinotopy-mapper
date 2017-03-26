@@ -46,6 +46,7 @@ parser.add_option('--smooth', action="store_true", dest="smooth", default=False,
 parser.add_option('--sigma', action="store", dest="sigma_val", default=2, help="sigma for gaussian smoothing")
 
 parser.add_option('--contour', action="store_true", dest="contour", default=False, help="show contour lines for phase map")
+
 parser.add_option('--power', action='store_true', dest='use_power', default=False, help="use POWER or just magnitude?")
 parser.add_option('--ratio', action='store_true', dest='use_ratio', default=False, help="use RATIO or just magnitude?")
 
@@ -363,18 +364,28 @@ for cond in cond_types:
             plt.imshow(legend, cmap='spectral')
             plt.axis('off')
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             fig.add_subplot(2,2,1)
             plt.imshow(surface, cmap='gray')
             plt.axis('off')
 
             fig.add_subplot(2,2,2)
+<<<<<<< HEAD
             # plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
             plt.imshow(D[curr_key]['ratio_map'], cmap='hot') 
 	    plt.axis('off')
             plt.colorbar()
 
 
+=======
+            plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
+            plt.axis('off')
+            plt.colorbar()
+
+>>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             plt.tight_layout()
             plt.suptitle(curr_key)
 
@@ -407,7 +418,10 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             power_map = mag_map**2 #D[curr_key]['mag_map']**2
+<<<<<<< HEAD
             ratio_map = D[curr_key]['ratio_map']
+=======
+>>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             DC_mag_map = D[curr_key]['DC_mag']/Ny
             
             # ------------------------------------------------------------------
@@ -567,7 +581,7 @@ for cond in cond_types:
             if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
                 plt.title('power')
-                plt.colorbar()
+               plt.colorbar()
                 plt.axis('off')
             elif use_ratio is True:
                 plt.imshow(ratio_map, cmap='hot') #, vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
