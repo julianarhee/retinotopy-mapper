@@ -47,7 +47,7 @@ def average_runs(session_path, condition):
         tpoints[run]['ncycles'] = tmp_ncycles
         tpoints[run]['nframes_per_cycle'] = tmp_nframes_per_cycle
 	tpoints[run]['start_idxs'] = tmp_strt_idxs
-       print len(tpoints[run]['actual_ts'])
+        print len(tpoints[run]['actual_ts'])
     
     tiff = TIFF.open(os.path.join(session_path, run, tmp_files[0]), mode='r')
     sample = tiff.read_image().astype('float')
@@ -135,8 +135,8 @@ def average_runs(session_path, condition):
 def process_averaged_run(session_path, condition, sample_rate, target_freq, append_to_name):
 
 
-    stack, N, ncycles, nframes_per_cycle, start_idxs, tpoints, actual_tpoints = average_runs(session_path, condition)
-   curr_cond_name = condition+'_avg'
+    stack, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints = average_runs(session_path, condition)
+    curr_cond_name = condition+'_avg'
   
     D = get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoints, actual_tpoints)
 
@@ -173,7 +173,7 @@ def get_fft(stack, sample_rate, target_freq, N, ncycles, nframes_per_cycle, tpoi
         freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
     print "DC: ", DC_freq, freqs[DC_bin]
 
-   tpoints = np.linspace(0, ncycles/target_freq, N)
+    tpoints = np.linspace(0, ncycles/target_freq, N)
 
     D = dict()
 
