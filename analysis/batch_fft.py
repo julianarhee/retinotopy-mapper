@@ -362,7 +362,7 @@ def get_fft_by_run(run_path):
     datetimes = [f.split('_')[1] for f in files]
     tstamps = [float(datetime.datetime.strptime(t, FORMAT).strftime("%H%m%s%f")) for t in datetimes]
     actual_tpoints = [(float(i) - float(tstamps[0]))/1E6 for i in tstamps]
-    tpoints = np.linspace(0, (ncycles/target_freq)*sampling_rate, N)
+    tpoints = np.linspace(0, (ncycles/target_freq), N)
  
 
     if interpolate is True:
