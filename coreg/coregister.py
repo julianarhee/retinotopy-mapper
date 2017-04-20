@@ -96,7 +96,6 @@ parser.add_option('-o', '--outpath', action="store", dest="outpath",
                   default="/tmp", help="Path to the save ROIs")
 parser.add_option('-m', '--map', action="store", dest="map",
                   default="", help="Path to retino map for overlay")
-<<<<<<< HEAD
 parser.add_option('-c', '--cmap', action="store", dest="cmap",
                   default="spectral", help="Colormap for phase map")
 
@@ -109,7 +108,7 @@ parser.add_option('--C', '--crop', action="store_true", dest="crop", default=Fal
 
 parser.add_option('--no-map', action="store_true", dest="no_map", default=False, help="No phase map to overlay.")
 
-options, args) = parser.parse_args()
+(options, args) = parser.parse_args()
 
 
 # Get paths from options:
@@ -168,22 +167,25 @@ if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 # Load images:
-emplate = cv2.imread(template_path)
+template = cv2.imread(template_path)
 # tiff = TIFF.open(template_path, mode='r')
 # template = tiff.read_image().astype('float')
 # tiff.close()
 
 sample = cv2.imread(sample_path)
+print "sample: ",  sample.shape
 if len(template.shape)==2: # not RGB
     template = cv2.cvtColor(template, cv2.COLOR_GRAY2RGB) # make it 3D
+    templateimg = cv2.cvtColor(template, cv2.COLOR_GRAY2RGB)
 else:
-    template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
-
+    templateimg = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
+    template = templateimg[:,:,1]
 if len(sample.shape)==2:
     sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
+    sampleimg = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
 else:
-    sample = cv2.cvtColor(sample, cv2.COLOR_BGR2RGB)
-
+    sampleimg = cv2.cvtColor(sample, cv2.COLOR_BGR2RGB)
+    sample = sampleimg[:,:,1]
 # if map_path:
 #     rmap = cv2.imread(map_path)
 # else:
@@ -330,6 +332,7 @@ M = transformation_from_points(template_mat, sample_mat)
 #sampleG = cv2.imread(sample_path, 0)
 #out = warp_im(SAMPLE, M, REF.shape)
 out = warp_im(sample, M, template.shape)
+outbig = warp_im(sample, M, [template.shape[1], template.shape[1]])
 # out_map = warp_im(retinomap, M, SAMPLE.shape)
 
 
@@ -358,12 +361,12 @@ print "Making figure..."
 plt.figure()
 
 plt.subplot(221)
-plt.imshow(sample, cmap='gray')
+plt.imshow(sampleimg, cmap='gray')
 plt.axis('off')
 plt.title('original sample')
 
 plt.subplot(222)
-plt.imshow(template, cmap='gray')
+plt.imshow(templateimg, cmap='gray')
 plt.axis('off')
 plt.title('original template')
 
@@ -376,8 +379,8 @@ plt.subplot(224)
 # plt.imshow(SAMPLE, cmap='gray')
 # plt.imshow(out, cmap='jet', alpha=0.2)
 merged = np.zeros((template.shape[0], template.shape[1], 3), dtype=np.uint8)
-merged[:,:,0] = cv2.cvtColor(template, cv2.COLOR_RGB2GRAY)
-merged[:,:,1] = cv2.cvtColor(out, cv2.COLOR_RGB2GRAY)
+merged[:,:,0] = template #cv2.cvtColor(template)#, cv2.COLOR_RGB2GRAY)
+merged[:,:,1] = out #cv2.cvtColor(outi) #, cv2.COLOR_RGB2GRAY)
 plt.imshow(merged)
 plt.axis('off')
 plt.title('combined')
@@ -392,7 +395,39 @@ plt.savefig(os.path.join(out_path, imname))
 
 plt.show()
 
+maxtemplate = max(template.shape)
+maxsample = max(sample.shape)
+maxdim = max([maxsample, maxtemplate])
+overlay = np.zeros((maxdim, maxdim, 3), dtype=np.uint8)
 
+adjust_dims_template = maxdim - np.array(template.shape)
+adjust_dims_template_idx = np.where(adjust_dims_template!=0)[0]
+adjust_dims_sample = maxdim - np.array(outbig.shape)
+adjust_dims_sample_idx = np.where(adjust_dims_sample!=0)[0]
+if adjust_dims_template_idx==0:
+    temppad = np.pad(template, ((0, maxdim-template.shape[0]), (0,0)), 'constant')
+else:
+    temppad = np.pad(template, ((0,0), (maxdim-template.shape[1], 0)), 'constant')
+if len(adjust_dims_sample_idx)>0:
+    if adjust_dims_sample_idx==0:
+	outpad = np.pad(outbig, ((0, maxdim-outbig.shape[0]), (0,0)), 'constant')
+    else:
+	outpad = np.pad(outbig, ((0,0), (maxdim-outbig.shape[1], 0)), 'constant')
+else:
+    outpad = np.copy(outbig)
+print "temppad: ", temppad.shape
+print "outpad: ", outpad.shape
+
+overlay[:,:,0] = temppad
+overlay[:,:,1] = outpad
+
+plt.figure()
+plt.imshow(overlay)
+plt.axis('off')
+imname = 'merged_overlay_padded'
+
+plt.savefig(os.path.join(out_path, imname))
+#temppad = np.pad(temp, ((), ()), 'constant')
 
 print "Getting MERGED figure..."
 
