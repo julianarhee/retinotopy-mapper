@@ -51,6 +51,9 @@ parser.add_option('--write-process', action="store_true", dest="save_in_separate
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
 parser.add_option('--flash', action="store_true", dest="flash", default=False, help="Flash checkerboard inside bar?")
+parser.add_option('--ncycles', action="store", dest="ncycles", default=20, help="Num cycles to show")
+parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Use short axis instead?")
+parser.add_option('--fps', action="store", dest="fps", default=60, help="Acquisition rate (Hz)")
 
 # parser.add_option('--run-num', action="store", dest="run_num", default="1", help="run number for condition X")
 (options, args) = parser.parse_args()
@@ -72,8 +75,9 @@ use_pvapi = options.use_pvapi
 print "WIN SIZE: ", winsize
 print output_format
 
-if not acquire_images:
-    save_images = False
+# Save stim info without camera
+# if not acquire_images:
+#     save_images = False
 
 save_as_tif = False
 save_as_png = False
@@ -311,7 +315,7 @@ while True:
     width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
     height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
 
-    use_width = True
+    use_width = options.use_long_axis #True
     if use_width:
         total_length = max([screen_width_cm, screen_height_cm])
     else:
@@ -321,9 +325,9 @@ while True:
     total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
 
     # TIMING PARAMS:
-    num_cycles = 20 # how many times to do the cycle of 1 condition
+    num_cycles = int(options.ncycles) # how many times to do the cycle of 1 condition
 
-    fps = 60.
+    fps = float(options.fps)
     # total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
     # print "Cycle Travel TIME (s): ", total_time
 
@@ -343,7 +347,7 @@ while True:
     last_t = None
 
     report_period = 60 # frames
-    frame_rate = 60.000 #60.000
+    frame_rate = float(options.fps) #60.000 #60.000
     refresh_rate = 60.000 #60.000
 
     if acquire_images:
@@ -497,6 +501,8 @@ while True:
                 #     fdict['im'] = [camera.capture.wait()]
             im_array = camera.capture_wait()
             camera.queue_frame()
+        else:
+            im_array = np.zeros((winsize[0], winsize[1]))
 
         if save_images:
             fdict = dict()
