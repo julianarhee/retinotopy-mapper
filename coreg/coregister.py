@@ -449,10 +449,13 @@ plt.show()
 print "Displaying PHASE map onto figure..."
 #out_map = np.ma.masked_where(out == 0, out)
 #out_map_mask = np.ma.masked_where(out_map == 0, out_map)
-gray = cv2.cvtColor(out, cv2.COLOR_RGB2GRAY)
+print rmap.shape
+#gray = cv2.cvtColor(outpad, cv2.COLOR_RGB2GRAY)
+
 #out_mask = np.full((out.shape[0], out.shape[1]), 0, dtype=np.uint8)
 mask1 = np.full((out.shape[0], out.shape[1]), 0, dtype=np.uint8)
-mask1[np.where(gray>0)] = 255
+print "mask1 shape:", mask1.shape
+mask1[np.where(outpad>0)] = 255
 fg = cv2.bitwise_or(out, out, mask=mask1)
 mask1 = cv2.bitwise_not(mask1)
 background = np.full(out.shape, 255, dtype=np.uint8)
@@ -464,19 +467,22 @@ plt.imshow(template)
 plt.imshow(final, alpha=.5555)
 if no_map is False:
     plt.imshow(rmap, cmap=colormap, alpha=0.5)
-
+plt.show()
 #=======
 #out_map = np.ma.masked_where(out == 0, out)
 #out_map_mask = np.ma.masked_where(out_map == 0, out_map)
 #
 #plt.figure()
-plt.imshow(template, cmap='gray')
-plt.imshow(out_map_mask, cmap='gray', alpha=.5)
-plt.imshow(rmap, cmap='spectral', alpha=0.5)
+merged_gray = cv2.cvtColor(merged, cv2.COLOR_RGB2GRAY)
+print "merged map:", merged_gray.shape
+print "retino map: ", rmap.shape
+#plt.imshow(template, cmap='gray', alpha=0.5)
+plt.imshow(merged_gray, cmap='gray', alpha=0.5) #out_map_mask, cmap='gray', alpha=.5)
+plt.imshow(rmap, cmap=colormap, alpha=0.5)
 #plt.imshow(out_map_mask, cmap='gray', alpha=.75)
 
 plt.axis('off')
-
+plt.show()
 imname = 'points_svd_S-%s_T-%s_npoints-%i_RETINO' % (sample_fn, template_fn, npoints)
 print os.path.join(out_path, imname)
 plt.savefig(os.path.join(out_path, imname))
