@@ -100,7 +100,12 @@ if not os.path.exists(figdir):
 #################################################################################
 # GET BLOOD VESSEL IMAGE:
 #################################################################################
-folders = os.listdir(sessiondir)
+animaldir = os.path.split(sessiondir)[0]
+animal=os.path.split(animaldir)[1]
+session = os.path.split(sessiondir)[1]
+#print "animal dir: ", animaldir
+#folders = os.listdir(sessiondir)
+folders = os.listdir(animaldir)
 figpath = [f for f in folders if f == 'surface']
 # figpath = [f for f in folders if f == 'figures'][0]
 # print "EXPT: ", exptdir
@@ -110,14 +115,18 @@ print "path to surface: ", figpath
 if figpath:
     # figdir = figpath[0]
     figpath=figpath[0]
-    tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
-    surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
-    ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
-    ims = [i for i in ims if '_' in i]
+    
+    #tmp_ims = os.listdir(os.path.join(sessiondir, figpath))
+    #surface_words = ['surface', 'GREEN', 'green', 'Surface', 'Surf']
+    #ims = [i for i in tmp_ims if any([word in i for word in surface_words])]
+    #ims = [i for i in ims if '_' in i]
+    tmp_ims = os.listdir(os.path.join(animaldir, figpath))
+    ims = [i for i in tmp_ims if animal in i and session in i]
     print ims
     if ims:
-        impath = os.path.join(sessiondir, figpath, ims[0])
-        # image = Image.open(impath) #.convert('L')
+        #impath = os.path.join(sessiondir, figpath, ims[0])
+        impath = os.path.join(animaldir, figpath, ims[0])
+	# image = Image.open(impath) #.convert('L')
         # imarray = np.asarray(image)
         print os.path.splitext(impath)[1]
         if os.path.splitext(impath)[1] == '.tif':
@@ -364,28 +373,16 @@ for cond in cond_types:
             plt.imshow(legend, cmap='spectral')
             plt.axis('off')
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             fig.add_subplot(2,2,1)
             plt.imshow(surface, cmap='gray')
             plt.axis('off')
 
             fig.add_subplot(2,2,2)
-<<<<<<< HEAD
-            # plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
+           # plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
             plt.imshow(D[curr_key]['ratio_map'], cmap='hot') 
 	    plt.axis('off')
             plt.colorbar()
 
-
-=======
-            plt.imshow(D[curr_key]['mag_map']/Ny, cmap='hot')
-            plt.axis('off')
-            plt.colorbar()
-
->>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             plt.tight_layout()
             plt.suptitle(curr_key)
 
@@ -418,10 +415,7 @@ for cond in cond_types:
 
             mag_map = D[curr_key]['mag_map']/Ny
             power_map = mag_map**2 #D[curr_key]['mag_map']**2
-<<<<<<< HEAD
             ratio_map = D[curr_key]['ratio_map']
-=======
->>>>>>> 5b5cb9fe44e3983d9cdbd089afbf16d0dabe3f0b
             DC_mag_map = D[curr_key]['DC_mag']/Ny
             
             # ------------------------------------------------------------------
@@ -581,7 +575,7 @@ for cond in cond_types:
             if use_power is True:
                 plt.imshow(power_map, cmap='hot', vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
                 plt.title('power')
-               plt.colorbar()
+                plt.colorbar()
                 plt.axis('off')
             elif use_ratio is True:
                 plt.imshow(ratio_map, cmap='hot') #, vmin=0, vmax=200) #, vmax=15) #, vmin=0) #, vmax=250.0)
