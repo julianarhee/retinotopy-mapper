@@ -75,6 +75,10 @@ tiff.close()
 
 print fname
 
+fig = plt.imshow(im, cmap='gray')
+plt.axis('off')
+fig.axes.get_xaxis().set_visible(False)
+fig.axes.get_yaxis().set_visible(False)
 
 fname = '%s/%s_%s_plot.png' % (outdir, os.path.split(os.path.split(imdir)[0])[1], os.path.split(imdir)[1])
 
