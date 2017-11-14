@@ -175,6 +175,7 @@ t=0
 rotationRate = 0.1 #revs per sec
 flashPeriod = 0.1 #seconds for one B-W cycle (ie 1/Hz)
 nframes = 0
+ncamframes = 0
 frame_accumulator = 0
 last_t = None
 
@@ -201,15 +202,17 @@ while True:
     nframes += 1
 
     if acquire_images:
-        im_array = camera.capture_wait()
-        camera.queue_frame()
+        for i in range(0,5):
+            im_array = camera.capture_wait()
+            ncamframes += 1
+            camera.queue_frame()
 
-        if save_images:
-            im_queue.put(im_array)
+            if save_images:
+                im_queue.put(im_array)
 
-    if nframes % report_period == 0:
+    if ncamframes % report_period == 0:
         if last_t is not None:
-            print('avg frame rate: %f' % (report_period / (t - last_t)))
+            print('avg cam frame rate: %f' % (report_period / (t - last_t)))
         last_t = t
 
     # Break out of the while loop if these keys are registered
