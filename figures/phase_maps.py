@@ -765,6 +765,18 @@ plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
 
 plt.show()
 
+fig = plt.imshow(surface, cmap='gray')
+#plt.subplot(1,2,1)
+plt.imshow(surface, cmap='gray')
+#plt.imshow(az_abs_phase, cmap=colormap, alpha=alpha_val)
+#plt.title('Absolte AZ phase overlay')
+fig.axes.get_xaxis().set_visible(False)
+fig.axes.get_yaxis().set_visible(False)
+
+imname = 'absoluteAZ_overlay_surface_surface'
+impath = os.path.join(fig_dir, imname+'.png')
+plt.savefig(impath, bbox_inches='tight', pad_inches = 0)
+surface.shape
 
 fig = plt.imshow(surface, cmap='gray')
 #plt.subplot(1,2,1)

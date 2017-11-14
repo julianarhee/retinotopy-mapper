@@ -2,7 +2,7 @@
 
 import sys
 sys.path.append('/usr/local/lib/python2.7/site-packages')
-
+import math
 import os
 import cv2
 import numpy as np
@@ -477,8 +477,13 @@ merged_gray = cv2.cvtColor(merged, cv2.COLOR_RGB2GRAY)
 print "merged map:", merged_gray.shape
 print "retino map: ", rmap.shape
 #plt.imshow(template, cmap='gray', alpha=0.5)
-plt.imshow(merged_gray, cmap='gray', alpha=0.5) #out_map_mask, cmap='gray', alpha=.5)
-plt.imshow(rmap, cmap=colormap, alpha=0.5)
+rmap_rgb = cv2.cvtColor(rmap, cv2.COLOR_RGB2BGR)
+#plt.imshow(merged_gray, cmap='gray', alpha=1) #out_map_mask, cmap='gray', alpha=.5)
+#plt.imshow(template, cmap='gray', alpha=1.0)
+#plt.imshow(rmap_rgb, cmap=colormap, alpha=0.8, vmin=0, vmax=math.pi*2)
+plt.imshow(out, cmap='gray', alpha=0.7)
+#plt.imshow(merged_gray, cmap='gray', alpha=0.5) #out_map_mask, cmap='gray', alpha=.5)
+#plt.imshow(rmap_rgb, cmap=colormap, alpha=0.5, vmin=0, vmax=math.pi*2)
 #plt.imshow(out_map_mask, cmap='gray', alpha=.75)
 
 plt.axis('off')
