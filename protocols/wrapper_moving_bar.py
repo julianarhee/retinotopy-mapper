@@ -15,7 +15,12 @@ import time
 # outPath='/media/labuser/dixie/volume1/widefield/data/JR030W/20161222'
 # outPath='/media/labuser/dixie/volume1/widefield/data/JR041W/20170404'
 # outPath='/media/labuser/dixie/volume1/widefield/data/JR039W/20170506'
-outPath = '/media/labuser/dixie/volume1/widefield/data/JR042W/20170621'
+# outPath = '/media/labuser/dixie/volume1/widefield/data/JR042W/20170621'
+# outPath = '/media/labuser/dixie/volume1/widefield/data/JR044W/20170703'
+# outPath = '/media/labuser/dixie/volume1/widefield/data/JR046W/20170711'
+# outPath = '/media/labuser/dixie/volume1/widefield/data/JR050W/20170804'
+outPath = '/media/labuser/dixie/volume1/widefield/data/JR059W/20171003'
+
 
 # outPath='/media/labuser/IMDATA2/TEFO/retinomapping/JR027W/20161117'
 # outPath='/home/labuser/Desktop/TefoTest/20161118'
@@ -35,6 +40,12 @@ outPath = '/media/labuser/dixie/volume1/widefield/data/JR042W/20170621'
 #     --monitor='AQUOS' \
 #     --output-path="+outPath)
 
+# os.system("python moving_bar_flash.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --flash\
+#     --short-axis\
+#     --output-path="+outPath)
 os.system("python moving_bar_flash.py \
     --save-images \
     --monitor='AQUOS' \
