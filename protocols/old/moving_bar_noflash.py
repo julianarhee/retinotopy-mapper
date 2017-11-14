@@ -50,11 +50,6 @@ parser.add_option('--debug-window', action="store_false", dest="fullscreen", hel
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
-parser.add_option('--flash', action="store_true", dest="flash", default=False, help="Flash checkerboard inside bar?")
-parser.add_option('--ncycles', action="store", dest="ncycles", default=20, help="Num cycles to show")
-parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Use short axis instead?")
-parser.add_option('--fps', action="store", dest="fps", default=60, help="Acquisition rate (Hz)")
-
 # parser.add_option('--run-num', action="store", dest="run_num", default="1", help="run number for condition X")
 (options, args) = parser.parse_args()
 
@@ -75,9 +70,8 @@ use_pvapi = options.use_pvapi
 print "WIN SIZE: ", winsize
 print output_format
 
-# Save stim info without camera
-# if not acquire_images:
-#     save_images = False
+if not acquire_images:
+    save_images = False
 
 save_as_tif = False
 save_as_png = False
@@ -176,14 +170,14 @@ cyc_per_sec = float(user_input)
 
 while True:
     time.sleep(2)
-    user_input=raw_input("\nEnter COND num [0=Blank, 1=V-Left, 2=V-Right, 3=H-Down, 4=H-Up]  to continue or 'exit':\n")
+    user_input=raw_input("\nEnter COND num [1=V-Left, 2=V-Right, 3=H-Down, 4=H-Up]  to continue or 'exit':\n")
     if user_input=='exit':
         break
 
     # conditionTypes = ['1']
     condnum = int(user_input)
-    cond_label = ['Blank','Left','Right','Top','Bottom']
-    condname = cond_label[int(condnum)]
+    cond_label = ['Left','Right','Top','Bottom']
+    condname = cond_label[int(condnum)-1]
 
     user_input=raw_input("\nEnter RUN num to continue or 'exit':\n")
     if user_input=='exit':
@@ -283,12 +277,10 @@ while True:
     globalClock = core.Clock()
 
     #make a window
-    flash=options.flash
+    flash=0
     if win_flag==0:
         if flash:
-            # win = visual.Window(fullscr=fullscreen, color=(.5,.5,.5), size=winsize, units='deg', monitor=whichMonitor)
-            win = visual.Window(fullscr=fullscreen, color=(-1,-1,-1), size=winsize, units='deg', monitor=whichMonitor)
-
+            win = visual.Window(fullscr=fullscreen, color=(.5,.5,.5), size=winsize, units='deg', monitor=whichMonitor)
         else:
             win = visual.Window(fullscr=fullscreen, color=(-1,-1,-1), size=winsize, units='deg', monitor=whichMonitor)
         win_flag=1
@@ -299,14 +291,11 @@ while True:
 
     # cyc_per_sec = 0.13 # 
 
-    flashPeriod = 0.2 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
-    dutyCycle = 0.5 #1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+    flashPeriod = 1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
+    dutyCycle = 1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
-    if condname=='Blank' or condnum==0:
-        bar_color = -1 #1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
-    else:
-        bar_color = 1
-    bar_width = 1 #8 #2 # bar width in degrees 
+    bar_color = 1 # starting 1 for white, -1 for black, 0.5 for low contrast white, etc.
+    bar_width = 1 # bar width in degrees 
 
     # SCREEN PARAMS:
     screen_width_cm = monitors.Monitor(whichMonitor).getWidth()
@@ -315,7 +304,7 @@ while True:
     width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(whichMonitor))
     height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(whichMonitor))
 
-    use_width = options.use_long_axis #True
+    use_width = True
     if use_width:
         total_length = max([screen_width_cm, screen_height_cm])
     else:
@@ -325,9 +314,9 @@ while True:
     total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(whichMonitor))
 
     # TIMING PARAMS:
-    num_cycles = int(options.ncycles) # how many times to do the cycle of 1 condition
+    num_cycles = 20 # how many times to do the cycle of 1 condition
 
-    fps = float(options.fps)
+    fps = 60.
     # total_time = total_length/(total_length*cyc_per_sec) #how long it takes for a bar to move from startPoint to endPoint
     # print "Cycle Travel TIME (s): ", total_time
 
@@ -347,8 +336,8 @@ while True:
     last_t = None
 
     report_period = 60 # frames
-    frame_rate = float(options.fps) #60.000 #60.000
-    refresh_rate = 60.000 #60.000
+    frame_rate = 60.000
+    refresh_rate = 60.000
 
     if acquire_images:
         # Start acquiring
@@ -369,7 +358,7 @@ while True:
 
     # if cyc == 1:
     # SPECIFICY CONDITION TYPES:
-    if condnum == 1 or condnum == 0:
+    if condnum == 1:
         orientation = 1 # 1 = VERTICAL, 0 = horizontal
         direction = 1 # 1 = start from LEFT or BOTTOM (neg-->pos), 0 = start RIGHT or TOP (pos-->neg)
 
@@ -437,26 +426,10 @@ while True:
     # 2. bar starts & ends OFF the screen
 
     # CREATE THE STIMULUS:
-    if flash is True:
-        # sq_size = [1000., 1000.]
-        #make two wedges (in opposite contrast) and alternate them for flashing
-        # bar1 = visual.RadialStim(win, tex='sqrXsqr', color=1, size=sq_size,
-        #     visibleWedge=[0, 45], radialCycles=4, angularCycles=8, interpolate=False,
-        #     autoLog=False) #this stim changes too much for autologging to be useful
-        # wedge2 = visual.RadialStim(win, tex='sqrXsqr', color=-1, size=sq_size,
-        #     visibleWedge=[0, 45], radialCycles=4, angularCycles=8, interpolate=False,
-        #     autoLog=False) #this stim changes too much for autologging to be useful
-        #barmask = np.ones([256,256]) #,3])*bar_color;
-        barmask = np.ones([1,1]) * bar_color
-        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=1*bar_color, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
-        bar2 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
-    
-    else:
-
-        bartex = np.ones([256,256,3])*bar_color;
-        #bartex[:,:,0] = 0. # turn OFF red channel
-        barStim = visual.PatchStim(win=win,tex=bartex,mask='none',units='deg',pos=center_point,size=stim_size,ori=angle)
-        barStim.setAutoDraw(False)
+    bartex = np.ones([256,256,3])*bar_color;
+    bartex[:,:,0] = 0. # turn OFF red channel
+    barStim = visual.PatchStim(win=win,tex=bartex,mask='none',units='deg',pos=center_point,size=stim_size,ori=angle)
+    barStim.setAutoDraw(False)
 
     # DISPLAY LOOP:
     win.flip() # first clear everything
@@ -469,13 +442,6 @@ while True:
     clock = core.Clock()
     while clock.getTime()<=total_duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps: 
         t = globalClock.getTime()
-
-        # if (nframes/4) % 2 == 0:
-        if flash is True:
-            if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
-                barStim = bar1
-            else:
-                barStim = bar2
 
         # if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
         #     barStim.setContrast(1)
@@ -501,15 +467,13 @@ while True:
                 #     fdict['im'] = [camera.capture.wait()]
             im_array = camera.capture_wait()
             camera.queue_frame()
-        else:
-            im_array = np.zeros((winsize[0], winsize[1]))
 
         if save_images:
             fdict = dict()
             fdict['im'] = im_array
             fdict['bar_width'] = bar_width
             fdict['condnum'] = condnum
-            fdict['condname'] = cond_label[int(condnum)]
+            fdict['condname'] = cond_label[int(condnum)-1]
             fdict['frame'] = frame_counter #nframes
             #print 'frame #....', frame_counter
             fdict['time'] = datetime.now().strftime(FORMAT)
