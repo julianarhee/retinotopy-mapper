@@ -527,7 +527,15 @@ iminfo_fn = impath.replace('.png', '.json')
 
 with open(os.path.join(composite_dir, iminfo_fn), 'w') as f:
     minfo = dumps(mapinfo, cls=PythonObjectEncoder)
-
+    
+iminfo_fn = impath.replace('.json', '.pkl')
+with open(os.path.join(composite_dir, iminfo_fn), 'wb') as f:
+    pkl.dump(mapinfo, f, protocol=pkl.HIGHEST_PROTOCOL)
+    
+condpath = os.path.join(fig_dir, 'CONDS.pkl')
+with open(os.path.join(condpath), 'wb') as f:
+    pkl.dump(CONDS, f, protocol=pkl.HIGHEST_PROTOCOL)
+    
 # To open:
 # loads(minfo, object_hook=as_python_object)
 

@@ -2,25 +2,44 @@
 
 from psychopy import monitors, visual
 import os
-import nump as np
+import numpy as np
+from os.path import expanduser
+home = expanduser("~")
+import shutil
+import math
 
 monitor_dir = '~/Repositories/retinotopy-mapper/protocols/monitors'
+psychopy_monitor_dir = '~/.psychopy2/monitors'
 
-calibs = os.listdir(monitor_dir)
-calibs = [c for c in calibs if c.endswith('calib')]
+if '~' in monitor_dir:
+    monitor_dir = monitor_dir.replace('~', home)
+
+calibs = [c for c in os.listdir(monitor_dir) if c.endswith('calib')]
 calib_names = [c[:-6] for c in calibs]
+
+if '~' in psychopy_monitor_dir:
+   psychopy_monitor_dir = psychopy_monitor_dir.replace('~', home)
+# Copy saved monitor calibs to local .psychopy dir:
+if not os.path.exists(psychopy_monitor_dir):
+    os.makedirs(psychopy_monitor_dir)
+existing_calibs = [c for c in os.listdir(psychopy_monitor_dir) if c.endswith('calib')]
+missing_calibs = [c for c in calibs if c not in existing_calibs]    
+for c in missing_calibs:
+    shutil.copyfile(os.path.join(monitor_dir,c), os.path.join(psychopy_monitor_dir,c))
+
+
 
 for idx,calib in enumerate(calib_names):
     print idx, calib
 
-mon_idx = raw_input('Select IDX of monitor to use: ')
+mon_idx = input('Select IDX of monitor to use: ')
 mon = monitors.Monitor(calib_names[mon_idx])
 
 distance = mon.getDistance()
 width = mon.getWidth()
 pix = mon.getSizePix()
 aspect = float(pix[0])/float(pix[1])
-height = width * (1./aspect))
+height = width * (1./aspect)
 pix_cm = float(width)/float(pix[0])
 
 
