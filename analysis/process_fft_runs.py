@@ -25,8 +25,6 @@ from PIL import Image
 from scipy import ndimage
 
 
-
-#import hickle as hkl
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -38,23 +36,22 @@ def movingaverage(interval, window_size):
     return np.convolve(interval, window, 'valid')
 
 
-
 def extract_frame_info_for_trial(trial_dir):
-    
+
     frame_log_fpath = os.path.join(trial_dir, 'frame_info.txt')
-    
+
     framedata = pd.read_csv(frame_log_fpath, sep='\t')
     print framedata.columns
 
     ### Extract events from serialdata:
     frame_tstamps = framedata[' experimentTime']
     stim_positions = framedata[' stimPosition']
-    
+
     return frame_tstamps, stim_positions
 
 
 def load_movie_frames(source_path, img_fmt='tif', reduce_factor=(1, 1)):
-    
+
     tiffs = sorted([f for f in os.listdir(source_path) if f.endswith(img_fmt)], key=natural_keys)
 
     tf = TIFF.open(os.path.join(source_path, tiffs[0]), mode='r')
@@ -63,7 +60,7 @@ def load_movie_frames(source_path, img_fmt='tif', reduce_factor=(1, 1)):
     if reduce_factor[0] > 1:
         sample = block_reduce(sample, reduce_factor, func=np.mean)
     print "sample type: %s, range: %s" % (sample.dtype, str([sample.max(), sample.min()]))
-    print "sample shape: %s" % str(sample.shape)        
+    print "sample shape: %s" % str(sample.shape)
 
     stack = np.empty((sample.shape[0], sample.shape[1], len(tiffs)))
     for i, f in enumerate(tiffs):
@@ -79,10 +76,10 @@ def load_movie_frames(source_path, img_fmt='tif', reduce_factor=(1, 1)):
             stack[:, :, i] = im_reduced
         else:
             stack[:, :, i] = im
-    
+
     return stack
 
-            
+
 def get_fft(source_path,
             img_fmt='tif',
             target_freq=0.13,
@@ -91,15 +88,15 @@ def get_fft(source_path,
             reduce_factor=(1,1),
             interpolate=True,
             high_pass=True):
-    
+
     proc_id = os.getpid()
     trialname = os.path.split(source_path)[1]
     runname = os.path.split(os.path.split(source_path)[0])[1]
     print "Starting fft for PID: {0} (run: {1} --- trial: {2})...".format(
         proc_id, runname, trialname)
-    
+
     trial_dir = os.path.split(source_path)[0]
-    
+
     tiffs = sorted([f for f in os.listdir(source_path) if f.endswith(img_fmt)], key=natural_keys)
     print "Found %i tiffs to process (src: %s)" % (len(tiffs), source_path)
 
@@ -109,7 +106,7 @@ def get_fft(source_path,
     stack = load_movie_frames(source_path, img_fmt=img_fmt, reduce_factor=reduce_factor)
     sample = stack[:,:,0]
     print sample.shape
-    
+
     # Set FFT params:
     # -------------------------------------------------------------------------
     N = int(round((ncycles / target_freq) * sampling_rate))
@@ -121,8 +118,8 @@ def get_fft(source_path,
         freqs = fft.fftfreq(N, 1 / sampling_rate)
     else:
         moving_win_sz = min(nframes_per_cycle) * 2
-        freqs = fft.fftfreq(N_samples, 1 / sampling_rate) 
-        
+        freqs = fft.fftfreq(N_samples, 1 / sampling_rate)
+
     # Get frequency bins for frequencies of interest:
     # -------------------------------------------------------------------------
     # When set fps to 60 vs 120 -- target_bin should be 2x higher for 120 (looks for closest matching target_bin )
@@ -133,8 +130,8 @@ def get_fft(source_path,
     DC_freq = 0
     DC_bin = np.where(
         freqs == min(freqs, key=lambda x: abs(float(x) - DC_freq)))[0][0]
-    print "DC: ", DC_freq, freqs[DC_bin]    
-    
+    print "DC: ", DC_freq, freqs[DC_bin]
+
     # Run FFT:
     # -------------------------------------------------------------------------
     fft_filepath = os.path.join(trial_dir, 'fft_%s.hdf5' % datetime.datetime.now().strftime("%Y%m%d_%H_%M_%S"))
@@ -152,22 +149,22 @@ def get_fft(source_path,
     try:
         for x in range(sample.shape[0]):
             for y in range(sample.shape[1]):
-    
+
                 pix = process_timecourse(stack[x, y, :], tpoints, frame_tstamps, moving_win_sz=moving_win_sz, interpolate=interpolate, high_pass=high_pass)
-    
+
                 curr_fft = fft.fft(pix)
                 mag = np.abs(curr_fft)
                 phase = np.angle(curr_fft)
-                
+
                 maps['dynamic_range'][x, y] = np.log2(pix.max() - pix.min())
                 maps['magnitude_target'][x, y] = mag[target_bin]*2.  #+ mag[int(N) - target_bin]
                 maps['phase_target'][x, y] = phase[target_bin]
                 maps['magnitude_sum_all'][x, y] = sum(mag)
                 maps['magnitude_nontarget'][x, y] = sum(mag) - mag[target_bin]*2.
-                maps['magnitude_ratios'][x, y]  = (mag[target_bin]*2.) / maps['magnitude_nontarget'][x, y] 
+                maps['magnitude_ratios'][x, y]  = (mag[target_bin]*2.) / maps['magnitude_nontarget'][x, y]
                 maps['magnitude_DC'][x, y]  = mag[DC_bin]
-                maps['phase_DC'][x, y] = phase[DC_bin]    
-                
+                maps['phase_DC'][x, y] = phase[DC_bin]
+
                 ft = fftfile.create_dataset('/'.join(['fft', str(x), str(y)]), curr_fft.shape, curr_fft.dtype)
                 ft[...] = curr_fft
                 ft.attrs['target_freq'] = target_freq
@@ -180,15 +177,15 @@ def get_fft(source_path,
                 ft.attrs['N_frames'] = N_samples
                 ft.attrs['ncycles'] = ncycles
                 ft.attrs['sampling_rate'] = sampling_rate
-        
+
         if 'maps' not in fftfile.keys():
             mapgrp = fftfile.create_group('maps')
         else:
             mapgrp = fftfile['maps']
-            
+
         for maptype in maps.keys():
             mp = mapgrp.create_dataset(maptype, maps[maptype].shape, maps[maptype].dtype)
-            mp[...] = maps[maptype]    
+            mp[...] = maps[maptype]
     except Exception as e:
         print "--- ERROR processing FFT from source: -------------------------"
         print source_path
@@ -196,17 +193,17 @@ def get_fft(source_path,
         print "---------------------------------------------------------------"
     finally:
         fftfile.close
-        
+
     return fft_filepath
 
 
 def process_timecourse(tseries, desired_tpoints, actual_tpoints, moving_win_sz=0, interpolate=True, high_pass=True):
-    
+
     if interpolate is True:
         pix = np.interp(desired_tpoints, actual_tpoints, tseries)
     else:
         pix = tseries.copy()
-        
+
     # curr_pix = scipy.signal.detrend(stack[x, y, :], type='constant') # HP filter - over time...
     if high_pass is True:
         pix_padded = [np.ones(moving_win_sz)*pix[0], pix, np.ones(moving_win_sz)*pix[-1]]
@@ -215,23 +212,23 @@ def process_timecourse(tseries, desired_tpoints, actual_tpoints, moving_win_sz=0
         remove_pad = (len(tmp_pix_rolling) - len(pix) ) / 2
         rpix = np.array(tmp_pix_rolling[remove_pad:-1*remove_pad])
         pix -= rpix
-    
+
     return pix
 
 
 def get_fft_by_run(acquisition_dir, run, img_fmt='tif', ncycles=20, target_freq=0.13,
                    sampling_rate=60., reduce_factor=(1, 1), interpolate=True, high_pass=True):
-    
-    
+
+
     run_dir = os.path.join(acquisition_dir, run)
     trial_source_paths = [(t, os.path.join(run_dir, t, 'frames')) for t in os.listdir(run_dir) if os.path.isdir(os.path.join(run_dir, t))]
-    
+
     print "RUN %s: Found %i trials to process." % (run, len(trial_source_paths))
-    
+
 #    for trial in trials:
 #        source_path = os.path.join(run_dir, trial, 'frames')
 
-    fft_kwargs = {'img_fmt': img_fmt, 
+    fft_kwargs = {'img_fmt': img_fmt,
                   'target_freq': target_freq,
                   'ncycles': ncycles,
                   'sampling_rate': sampling_rate,
@@ -243,15 +240,15 @@ def get_fft_by_run(acquisition_dir, run, img_fmt='tif', ncycles=20, target_freq=
     proc_id = os.getpid()
     print "Starting pool for PID: {0} (run: {1})...".format(
         proc_id, proc_name)
-    
+
     ntrials = len(trial_source_paths)
     pool = mp.Pool(processes=ntrials)
     results = [(t, pool.apply_async(get_fft, (tpath,), fft_kwargs)) for t, tpath in trial_source_paths]
     t_start = time.time()
     for trial, result in results:
         print "Trial %s -- result: %s (%.2f secs)" % (trial, result.get(), time.time() - t_start)
-        
-    
+
+
     return results
 
 
@@ -261,7 +258,7 @@ if __name__ == '__main__':
     parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
     parser.add_option('-S', '--session', action='store', dest='session', default='', help='session dir (format: YYYMMDD_ANIMALID')
     parser.add_option('-A', '--acq', action='store', dest='acquisition', default='FOV1', help="acquisition folder (ex: 'FOV1_zoom3x') [default: FOV1]")
-    
+
     parser.add_option('--freq', action="store", dest="target_freq",
                       default="0.05", help="stimulation frequency")
     parser.add_option('--reduce', action="store",
@@ -274,24 +271,24 @@ if __name__ == '__main__':
                       dest="sampling_rate", default="60", help="saved image format")
     #parser.add_option('--append', action="store",
     #                  dest="append_name", default="", help="append string to saved file name")
-    
+
     parser.add_option('--rolling', action='store_true', default=False, help="Rolling average [window size is 2 cycles] or detrend.")
     parser.add_option('--meansub', action='store_true', default=False, help="Remove mean of each frame.")
     parser.add_option('--interpolate', action='store_true', default=False, help='Interpolate frames or no.')
-    
+
     #parser.add_option('--path', action="store",
     #                  dest="session_path", default="", help="input dir")
-    
+
     parser.add_option('--ncycles', action="store",
                       dest="ncycles", default=20, help="ncycles (default 20)")
     parser.add_option('--motion', action='store_true', dest="motion_corrected", default=False, help="Motion corrected with WiPy or no?")
     parser.add_option('--average', action='store_true', dest='average', default=False, help='Average runs of the same condition?')
-    
-    
+
+
     (options, args) = parser.parse_args()
     average = options.average
     motion_corrected = options.motion_corrected
-    
+
     #imdir = sys.argv[1]
     rootdir = options.rootdir
     animalid = options.animalid
@@ -304,14 +301,14 @@ if __name__ == '__main__':
     img_format = options.im_format
     reduce_factor = (int(options.reduce_val), int(options.reduce_val))
     gsigma = int(options.gauss_kernel)
-    
+
     target_freq = float(options.target_freq)
     sampling_rate = float(options.sampling_rate) # 60.  # np.mean(np.diff(sorted(strt_idxs)))/cycle_dur #60.0
     ncycles = int(options.ncycles)
     cache_file = True
     cycle_dur = 1. / target_freq  # 10.
     binspread = 0
-    
+
     acquisition_dir = os.path.join(rootdir, animalid, session, acquisition)
     runs = [r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r)) and 'surface' not in r]
     trial_list = []
@@ -321,27 +318,27 @@ if __name__ == '__main__':
         for t in curr_trials:
             trial_list.append((r, t))
             #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
-            
+
         trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r)) if os.path.isdir(os.path.join(acquisition_dir, r, t))]
         print "RUN %s: Found %i trials to process." % (r, len(trials[r]))
         #print "RUN %s: Found %i trials to process." % (r, len(curr_trials))
-    
+
     t_start = time.time()
     processes = []
     for run, trial in trial_list:
         keyargs = {'img_fmt': img_format,
-                   'target_freq': target_freq, 
+                   'target_freq': target_freq,
                    'sampling_rate': sampling_rate,
                    'reduce_factor': reduce_factor,
                    'ncycles': ncycles,
                    'interpolate': interpolate,
                    'high_pass': high_pass
                    }
-        
+
         trial_source_path = os.path.join(acquisition_dir, run, trial, 'frames')
         trial_name = '%s_%s' % (run, trial)
         proc = mp.Process(name=trial_name, target=get_fft, args=(trial_source_path,), kwargs=keyargs)
-        
+
         #proc = mp.Process(name=run, target=get_fft_by_run, args=(acquisition_dir, run,), kwargs=keyargs)
         proc.start()
         processes.append(proc) #start()
@@ -349,9 +346,9 @@ if __name__ == '__main__':
 
     for proc in processes:
         proc.join()
-        
+
 #    keyargs = {'img_fmt': img_format,
-#               'target_freq': target_freq, 
+#               'target_freq': target_freq,
 #               'sampling_rate': sampling_rate,
 #               'reduce_factor': reduce_factor,
 #               'ncycles': ncycles,
@@ -364,7 +361,6 @@ if __name__ == '__main__':
 #    t_start = time.time()
 #    for trial, result in results:
 #        print "Trial %s -- result: %s (%.2f secs)" % (trial, result.get(), time.time() - t_start)
-#        
-#    
+#
+#
     print "DONE! TOTAL TIME:", time.time() - t_start
-        
