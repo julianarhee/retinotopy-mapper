@@ -3,6 +3,7 @@
 from psychopy import visual, event, core, monitors, logging, tools
 from pvapi import PvAPI, Camera
 import time
+import json
 from scipy.misc import imsave
 import numpy as np
 import multiprocessing as mp
@@ -54,14 +55,18 @@ parser.add_option('--write-thread', action="store_false", dest="save_in_separate
 parser.add_option('--monitor', action="store", dest="monitor", default="testMonitor", help=str(monitor_list))
 
 # Stimulus params:
-parser.add_option('-w', '--width', action="store", dest="bar_deg", default=1, help="Bar size in degrees (default: 1 deg)")
+parser.add_option('-w', '--width', action="store", dest="bar_width_deg", default=1, help="Bar size in degrees (default: 1 deg)")
 parser.add_option('-f', '--freq', action="store", dest="target_freq", default=0.13, help="stimulation frequency (default: 0.13)")
 parser.add_option('-c', '--ncycles', action="store", dest="ncycles", default=20, help="Num cycles to show (default: 20)")
 parser.add_option('-a', '--fps', action="store", dest="acquisition_rate", default=30., help="Acquisition rate of camera (default: 30)")
 parser.add_option('--flash', action="store_true", dest="flash", default=False, help="Flash checkerboard inside bar?")
 parser.add_option('--conds', action="store", dest="cond_str", default="", help="Comma-separated list of conds to run (default: all conditions)")
-parser.add_option('-t', '--nreps', action="store", dest="nreps", default=3, help="Num reps per condition to run (default: 3)")
+parser.add_option('-n', '--nreps', action="store", dest="nreps", default=3, help="Num reps per condition to run (default: 3)")
 
+parser.add_option('-l', '--left', action="store", dest="left_edge", default=None, help="LEFT edge (in deg)")
+parser.add_option('-r', '--right', action="store", dest="right_edge", default=None, help="RIGHT edge (in deg)")
+parser.add_option('-t', '--top', action="store", dest="top_edge", default=None, help="TOP edge (in deg)")
+parser.add_option('-b', '--bottom', action="store", dest="bottom_edge", default=None, help="BOTTOM edge (in deg)")
 
 
 parser.add_option('--short-axis', action="store_false", dest="use_long_axis", default=True, help="Use short axis instead?")
@@ -88,12 +93,17 @@ cyc_per_sec = options.target_freq
 flash = options.flash
 ncycles = int(options.ncycles) # how many times to do the cycle of 1 condition
 fps = float(options.acquisition_rate)
-bar_width = options.bar_deg #8 #2 # bar width in degrees
-flashPeriod = 0.2 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
-dutyCycle = 0.5 #1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
+bar_width_deg = int(options.bar_width_deg) #8 #2 # bar width in degrees
+flash_period = 0.2 #1.0 #0.2#0.2 #amount of time it takes for a full cycle (on + off)
+duty_cycle = 0.5 #1.0 #0.5#0.5 #Amount of time flash bar is "on" vs "off". 0.5 will be 50% of the time.
 
+left_edge = options.left_edge
+right_edge = options.right_edge
+top_edge = options.top_edge
+bottom_edge = options.bottom_edge
 
 #%%
+RUN = dict()
 
 # -------------------------------------------------------------
 # Monitor params:
@@ -112,96 +122,64 @@ screen_height_cm = (float(screen_width_cm)/monitors.Monitor(curr_monitor).getSiz
 screen_width_deg = tools.monitorunittools.cm2deg(screen_width_cm, monitors.Monitor(curr_monitor))
 screen_height_deg = tools.monitorunittools.cm2deg(screen_height_cm, monitors.Monitor(curr_monitor))
 
-use_width = options.use_long_axis #True
-if use_width:
-    total_length = max([screen_width_cm, screen_height_cm])
-else:
-    total_length = min([screen_width_cm, screen_height_cm])
-print "Base Length (screen dim, cm):  ", total_length
-
-total_length_deg = tools.monitorunittools.cm2deg(total_length, monitors.Monitor(curr_monitor))
 distance = monitors.Monitor(curr_monitor).getDistance()
 
 frames_per_cycle = fps/cyc_per_sec
-bar_width_cm = tools.monitorunittools.deg2cm(bar_width, monitors.Monitor(curr_monitor))
+bar_width_cm = tools.monitorunittools.deg2cm(bar_width_deg, monitors.Monitor(curr_monitor))
 print "Distance from monitor (cm): ", distance
-print "Bar width (deg | cm): ", bar_width, ' | ', bar_width_cm
-
-#%%
-# -------------------------------------------------------------
-# STIMULUS params by conditions:
-# -------------------------------------------------------------
-cond_labels = ['blank','left','right','top','bottom']
-
-stimconfigs = dict((c, dict()) for c in cond_labels)
-stimconfigs['left'] = {'condnum': 1,
-                        'start_sign': -1, # start from LEFT/bottom (neg --> pos)
-                        'angle': 90,      # 90 deg is vertical
-                        'longside_cm': screen_height_cm,
-                        'longside':  screen_height_deg,
-                        'start_pos': left_start_pos,
-                        'bar_color': 1
-                        }
-stimconfigs['right'] = {'condnum': 2,
-                        'start_sign': 1, # start from RIGHT/top (pos --> neg)
-                        'angle': 90,      # 90 deg is vertical
-                        'longside_cm': screen_height_cm,
-                        'longside':  screen_height_deg,
-                        'start_pos': right_start_pos,
-                        'bar_color': 1
-                        }
-stimconfigs['top'] = {'condnum': 3,
-                        'start_sign': 1, # start from right/TOP (pos --> neg)
-                        'angle': 0,      # 90 deg is vertical
-                        'longside_cm': screen_width_cm,
-                        'longside':  screen_width_deg,
-                        'start_pos': top_start_pos,
-                        'bar_color': 1
-                        }
-stimconfigs['bottom'] = {'condnum': 4,
-                        'start_sign': -1, # start from left/BOTTOM (neg --> pos)
-                        'angle': 0,       # 90 deg is vertical
-                        'longside_cm': screen_width_cm,
-                        'longside':  screen_width_deg,
-                        'start_pos': bottom_start_pos,
-                        'bar_color': 1
-                        }
-stimconfigs['blank'] = {'condnum': 0,
-                        'start_sign': -1, # start from LEFT/bottom (neg --> pos)
-                        'angle': 90,      # 90 deg is vertical
-                        'longside_cm': screen_height_cm,
-                        'longside':  screen_height_deg,
-                        'start_pos': left_start_pos,
-                        'bar_color': -1
-                        }
-for cond in cond_names:
-    if stimconfig[cond]['start_pos'] is None:
-        angle = stimconfigs[cond]['angle']
-        longside = stimconfigs[cond]['long_side']
-        start_sign = stimconfigs[cond]['start_sign']
-        stim_size = (stimconfigs[cond]['longside'], bar_width) # First number is longer dimension no matter what the orientation is.
-        unsign_start_point = (total_length_deg*0.5) + bar_width*0.5 # half the screen-size, plus hal bar-width to start with bar OFF screen
-        start_point = start_sign * unsign_start_point
-        end_point = -1 * start_point
-        stimconfig[cond]['start_pos'] = start_point
-        stimconfig[cond]['end_pos'] = end_point
+print "Bar width (deg | cm): ", bar_width_deg, ' | ', bar_width_cm
 
 
-# -----------------------------------------------------------------------------
-# Create trial mat:
-# -----------------------------------------------------------------------------
-if len(cond_str) == 0:
-    conds_to_run = cond_labels.copy()
+use_long_axis = options.use_long_axis #True
+if use_long_axis:
+    full_length_cm = max([screen_width_cm, screen_height_cm])
 else:
-    conds_to_run = [i for i in cond_str.split(',')]
-print "RUNNING CONDITIONS:"
-for cond in conds_to_run:
-    print stimconfig[cond]['condnum'], cond
+    full_length_cm = min([screen_width_cm, screen_height_cm])
+print "Base Length (screen dim, cm):  ", full_length_cm
+full_length_deg = tools.monitorunittools.cm2deg(full_length_cm, monitors.Monitor(curr_monitor))
 
-condnums_to_run = [stimconfig[cond]['condnum'] for cond in conds_to_run]
+if bottom_edge is None:
+    bottom_edge = -1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+if top_edge is None:
+    top_edge = 1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+if left_edge is None:
+    left_edge = -1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+if right_edge is None:
+    right_edge = 1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+print top_edge
+print "Right: %s, Left: %s" % (right_edge, left_edge)
+print "Top: %s, Bottom: %s" % (top_edge, bottom_edge)
 
-trialmat = np.tile(condsnums_to_run, nreps_per_cond)
+if (bottom_edge == -1*top_edge):
+    centerY = 0
+if (left_edge == -1*right_edge):
+    centerX = 0
+else:
+    centerX = (left_edge + right_edge) / 2.
+    centerY = (top_edge + bottom_edge) / 2.
 
+center_point = [centerX, centerY]
+
+if use_long_axis is True:
+    travel_length_deg = max([(right_edge - left_edge), (top_edge - bottom_edge)])
+else:
+    travel_length_deg = min([(right_edge - left_edge), (top_edge - bottom_edge)])
+
+if not (right_edge - left_edge) == travel_length_deg:
+    right_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+    left_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+if not (top_edge - bottom_edge) == travel_length_deg:
+    bottom_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+    top_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+
+cycle_duration = travel_length_deg / (travel_length_deg * cyc_per_sec)
+total_duration = cycle_duration * ncycles
+
+print "Cycle Travel LENGTH (deg): ", travel_length_deg
+print "Cycle Travel TIME (s): ", cycle_duration
+SF = bar_width_deg/travel_length_deg
+print "Calc SF (cpd): ", SF
+print "TOTAL DUR: ", total_duration
 
 # -----------------------------------------------------------------------------
 # Output Setup
@@ -217,10 +195,10 @@ if not os.path.exists(acquisition_dir):
     os.makedirs(acquisition_dir)
 
 run_path = os.path.join(acquisition_dir, curr_run)
-if not os.path.exists(output_path):
+if not os.path.exists(run_path):
     os.makedirs(run_path)
 
-print output_format
+print "Img format:", output_format
 save_as_tif = False
 save_as_png = False
 save_as_npz = False
@@ -230,6 +208,120 @@ elif output_format == 'npz':
     save_as_npz = True
 else:
     save_as_tif = True
+
+# -----------------------------------------------------------------------------
+# RUN PARAMS:
+# -----------------------------------------------------------------------------
+RUN['screen'] = {'resolution': winsize,
+                 'width_cm': screen_width_cm,
+                 'height_cm': screen_height_cm,
+                 'width_deg': screen_width_deg,
+                 'height_deg': screen_height_deg,
+                 'distance': distance,
+                 'monitor': curr_monitor
+                 }
+RUN['stimulus'] = {'bar_width_deg': bar_width_deg,
+                   'bar_width_cm': bar_width_cm,
+                   'target_freq': cyc_per_sec,
+                   'ncycles': ncycles,
+                   'frames_per_cycle':frames_per_cycle,
+                   'flash': flash,
+                   'acquistion_rate': fps,
+                   'travel_length_deg': travel_length_deg,
+                   'cycle_period_sec': cycle_duration,
+                   'using_longer_dim': use_long_axis,
+                   'center': center_point
+                   }
+
+RUN['acquisition'] = {'acquisition_rate': fps,
+                      'output_format': output_format,
+                      'base_path': run_path
+                      }
+
+#%%
+# -------------------------------------------------------------
+# STIMULUS params by conditions:
+# -------------------------------------------------------------
+cond_labels = ['blank','left','right','top','bottom']
+
+stimconfigs = dict((c, dict()) for c in range(len(cond_labels)))
+stimconfigs[0] = {'condname': 'blank',
+                        'angle': 90,      # 90 deg is vertical
+                        'longside':  travel_length_deg,
+                        'start_pos': left_edge,
+                        'end_pos': right_edge,
+                        'bar_color': -1,
+                        'bar_width': bar_width_deg
+                        }
+
+stimconfigs[1] = {'condname': 'left',
+                        'angle': 90,      # 90 deg is vertical
+                        'longside':  travel_length_deg,
+                        'start_pos': left_edge,
+                        'end_pos': right_edge,
+                        'bar_color': 1,
+                        'bar_width': bar_width_deg
+                        }
+stimconfigs[2] = {'condname': 'right',
+                        'angle': 90,      # 90 deg is vertical
+                        'longside':  travel_length_deg,
+                        'start_pos': right_edge,
+                        'end_pos': left_edge,
+                        'bar_color': 1,
+                        'bar_width': bar_width_deg
+                        }
+stimconfigs[3] = {'condname': 'top',
+                        'angle': 0,      # 90 deg is vertical
+                        'longside':  travel_length_deg,
+                        'start_pos': top_edge,
+                        'end_pos': bottom_edge,
+                        'bar_color': 1,
+                        'bar_width': bar_width_deg
+                        }
+stimconfigs[4] = {'condname': 'bottom',
+                        'angle': 0,       # 90 deg is vertical
+                        'longside':  travel_length_deg,
+                        'start_pos': bottom_edge,
+                        'end_pos': top_edge,
+                        'bar_color': 1,
+                        'bar_width': bar_width_deg
+                        }
+
+## Save config to current run info:
+params_filepath = os.path.join(run_path, 'parameters.json')
+with open(params_filepath, 'w') as f:
+    json.dump(RUN, f, indent=4, sort_keys=True)
+
+stimconfigs_filepath = os.path.join(run_path, 'stimulus_info.json')
+with open(stimconfigs_filepath, 'w') as f:
+    json.dump(stimconfigs, f, indent=4, sort_keys=True)
+
+
+#%%
+# -----------------------------------------------------------------------------
+# Create trial mat:
+# -----------------------------------------------------------------------------
+if len(cond_str) == 0:
+    conds_to_run = np.copy(cond_labels)
+else:
+    conds_to_run = [i for i in cond_str.split(',')]
+print "RUNNING CONDITIONS:"
+for cond in conds_to_run:
+    print cond, [k for k in stimconfigs.keys() if stimconfigs[k]['condname'] == cond][0]
+
+condnums_to_run = [[k for k in stimconfigs.keys() if stimconfigs[k]['condname']==cond][0] for cond in conds_to_run]
+
+trialmat = np.tile(condnums_to_run, nreps_per_cond).tolist()
+random.shuffle(trialmat)
+
+trials = dict()
+for tidx, t in enumerate(trialmat):
+    trialname = 'trial%03d' % int(tidx+1)
+    trials[trialname] = dict()
+    trials[trialname]['condition'] = stimconfigs[t]['condname']
+    trials[trialname]['condition_num'] = t
+
+
 
 # -----------------------------------------------------------------------------
 # Camera Setup
@@ -285,11 +377,13 @@ if acquire_images:
 
 win_flag = 0
 trial_idx = 0
+trial_list = sorted(trials.keys(), key=natural_keys)
 while True:
     time.sleep(2)
-    curr_trial = "trial%03d" % int(trial_idx+1)
-    condnum = trialmat[trial_idx]
-    curr_cond = cond_label[int(condnum)]
+
+    curr_trial = trial_list[trial_idx]
+    condnum = trials[curr_trial]['condition_num']
+    curr_cond = trials[curr_trial]['condition']
 
     print "Starting trial %i: %s (%s)" % (trial_idx, curr_trial, curr_cond)
 
@@ -328,10 +422,10 @@ while True:
         while currdict is not None:
 
             frame_log_file.write(
-                '%i\t%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%str\n' % (n, int(currdict['frame_num'], int(currdict['cycle_num'],
+                '%i\t%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%str\n' % (n, int(currdict['frame_num']), int(currdict['cycle_num']),
                                                                  curr_trial, currdict['curr_cond'], currdict['cond_num'],
                                                                  currdict['xpos'], currdict['ypos'], currdict['pos_linear'],
-                                                                 str(currdict['time'])
+                                                                 str(currdict['time'])))
             if save_as_npz:
                 np.savez_compressed(os.path.join(trial_path, '%i.npz' % n), currdict['im'])
             else:
@@ -403,25 +497,21 @@ while True:
 
 # SPECIFICY CONDITION TYPES:
 
-    center_point = [0,0] #center of screen is [0,0] (degrees).
+    #center_point = stimconfig[curr_cond]['center'] # [0,0] #center of screen is [0,0] (degrees).
 
-    start_point = stimconfig[curr_cond]['start_pos']
-    end_point = stimconfig[curr_cond]['end_pos'] #-1 * start_point
+    start_point = stimconfigs[condnum]['start_pos']
+    end_point = stimconfigs[condnum]['end_pos'] #-1 * start_point
     start_to_end = end_point - start_point
+    cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
+    total_duration = cycle_duration * ncycles
+    bar_color = stimconfigs[condnum]['bar_color']
+    stim_size = (stimconfigs[condnum]['longside'], stimconfigs[condnum]['bar_width'])
+    angle = stimconfigs[condnum]['angle']
 
     print "Cycle Travel LENGTH (deg): ", start_to_end
     print "START: ", start_point
     print "END: ", end_point
     print "Degrees per cycle: ", start_to_end # center-to-center #abs(start_point)*2. + bar_width
-    SF = 1./(abs(start_point)*2. + bar_width)
-    print "Calc SF (cpd): ", SF
-    # cyc = 0
-
-    # Movie params:
-    cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
-    total_duration = cycle_duration * ncycles
-    print "Cycle Travel TIME (s): ", cycle_duration
-    print "TOTAL DUR: ", total_duration
 
     # 1. bar moves to this far from centerPoint (in degrees)
     # 2. bar starts & ends OFF the screen
@@ -450,7 +540,7 @@ while True:
         t = globalClock.getTime()
 
         if flash is True:
-            if (clock.getTime()/flashPeriod) % (1.0) < dutyCycle:
+            if (clock.getTime()/flash_period) % (1.0) < duty_cycle:
                 barStim = bar1
             else:
                 barStim = bar2
@@ -473,7 +563,7 @@ while True:
             fdict = dict()
             fdict['im'] = im_array
             fdict['cond_num'] = condnum
-            fdict['cond_name'] = cond_label[int(condnum)]
+            fdict['cond_name'] = curr_cond
             fdict['frame_num'] = frame_counter #nframes
             fdict['cycle_num'] = cycnum
             fdict['time'] = datetime.now().strftime(FORMAT)
@@ -552,6 +642,9 @@ while True:
         # disk_writer.terminate()
         disk_writer.join()
         print('Disk writer terminated')
+
+    trial_idx += 1
+
 
 if acquire_images:
     camera.close()
