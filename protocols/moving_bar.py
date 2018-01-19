@@ -89,7 +89,7 @@ curr_monitor = options.monitor
 
 nreps_per_cond = int(options.nreps)
 cond_str = options.cond_str
-cyc_per_sec = options.target_freq
+cyc_per_sec = float(options.target_freq)
 flash = options.flash
 ncycles = int(options.ncycles) # how many times to do the cycle of 1 condition
 fps = float(options.acquisition_rate)
@@ -139,26 +139,21 @@ print "Base Length (screen dim, cm):  ", full_length_cm
 full_length_deg = tools.monitorunittools.cm2deg(full_length_cm, monitors.Monitor(curr_monitor))
 
 if bottom_edge is None:
-    bottom_edge = -1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+    bottom_edge = -1 * (full_length_deg*0.5) - bar_width_deg * 0.5
+else:
+    bottom_edge = float(bottom_edge)
 if top_edge is None:
     top_edge = 1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+else:
+    top_edge = float(top_edge)
 if left_edge is None:
-    left_edge = -1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+    left_edge = -1 * (full_length_deg*0.5) - bar_width_deg * 0.5
+else:
+    left_edge = float(left_edge)
 if right_edge is None:
     right_edge = 1 * (full_length_deg*0.5) + bar_width_deg * 0.5
-print top_edge
-print "Right: %s, Left: %s" % (right_edge, left_edge)
-print "Top: %s, Bottom: %s" % (top_edge, bottom_edge)
-
-if (bottom_edge == -1*top_edge):
-    centerY = 0
-if (left_edge == -1*right_edge):
-    centerX = 0
 else:
-    centerX = (left_edge + right_edge) / 2.
-    centerY = (top_edge + bottom_edge) / 2.
-
-center_point = [centerX, centerY]
+    right_edge = float(right_edge)
 
 if use_long_axis is True:
     travel_length_deg = max([(right_edge - left_edge), (top_edge - bottom_edge)])
@@ -172,6 +167,17 @@ if not (top_edge - bottom_edge) == travel_length_deg:
     bottom_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
     top_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
 
+print "Right: %s, Left: %s" % (right_edge, left_edge)
+print "Top: %s, Bottom: %s" % (top_edge, bottom_edge)
+if (bottom_edge == -1*top_edge):
+    centerY = 0
+if (left_edge == -1*right_edge):
+    centerX = 0
+else:
+    centerX = (left_edge + right_edge) / 2.
+    centerY = (top_edge + bottom_edge) / 2.
+center_point = [centerX, centerY]
+print "CENTER:", center_point
 cycle_duration = travel_length_deg / (travel_length_deg * cyc_per_sec)
 total_duration = cycle_duration * ncycles
 
@@ -321,8 +327,6 @@ for tidx, t in enumerate(trialmat):
     trials[trialname]['condition'] = stimconfigs[t]['condname']
     trials[trialname]['condition_num'] = t
 
-
-
 # -----------------------------------------------------------------------------
 # Camera Setup
 # -----------------------------------------------------------------------------
@@ -378,14 +382,17 @@ if acquire_images:
 win_flag = 0
 trial_idx = 0
 trial_list = sorted(trials.keys(), key=natural_keys)
-while True:
+ntrials = len(trial_list)
+while trial_idx < ntrials:
     time.sleep(2)
 
     curr_trial = trial_list[trial_idx]
     condnum = trials[curr_trial]['condition_num']
     curr_cond = trials[curr_trial]['condition']
 
-    print "Starting trial %i: %s (%s)" % (trial_idx, curr_trial, curr_cond)
+    print "*************************************************"
+    print "Starting trial %i of %i: %s (%s)" % (int(trial_idx+1), ntrials, curr_trial, curr_cond)
+    print "*************************************************"
 
     user_input=raw_input("\nEnter <s> to start, or 'exit':\n")
     if user_input=='exit':
@@ -412,18 +419,21 @@ while True:
 
         # Make the output path if it doesn't already exist
         trial_path = os.path.join(run_path, 'raw', curr_trial)
+        print curr_trial
+        if not os.path.exists(trial_path):
+            os.makedirs(trial_path)
         frame_path = os.path.join(trial_path, 'frames')
         if not os.path.exists(frame_path):
             os.makedirs(frame_path)
 
-        frame_log_file = open(os.path.join(trial_path, 'frame_info.txt')) #'framelog_%s_%s.txt') % (currdict['condname'], str(run_num)), 'w')
-        frame_log_file.write('idx\tframenum\tcycnum\ttrial\tcurrcond\txpos\typos\ttstamp\n')
+        frame_log_file = open(os.path.join(trial_path, 'frame_info.txt'), 'w') #'framelog_%s_%s.txt') % (currdict['condname'], str(run_num)), 'w')
+        frame_log_file.write('idx\tframenum\ttrial\tcurrcond\txpos\typos\tlinearpos\ttstamp\n')
 
         while currdict is not None:
 
             frame_log_file.write(
-                '%i\t%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%str\n' % (n, int(currdict['frame_num']), int(currdict['cycle_num']),
-                                                                 curr_trial, currdict['curr_cond'], currdict['cond_num'],
+                '%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%s\n' % (n, int(currdict['frame_num']),
+                                                                 curr_trial, currdict['cond_name'], currdict['cond_num'],
                                                                  currdict['xpos'], currdict['ypos'], currdict['pos_linear'],
                                                                  str(currdict['time'])))
             if save_as_npz:
@@ -480,7 +490,7 @@ while True:
     flash_count = 0
     last_t = None
 
-    report_period = 60 # frames
+    report_period = 1000 # frames
     refresh_rate = 60.000 #60.000
 
     if acquire_images:
@@ -565,7 +575,7 @@ while True:
             fdict['cond_num'] = condnum
             fdict['cond_name'] = curr_cond
             fdict['frame_num'] = frame_counter #nframes
-            fdict['cycle_num'] = cycnum
+            #fdict['cycle_num'] = cycnum
             fdict['time'] = datetime.now().strftime(FORMAT)
             fdict['pos_linear'] = pos_linear
             fdict['xpos'] = posX
@@ -573,7 +583,7 @@ while True:
 
             im_queue.put(fdict)
 
-        if nframes % report_period == 0:
+        if frame_counter % report_period == 0:
         #if frame_accumulator % report_period == 0:
             if last_t is not None:
                 print('avg frame rate: %f' % (report_period / (t - last_t)))
@@ -581,14 +591,14 @@ while True:
 
         frame_counter += 1
         flash_count += 1
-        cycnum += 1
+        #cycnum += 1
 
         # Break out of the while loop if these keys are registered
         if event.getKeys(keyList=['escape', 'q']):
             getout = 1
             break
 
-        print cycnum
+        #print cycnum
 
     win.clearBuffer()
     win.flip()
