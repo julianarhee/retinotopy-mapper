@@ -19,8 +19,79 @@ import time
 # outPath = '/media/labuser/dixie/volume1/widefield/data/JR044W/20170703'
 # outPath = '/media/labuser/dixie/volume1/widefield/data/JR046W/20170711'
 # outPath = '/media/labuser/dixie/volume1/widefield/data/JR050W/20170804'
-outPath = '/media/labuser/dixie/volume1/widefield/data/JR059W/20171003'
+#outPath = '/media/labuser/dixie/volume1/widefield/data/JR059W/20171003'
 
+
+# ANIMAL INFO:
+rootdir = '/media/labuser/dixie/volume1/widefield/data'
+animalid = 'TEST'
+session = '20170118'
+acquisition = 'flash'
+save_images = True
+
+# MONITOR INFO:
+monitor = 'AQUOS'
+short_axis = False
+# ------------------
+fullscreen = False
+left = -10
+right = 50
+top = -10
+bottom = -20
+# ------------------
+
+# STIMULUS INFO:
+flash = True
+bar_width = 3
+target_freq = 0.28
+ncycles = 2
+acquisition_rate = 30.
+nreps_per = 2
+
+conds='right,bottom'
+
+
+if fullscreen is True:
+	os.system("python moving_bar.py \
+		--root=%s\
+		--animalid=%s\
+		--session=%s\
+		--acq=%s\
+		--monitor=%s\
+		--width=%i\
+		--freq=%f\
+		--ncycles=%i\
+		--fps=%f\
+		--nreps=%i\
+		--conds=%s\
+	    --save-images\
+	    --flash" % (rootdir, animalid, session, acquisition, 
+	    			monitor, bar_width, target_freq, ncycles, 
+	    			acquisition_rate, nreps_per, conds)
+	    			)
+else:
+	os.system("python moving_bar.py \
+		--root=%s\
+		--animalid=%s\
+		--session=%s\
+		--acq=%s\
+		--monitor=%s\
+		--width=%i\
+		--freq=%f\
+		--ncycles=%i\
+		--fps=%f\
+		--nreps=%i\
+		--conds=%s\
+		--left=%f\
+		--right=%f\
+		--bottom=%f\
+		--top=%f\
+	    --save-images\
+	    --flash" % (rootdir, animalid, session, acquisition, 
+	    			monitor, bar_width, target_freq, ncycles, 
+	    			acquisition_rate, nreps_per, conds,
+	    			left, right, bottom, top)
+	    			)
 
 # outPath='/media/labuser/IMDATA2/TEFO/retinomapping/JR027W/20161117'
 # outPath='/home/labuser/Desktop/TefoTest/20161118'
@@ -46,11 +117,15 @@ outPath = '/media/labuser/dixie/volume1/widefield/data/JR059W/20171003'
 #     --flash\
 #     --short-axis\
 #     --output-path="+outPath)
-os.system("python moving_bar_flash.py \
-    --save-images \
-    --monitor='AQUOS' \
-    --flash\
-    --output-path="+outPath)
+#
+
+
+
+# os.system("python moving_bar_flash.py \
+#     --save-images \
+#     --monitor='AQUOS' \
+#     --flash\
+#     --output-path="+outPath)
 
 
 # os.system("python moving_bar_flash.py \
