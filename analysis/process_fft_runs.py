@@ -24,6 +24,12 @@ from libtiff import TIFF
 from PIL import Image
 from scipy import ndimage
 
+def date2float(datestr):
+    format = "%Y%m%d_%H%M%S_%f"
+    dateobj = datetime.datetime.strptime(datestr, format)
+    dtfloat = time.mktime(dateobj.timetuple())
+    dtfloat += dateobj.microsecond / 1000000.0
+    return dtfloat
 
 def atoi(text):
     return int(text) if text.isdigit() else text
@@ -44,8 +50,18 @@ def extract_frame_info_for_trial(trial_dir):
     print framedata.columns
 
     ### Extract events from serialdata:
-    frame_tstamps = framedata[' experimentTime']
-    stim_positions = framedata[' stimPosition']
+    # frame_tstamps = framedata[' experimentTime']  
+    # stim_positions = framedata[' stimPosition']
+    ft = framedata['tstamp']
+    fmt = "%Y%m%d_%H%M%S_%f"
+    fixids = [tidx for tidx,t in enumerate(ft) if ' ' in t]  
+    ft[fixids] = [ft[t].replace(' ', '0') for t in fixids]
+    tstamps = [date2float(t) for t in ft]
+    frame_tstamps = [t-tstamps[0] for t in tstamps]
+
+    xpos = framedata['xpos']
+    ypos = framedata['ypos']
+    stim_positions = [(x, y) for x,y in zip(xpos, ypos)]
 
     return frame_tstamps, stim_positions
 
@@ -90,8 +106,8 @@ def get_fft(source_path,
             high_pass=True):
 
     proc_id = os.getpid()
-    trialname = os.path.split(source_path)[1]
-    runname = os.path.split(os.path.split(source_path)[0])[1]
+    trialname = os.path.split(os.path.split(source_path)[0])[1]
+    runname = os.path.split(os.path.split(os.path.split(os.path.split(source_path)[0])[0])[0])[1]
     print "Starting fft for PID: {0} (run: {1} --- trial: {2})...".format(
         proc_id, runname, trialname)
 
@@ -315,7 +331,7 @@ if __name__ == '__main__':
     trial_list = []
     trials = dict()
     for r in runs:
-        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, 'raw', r)) if os.path.isdir(os.path.join(acquisition_dir, 'raw', r, t))]
+        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
         for t in curr_trials:
             trial_list.append((r, t))
             #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
