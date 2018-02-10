@@ -251,6 +251,7 @@ def get_fft_by_run(acquisition_dir, run, img_fmt='tif', ncycles=20, target_freq=
 
     return results
 
+#%%
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
@@ -314,12 +315,12 @@ if __name__ == '__main__':
     trial_list = []
     trials = dict()
     for r in runs:
-        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, r)) if os.path.isdir(os.path.join(acquisition_dir, r, t))]
+        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, 'raw', r)) if os.path.isdir(os.path.join(acquisition_dir, 'raw', r, t))]
         for t in curr_trials:
             trial_list.append((r, t))
             #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
 
-        trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r)) if os.path.isdir(os.path.join(acquisition_dir, r, t))]
+        trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
         print "RUN %s: Found %i trials to process." % (r, len(trials[r]))
         #print "RUN %s: Found %i trials to process." % (r, len(curr_trials))
 
@@ -335,7 +336,7 @@ if __name__ == '__main__':
                    'high_pass': high_pass
                    }
 
-        trial_source_path = os.path.join(acquisition_dir, run, trial, 'frames')
+        trial_source_path = os.path.join(acquisition_dir, run, 'raw', trial, 'frames')
         trial_name = '%s_%s' % (run, trial)
         proc = mp.Process(name=trial_name, target=get_fft, args=(trial_source_path,), kwargs=keyargs)
 
