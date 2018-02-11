@@ -112,6 +112,10 @@ def get_fft(source_path,
         proc_id, runname, trialname)
 
     trial_dir = os.path.split(source_path)[0]
+    run_base_dir = os.path.split(os.path.split(trial_dir)[0])[0]
+    output_dir = os.path.join(run_base_dir, 'processed')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     tiffs = sorted([f for f in os.listdir(source_path) if f.endswith(img_fmt)], key=natural_keys)
     print "Found %i tiffs to process (src: %s)" % (len(tiffs), source_path)
@@ -150,7 +154,7 @@ def get_fft(source_path,
 
     # Run FFT:
     # -------------------------------------------------------------------------
-    fft_filepath = os.path.join(trial_dir, 'fft_%s.hdf5' % datetime.datetime.now().strftime("%Y%m%d_%H_%M_%S"))
+    fft_filepath = os.path.join(output_dir, '%s_fft_%s.hdf5' % (trialname, datetime.datetime.now().strftime("%Y%m%d_%H_%M_%S")))
     fftfile = h5py.File(fft_filepath, 'w')
     maps = dict()
     maps['dynamic_range'] = np.empty(sample.shape)
