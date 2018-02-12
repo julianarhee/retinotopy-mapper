@@ -1,3 +1,4 @@
+#!/user/bin/env python2
 import os
 import matplotlib as mpl
 mpl.use('Agg')
@@ -271,6 +272,24 @@ def get_fft_by_run(acquisition_dir, run, img_fmt='tif', ncycles=20, target_freq=
 
     return results
 
+
+def get_trial_list(acquisition_dir):
+
+    runs = [r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r)) and 'surface' not in r]
+    trial_list = []
+    trials = dict()
+    for r in runs:
+        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
+        for t in curr_trials:
+            trial_list.append((r, t))
+            #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
+
+        trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
+        print "RUN %s: Found %i trials to process." % (r, len(trials[r]))
+        #print "RUN %s: Found %i trials to process." % (r, len(curr_trials))
+
+    return trial_list
+
 #%%
 
 if __name__ == '__main__':
@@ -331,18 +350,7 @@ if __name__ == '__main__':
     binspread = 0
 
     acquisition_dir = os.path.join(rootdir, animalid, session, acquisition)
-    runs = [r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r)) and 'surface' not in r]
-    trial_list = []
-    trials = dict()
-    for r in runs:
-        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
-        for t in curr_trials:
-            trial_list.append((r, t))
-            #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
-
-        trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
-        print "RUN %s: Found %i trials to process." % (r, len(trials[r]))
-        #print "RUN %s: Found %i trials to process." % (r, len(curr_trials))
+    trial_list = get_trial_list(acquisition_dir)
 
     t_start = time.time()
     processes = []
