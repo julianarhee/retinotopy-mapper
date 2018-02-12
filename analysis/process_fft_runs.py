@@ -43,7 +43,7 @@ def movingaverage(interval, window_size):
     return np.convolve(interval, window, 'valid')
 
 
-def extract_frame_info_for_trial(trial_dir):
+def extract_frame_info_for_trial(trial_dir, averaged=False):
 
     frame_log_fpath = os.path.join(trial_dir, 'frame_info.txt')
 
@@ -52,13 +52,16 @@ def extract_frame_info_for_trial(trial_dir):
 
     ### Extract events from serialdata:
     # frame_tstamps = framedata[' experimentTime']  
-    # stim_positions = framedata[' stimPosition']
+    # stim_positions = framedata[' stimPosition']  
     ft = framedata['tstamp']
-    fmt = "%Y%m%d_%H%M%S_%f"
-    fixids = [tidx for tidx,t in enumerate(ft) if ' ' in t]  
-    ft[fixids] = [ft[t].replace(' ', '0') for t in fixids]
-    tstamps = [date2float(t) for t in ft]
-    frame_tstamps = [t-tstamps[0] for t in tstamps]
+    if averaged is True:
+        frame_tstamps = ft.copy()
+    else:
+        fmt = "%Y%m%d_%H%M%S_%f"
+        fixids = [tidx for tidx,t in enumerate(ft) if ' ' in t]  
+        ft[fixids] = [ft[t].replace(' ', '0') for t in fixids]
+        tstamps = [date2float(t) for t in ft]
+        frame_tstamps = [t-tstamps[0] for t in tstamps]
 
     xpos = framedata['xpos']
     ypos = framedata['ypos']
@@ -104,7 +107,8 @@ def get_fft(source_path,
             sampling_rate=30.,
             reduce_factor=(1,1),
             interpolate=True,
-            high_pass=True):
+            high_pass=True,
+            averaged=False):
 
     proc_id = os.getpid()
     trialname = os.path.split(os.path.split(source_path)[0])[1]
@@ -123,7 +127,7 @@ def get_fft(source_path,
 
     # Load data:
     # -------------------------------------------------------------------------
-    frame_tstamps, stim_positions = extract_frame_info_for_trial(trial_dir)
+    frame_tstamps, stim_positions = extract_frame_info_for_trial(trial_dir, averaged=averaged)
     stack = load_movie_frames(source_path, img_fmt=img_fmt, reduce_factor=reduce_factor)
     sample = stack[:,:,0]
     print sample.shape
@@ -273,20 +277,21 @@ def get_fft_by_run(acquisition_dir, run, img_fmt='tif', ncycles=20, target_freq=
     return results
 
 
-def get_trial_list(acquisition_dir):
+def get_trial_list(acquisition_dir, averaged=False):
 
     runs = [r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r)) and 'surface' not in r]
     trial_list = []
     trials = dict()
-    for r in runs:
-        curr_trials = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
-        for t in curr_trials:
-            trial_list.append((r, t))
-            #trial_list.append((r, os.path.join(acquisition_dir, r, t, 'frames')))
+    for run in runs:
+        if averaged is True:
+            trial_dir = os.path.join(acquisition_dir, run, 'averaged_trials')
+        else:
+            trial_dir = os.path.join(acquisition_dir, run, 'raw')
+        curr_trials = [t for t in os.listdir(trial_dir) if os.path.isdir(os.path.join(trial_dir, t))]
+        for trial in curr_trials:
+            trial_list.append((run, trial))
 
-        trials[r] = [t for t in os.listdir(os.path.join(acquisition_dir, r, 'raw')) if os.path.isdir(os.path.join(acquisition_dir, r, 'raw', t))]
-        print "RUN %s: Found %i trials to process." % (r, len(trials[r]))
-        #print "RUN %s: Found %i trials to process." % (r, len(curr_trials))
+        print "RUN %s: Found %i trials to process." % (run, len(curr_trials))
 
     return trial_list
 
@@ -322,11 +327,11 @@ if __name__ == '__main__':
     parser.add_option('--ncycles', action="store",
                       dest="ncycles", default=20, help="ncycles (default 20)")
     parser.add_option('--motion', action='store_true', dest="motion_corrected", default=False, help="Motion corrected with WiPy or no?")
-    parser.add_option('--average', action='store_true', dest='average', default=False, help='Average runs of the same condition?')
+    parser.add_option('--averaged', action='store_true', dest='averaged', default=False, help='Process FFT on averaged frames?')
 
 
     (options, args) = parser.parse_args()
-    average = options.average
+    average = options.averaged
     motion_corrected = options.motion_corrected
 
     #imdir = sys.argv[1]
@@ -334,6 +339,7 @@ if __name__ == '__main__':
     animalid = options.animalid
     session = options.session
     acquisition = options.acquisition
+    averaged = options.averaged
 
     interpolate = options.interpolate
     high_pass = options.rolling
@@ -350,8 +356,11 @@ if __name__ == '__main__':
     binspread = 0
 
     acquisition_dir = os.path.join(rootdir, animalid, session, acquisition)
-    trial_list = get_trial_list(acquisition_dir)
-
+    trial_list = get_trial_list(acquisition_dir, averaged=averaged)
+    if averaged is True:
+        source_type = 'averaged_trials'
+    else:
+        source_type = 'raw'
     t_start = time.time()
     processes = []
     for run, trial in trial_list:
@@ -361,10 +370,11 @@ if __name__ == '__main__':
                    'reduce_factor': reduce_factor,
                    'ncycles': ncycles,
                    'interpolate': interpolate,
-                   'high_pass': high_pass
+                   'high_pass': high_pass,
+                   'averaged': averaged
                    }
 
-        trial_source_path = os.path.join(acquisition_dir, run, 'raw', trial, 'frames')
+        trial_source_path = os.path.join(acquisition_dir, run, source_type, trial, 'frames')
         trial_name = '%s_%s' % (run, trial)
         proc = mp.Process(name=trial_name, target=get_fft, args=(trial_source_path,), kwargs=keyargs)
 
