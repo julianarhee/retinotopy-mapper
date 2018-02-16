@@ -39,7 +39,7 @@ monitor_list = monitors.getAllMonitors()
 parser = optparse.OptionParser()
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
-parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/", help="out path directory [default: /tmp/frames]")
+#parser.add_option('--output-path', action="store", dest="output_path", default="/tmp/", help="out path directory [default: /tmp/frames]")
 parser.add_option('--output-format', action="store", dest="output_format", type="choice", choices=['tif', 'npz'], default='tif', help="out file format, tif or npz [default: tif]")
 parser.add_option('--use-pvapi', action="store_true", dest="use_pvapi", default=True, help="use the pvapi")
 parser.add_option('--use-opencv', action="store_false", dest="use_pvapi", help="use some other camera")
@@ -48,13 +48,24 @@ parser.add_option('--debug-window', action="store_false", dest="fullscreen", hel
 parser.add_option('--write-process', action="store_true", dest="save_in_separate_process", default=True, help="spawn process for disk-writer [default: True]")
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default="testMonitor", help=str(monitor_list))
-parser.add_option('--subjectID', action="store", dest="subjectID", default="testRun", help="Subject ID for paradigm files")
+#parser.add_option('--subjectID', action="store", dest="subjectID", default="testRun", help="Subject ID for paradigm files")
+parser.add_option('-R', '--root', action='store', dest='rootdir', default='/nas/volume1/2photon/data', help='data root dir (root project dir containing all animalids) [default: /nas/volume1/2photon/data, /n/coxfs01/2pdata if --slurm]')
+parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
+parser.add_option('-S', '--session', action='store', dest='session', default='', help='session dir (format: YYYMMDD_ANIMALID')
+parser.add_option('-A', '--acq', action='store', dest='acquisition', default='FOV1', help="acquisition folder (ex: 'FOV1_zoom3x') [default: FOV1]")
+
 (options, args) = parser.parse_args()
+
+rootdir = options.rootdir
+animalid = options.animalid
+session = options.session
+acquisition = options.acquisition
+output_path = os.path.join(rootdir, animalid, session, acquisition, 'surface')
 
 acquire_images = options.acquire_images
 save_images = options.save_images
-subjectID = options.subjectID
-output_path = options.output_path
+#subjectID = options.subjectID
+#output_path = options.output_path
 output_format = options.output_format
 save_in_separate_process = options.save_in_separate_process
 fullscreen = options.fullscreen
@@ -83,7 +94,7 @@ tStamp=datetime.now().strftime(dateFormat)
 # subjectPath=output_path+'/'+'surface'+'_'+tStamp+'/'
 
 try:
-    os.mkdir(output_path)
+    os.makedirs(output_path)
 except OSError, e:
     if e.errno != errno.EEXIST:
         raise e
@@ -99,15 +110,15 @@ except OSError, e:
 
 #dataOutputPath=subjectPath+'Surface/'
 # dataOutputPath = os.path.join(output_path, tStamp+'_Surface')
-dataOutputPath = os.path.join(output_path, 'Surface')
+#dataOutputPath = os.path.join(output_path, 'surface')
 
 
-try:
-    os.mkdir(dataOutputPath)
-except OSError, e:
-    if e.errno != errno.EEXIST:
-        raise e
-    pass
+# try:
+#     os.makedirs(dataOutputPath)
+# except OSError, e:
+#     if e.errno != errno.EEXIST:
+#         raise e
+#     pass
 
 
 # -------------------------------------------------------------
@@ -182,7 +193,7 @@ def save_images_to_disk():
 	currdict = im_queue.get()
 	while currdict is not None:
 		if save_as_tif:
-			fname = '%s/frame%i.tif' % (dataOutputPath,int(currdict['frame']))
+			fname = '%s/frame%i.tif' % (output_path,int(currdict['frame']))
 			tiff = TIFF.open(fname, mode='w')
 			tiff.write_image(currdict['im'])
 			tiff.close()
@@ -190,7 +201,7 @@ def save_images_to_disk():
 		elif save_as_npz:
 			np.savez_compressed('%s/test%d.npz' % (output_path, n), currdict['im'])
 		else:
-			fname = '%s/frame%i.tif' % (dataOutputPath,int(currdict['frame']),)
+			fname = '%s/frame%i.tif' % (output_path,int(currdict['frame']),)
 			with open(fname, 'wb') as f:
 				pkl.dump(currdict, f, protocol=pkl.HIGHEST_PROTOCOL)
 			
