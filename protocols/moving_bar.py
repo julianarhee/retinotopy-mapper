@@ -1,28 +1,30 @@
 #!/usr/bin/env python2
 #rotate flashing wedge
-from psychopy import visual, event, core, monitors, logging, tools
-from pvapi import PvAPI, Camera
+
 import time
 import json
-from scipy.misc import imsave
-import numpy as np
-import multiprocessing as mp
+import shutil
+import re
+import StringIO
+import scipy.misc
 import threading
-from Queue import Queue
 import sys
 import errno
 import os
 import optparse
-import pylab, math, serial, numpy
+import pylab, math, serial
 import random
 import itertools
+import numpy as np
+import multiprocessing as mp
 import cPickle as pkl
+from psychopy import visual, event, core, monitors, logging, tools
+from pvapi import PvAPI, Camera
+from Queue import Queue
 from datetime import datetime
-import re
-import StringIO
-import scipy.misc
 from serial import Serial
 from libtiff import TIFF
+from scipy.misc import imsave
 
 def atoi(text):
     return int(text) if text.isdigit() else text
@@ -37,10 +39,11 @@ monitor_list = monitors.getAllMonitors()
 
 parser = optparse.OptionParser()
 
-parser.add_option('-R', '--root', action='store', dest='rootdir', default='/nas/volume1/2photon/data', help='data root dir (root project dir containing all animalids) [default: /nas/volume1/2photon/data, /n/coxfs01/2pdata if --slurm]')
+parser.add_option('-D', '--root', action='store', dest='rootdir', default='/nas/volume1/2photon/data', help='data root dir (root project dir containing all animalids) [default: /nas/volume1/2photon/data, /n/coxfs01/2pdata if --slurm]')
 parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
 parser.add_option('-S', '--session', action='store', dest='session', default='', help='session dir (format: YYYMMDD_ANIMALID')
 parser.add_option('-A', '--acq', action='store', dest='acquisition', default='FOV1', help="acquisition folder (ex: 'FOV1_zoom3x') [default: FOV1]")
+parser.add_option('-R', '--run', action='store', dest='curr_run', default='', help="custom run name [e.g., 'barflash']")
 
 
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
@@ -79,6 +82,7 @@ rootdir = options.rootdir
 animalid = options.animalid
 session = options.session
 acquisition = options.acquisition
+curr_run = options.curr_run
 
 acquire_images = options.acquire_images
 save_images = options.save_images
@@ -135,17 +139,23 @@ if use_long_axis:
     full_length_cm = max([screen_width_cm, screen_height_cm])
 else:
     full_length_cm = min([screen_width_cm, screen_height_cm])
+
+full_length_long = max([screen_width_cm, screen_height_cm])
+full_length_short = min([screen_width_cm, screen_height_cm])
+
 print "Base Length (screen dim, cm):  ", full_length_cm
 full_length_deg = tools.monitorunittools.cm2deg(full_length_cm, monitors.Monitor(curr_monitor))
+full_length_short = tools.monitorunittools.cm2deg(full_length_short, monitors.Monitor(curr_monitor))
 
 if bottom_edge is None:
-    bottom_edge = -1 * (full_length_deg*0.5) - bar_width_deg * 0.5
+    bottom_edge = -1 * (full_length_short*0.5) - bar_width_deg * 0.5
 else:
     bottom_edge = float(bottom_edge)
 if top_edge is None:
-    top_edge = 1 * (full_length_deg*0.5) + bar_width_deg * 0.5
+    top_edge = 1 * (full_length_short*0.5) + bar_width_deg * 0.5
 else:
     top_edge = float(top_edge)
+
 if left_edge is None:
     left_edge = -1 * (full_length_deg*0.5) - bar_width_deg * 0.5
 else:
@@ -155,6 +165,9 @@ if right_edge is None:
 else:
     right_edge = float(right_edge)
 
+travel_length_long = max([(right_edge - left_edge), (top_edge - bottom_edge)])
+travel_length_short = min([(right_edge - left_edge), (top_edge - bottom_edge)])
+
 if use_long_axis is True:
     travel_length_deg = max([(right_edge - left_edge), (top_edge - bottom_edge)])
 else:
@@ -163,9 +176,13 @@ else:
 if not (right_edge - left_edge) == travel_length_deg:
     right_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
     left_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
-if not (top_edge - bottom_edge) == travel_length_deg:
-    bottom_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
-    top_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+# if not (top_edge - bottom_edge) == travel_length_deg:
+#     bottom_edge = -1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+#     top_edge = 1 * (travel_length_deg*0.5) + bar_width_deg * 0.5
+if not (top_edge - bottom_edge) == travel_length_short:
+    bottom_edge = -1 * (travel_length_short*0.5) + bar_width_deg * 0.5
+    top_edge = 1 * (travel_length_short*0.5) + bar_width_deg * 0.5
+
 
 print "Right: %s, Left: %s" % (right_edge, left_edge)
 print "Top: %s, Bottom: %s" % (top_edge, bottom_edge)
@@ -181,11 +198,6 @@ print "CENTER:", center_point
 cycle_duration = travel_length_deg / (travel_length_deg * cyc_per_sec)
 total_duration = cycle_duration * ncycles
 
-print "Cycle Travel LENGTH (deg): ", travel_length_deg
-print "Cycle Travel TIME (s): ", cycle_duration
-SF = bar_width_deg/travel_length_deg
-print "Calc SF (cpd): ", SF
-print "TOTAL DUR: ", total_duration
 
 # -----------------------------------------------------------------------------
 # Output Setup
@@ -194,7 +206,10 @@ if flash is True:
     bar_type = 'flash'
 else:
     bar_type = 'solid'
-curr_run = 'bar_%sHz_%s' % (str(cyc_per_sec).replace('.',''), bar_type)
+if len(curr_run) == 0:
+    curr_run = 'bar_%sHz_%s' % (str(cyc_per_sec).replace('.',''), bar_type)
+else:
+    curr_run = '%s_bar%sHz_%s' % (str(cyc_per_sec).replace('.',''), bar_type)
 
 acquisition_dir = os.path.join(rootdir, animalid, session, acquisition)
 if not os.path.exists(acquisition_dir):
@@ -202,6 +217,27 @@ if not os.path.exists(acquisition_dir):
 
 run_path = os.path.join(acquisition_dir, curr_run)
 if not os.path.exists(run_path):
+    os.makedirs(run_path)
+else:
+    while True:
+        run_dirs = sorted([r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r))], key=natural_keys)
+        print "Found multiple runs of the same type:"
+        for ridx, run_dir in enumerate(run_dirs):
+            print ridx+1, run_dir
+        selected = input("Press IDX of dir to overwrite or view, or hit <ENTER> to create new: ")
+        if selected > 0:
+            print "Overwriting -- %s" % run_dirs[int(selected)-1]
+            run_path = os.path.join(acquisition_dir, run_dirs[int(selected)-1])
+        user_choice = raw_input("Press <Y> to overwrite, <N> to create NEW: ")
+        if user_choice == 'Y':
+            shutil.rmtree(run_path)
+            break
+        elif user_choice == 'N':
+            nrun_dirs = len([r for r in os.listdir(acquisition_dir) if os.path.isdir(os.path.join(acquisition_dir, r))])
+            run_suffix = nrun_dirs + 1
+            run_path = "%s_%i" % (run_path, run_suffix)
+            print "Writing to new run dir: %s" % run_path
+            break
     os.makedirs(run_path)
 
 print "Img format:", output_format
@@ -384,6 +420,7 @@ trial_idx = 0
 trial_list = sorted(trials.keys(), key=natural_keys)
 ntrials = len(trial_list)
 while trial_idx < ntrials:
+
     time.sleep(2)
 
     curr_trial = trial_list[trial_idx]
@@ -394,6 +431,27 @@ while trial_idx < ntrials:
     print "Starting trial %i of %i: %s (%s)" % (int(trial_idx+1), ntrials, curr_trial, curr_cond)
     print "*************************************************"
 
+    # SPECIFICY CONDITION TYPES:
+    #center_point = stimconfig[curr_cond]['center'] # [0,0] #center of screen is [0,0] (degrees).
+    start_point = stimconfigs[condnum]['start_pos']
+    end_point = stimconfigs[condnum]['end_pos'] #-1 * start_point
+    start_to_end = end_point - start_point
+    cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
+    total_duration = cycle_duration * ncycles
+    bar_color = stimconfigs[condnum]['bar_color']
+    stim_size = (stimconfigs[condnum]['longside'], stimconfigs[condnum]['bar_width'])
+    angle = stimconfigs[condnum]['angle']
+
+    print "Cycle Travel LENGTH (deg): ", start_to_end
+    print "START: ", start_point
+    print "END: ", end_point
+    print "Cycle Travel TIME (s): ", cycle_duration
+    SF = bar_width_deg/start_to_end
+    print "Calc SF (cpd): ", SF
+    print "TOTAL DUR: ", total_duration
+    
+    # 1. bar moves to this far from centerPoint (in degrees)
+    # 2. bar starts & ends OFF the screen
     user_input=raw_input("\nEnter <s> to start, or 'exit':\n")
     if user_input=='exit':
         break
@@ -427,15 +485,15 @@ while trial_idx < ntrials:
             os.makedirs(frame_path)
 
         frame_log_file = open(os.path.join(trial_path, 'frame_info.txt'), 'w') #'framelog_%s_%s.txt') % (currdict['condname'], str(run_num)), 'w')
-        frame_log_file.write('idx\tframenum\ttrial\tcurrcond\txpos\typos\tlinearpos\ttstamp\n')
+        frame_log_file.write('idx\tframenum\ttrial\tcond_name\tcond_idx\txpos\typos\tlinearpos\ttstamp\ttloop\n')
 
         while currdict is not None:
 
             frame_log_file.write(
-                '%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%s\n' % (n, int(currdict['frame_num']),
+                '%i\t%i\t%s\t%s\t%i\t%.4f\t%.4f\t%.4f\t%s\t%s\n' % (n, int(currdict['frame_num']),
                                                                  curr_trial, currdict['cond_name'], currdict['cond_num'],
                                                                  currdict['xpos'], currdict['ypos'], currdict['pos_linear'],
-                                                                 str(currdict['time'])))
+                                                                 str(currdict['time']), str(currdict['tloop'])))
             if save_as_npz:
                 np.savez_compressed(os.path.join(trial_path, '%i.npz' % n), currdict['im'])
             else:
@@ -505,32 +563,11 @@ while trial_idx < ntrials:
     getout = 0
     tstamps = []
 
-# SPECIFICY CONDITION TYPES:
-
-    #center_point = stimconfig[curr_cond]['center'] # [0,0] #center of screen is [0,0] (degrees).
-
-    start_point = stimconfigs[condnum]['start_pos']
-    end_point = stimconfigs[condnum]['end_pos'] #-1 * start_point
-    start_to_end = end_point - start_point
-    cycle_duration = start_to_end / (start_to_end*cyc_per_sec)
-    total_duration = cycle_duration * ncycles
-    bar_color = stimconfigs[condnum]['bar_color']
-    stim_size = (stimconfigs[condnum]['longside'], stimconfigs[condnum]['bar_width'])
-    angle = stimconfigs[condnum]['angle']
-
-    print "Cycle Travel LENGTH (deg): ", start_to_end
-    print "START: ", start_point
-    print "END: ", end_point
-    print "Degrees per cycle: ", start_to_end # center-to-center #abs(start_point)*2. + bar_width
-
-    # 1. bar moves to this far from centerPoint (in degrees)
-    # 2. bar starts & ends OFF the screen
-
     # CREATE THE STIMULUS:
     if flash is True:
         barmask = np.ones([1,1]) * bar_color
-        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=1*bar_color, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
-        bar2 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.1, color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
+        bar1 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.5, color=1*bar_color, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
+        bar2 = visual.GratingStim(win=win,tex='sqrXsqr', sf=.5, color=-1, mask=barmask,units='deg',pos=center_point,size=stim_size,ori=angle)
 
     else:
         bartex = np.ones([256,256,3])*bar_color;
@@ -548,6 +585,7 @@ while trial_idx < ntrials:
     clock = core.Clock()
     while clock.getTime()<=total_duration: #frame_counter < frames_per_cycle*num_seq_reps: #endPoint - posLinear <= dist: #frame_counter <= frames_per_cycle*num_seq_reps:
         t = globalClock.getTime()
+        tloop = clock.getTime()
 
         if flash is True:
             if (clock.getTime()/flash_period) % (1.0) < duty_cycle:
@@ -577,6 +615,7 @@ while trial_idx < ntrials:
             fdict['frame_num'] = frame_counter #nframes
             #fdict['cycle_num'] = cycnum
             fdict['time'] = datetime.now().strftime(FORMAT)
+            fdict['tloop'] = tloop
             fdict['pos_linear'] = pos_linear
             fdict['xpos'] = posX
             fdict['ypos'] = posY
