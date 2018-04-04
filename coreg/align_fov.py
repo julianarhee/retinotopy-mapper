@@ -428,6 +428,7 @@ def align_to_reference(sample, reference, outdir, sample_name='sample'):
     return M, out, coreg_info, coreg_hash
 
 #%%
+
 parser = optparse.OptionParser()
 parser.add_option('-D', '--root', action='store', dest='rootdir', default='/nas/volume1/2photon/data', help='data root dir (root project dir containing all animalids) [default: /nas/volume1/2photon/data, /n/coxfs01/2pdata if --slurm]')
 parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
@@ -444,6 +445,9 @@ parser.add_option('--merge', action='store_true', dest='merge_all', default=Fals
 #parser.add_option('--C', '--crop', action="store_true", dest="crop", default=False, help="Path to save ROI")
 
 (options, args) = parser.parse_args()
+
+
+#%%
 
 # Get paths from options:
 #reference_path = options.reference
@@ -494,6 +498,8 @@ try:
         ref[...] = reference
         ref.attrs['filepath'] = reference_path
         ref.attrs['filehash'] = refhash
+    else:
+        ref = sources['reference']
 
     # Get list of paths to anatomical img for each acquisition:
     FOV = get_sample_paths(animal_dir, verbose=False)
@@ -583,6 +589,7 @@ if align_new == True:
                 else:
                     sample = results['sample']
 
+                print "Current FOV: %s" % fov
                 M, out, coreg_info, coreg_hash = align_to_reference(sample[:], reference[:], outdir, sample_name=fov)
                 npoints = len(coreg_info['sample_points_x'])
 
