@@ -10,7 +10,7 @@ import traceback
 import hashlib
 import datetime
 import re
-import pylab as pl
+#import pylab as pl
 import cPickle as pkl
 import numpy as np
 import matplotlib
