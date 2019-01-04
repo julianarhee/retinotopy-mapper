@@ -1,72 +1,96 @@
+# Intial Setup
 
-`fwpy` should go somewhere on your path.  You can start the psychopy UI by calling 
-
-```
-fwpy `which psychopyApp.py`
+1. create environments. Separate environment for acquisition (retino_acq) and analysis (retino_analysis). 
 
 ```
+conda create env -f [filename].yml
+```
 
-Yes, it's a bit convoluted
+* for some reason libtiff not properly installing from retino_acq.yml file.... will troubleshoot later
 
-# Basic Setup
-Setting up the mapper on a new computer or with a new monitor (MAC) with Terminal:
+# Acquisition
 
-1.  First, install anaconda! Then, continue in a new conda environment.
 
-	
-		conda create -n ENVNAME pip numpy scipy ipython matplotlib
-		source activate ENVNAME
-		
+1. Acquiring a small stack of images at the surface.
 
-2.  Install requirements for the retinomapper after cloning or downloading the repo.
+```
+python acqusition/getSurface.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
+```
 
-		
-		pip install -r requirements.txt
-		
+2. Present periodic stimuli (bar with naural images) and present images
 
-# After Installing:
+```
+python acquisition/Retinotopy_phaseEncoding_imageBar_constantImage.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
+```
 
-1.  Setup monitor.
+* Both of these steps can be run by calling a wrapper script edited with proper options
 
-		
-		python setupMonitor.py
-		
+```
+python acquisition/wrapperScript.py
+```
 
-	This will prompt you for information about the monitor. Input the info for each question directly in the command line.
-	You will be prompted to save at the end.
+# Analysis
 
-2.  Run a stimulus protocol with the selected monitor.
+1. Analyze individual runs separately
 
-		
-		python PROTOCOL.py --monitor='MONITORNAME'
-		
+```
+python analysis/analyze_runs.py -i [animal ID] -S [session] -r [comma-separated list of runs] -m [Boolean for motion correction]
+-n [Boolean for interpolation of data points to constant rate] -g [Boolean for removal of rolling mean] -w [integer indicating size of boxcar window for timecourse averaging of each pixel]
+```
 
-	If you forget which monitors have been set on the computer, can use the -h flag to get the list of saved monitor configs:
+Typical example:
+```
+python analysis/analyze_runs.py -i JC026 -S 20181207 -r 'run1, run2, run3, run4, run5, run6' -m True -g True -w 11
+```
 
-		
-		python PROTOCOL.py -h
-		
+This script analyzes individual runs separately. It also gets the image of the surface, performs a basic quality control check so the user can make sure that there wasn't an awful lot of movement between runs or shit data was acquired. The script also performs motion registration and correction, if indicated. Outputs unsmoothed maps for each run, which can be smoothed and thresholded with the script below.
 
-3.  Imaging data will be ignored with the --no-camera option. To save image data, add the --save-images option. If no pvapi camera is found, the default is the built-in camera on the computer. For now, use the png output-format option:
 
-		python PROTOCOL.py --monitor='MONITOR-NAME' --save-images --output-format='png' --output-path='DATA-DIR-NAME'
+2. Visualize single run results
 
-4.  For more options, their uses, and default settings, go to help.
+```
+python analysis/visualize_runs.py -i [animal ID] -S [session] -r [comma-separated list of runs] -m [Boolean for motion correction]
+-n [Boolean for interpolation of data points to constant rate] -g [Boolean for removal of rolling mean] -w [integer indicating size of boxcar window for timecourse averaging of each pixel] -f [full-width at half-max size of kernel for smoothing] -t [magnitude ratio threshold]
+```
 
-		
-		python PROTOCOL.py -h
-		
+Typical example:
 
-# Tips and Troubleshooting:
+```
+python analysis/visualize_runs.py -i JC026 -S 20181207 -r 'run1, run2, run3, run4, run5, run6' -m True -g True -w 11 -f 7 -t .02
+```
 
-1. Error with 'gcc' during pygame install:
+This script smooths phase map and threshold values based on magnitude ratio values per pixel for each run.
 
-		
-		export CC='/usr/bin/gcc' 
-		
+* At this point the user can look through individual run results and choose best runs for averaging in the subsequent steps. This tends to yield maps of better quality.
 
-2. Import error with 'cv2' module:
 
-		
-		conda install opencv
-		
+3. Average multiple runs and analyze
+
+```
+python analysis/average_and_analyze_runs.py -i [animal ID] -S [session] -r [comma-separated list of runs] -m [Boolean for motion correction]
+-n [Boolean for interpolation of data points to constant rate] -g [Boolean for removal of rolling mean] -w [integer indicating size of boxcar window for timecourse averaging of each pixel]
+```
+
+Typical example:
+
+```
+python analysis/average_and_analyze_runs.py -i JC026 -S 20181207 -r 'run1, run2, run3, run4' -m True -g True -w 11
+```
+
+This script averages the timecourse of multiple runs and analyzes the magnitude and phase of the resulting timecourse.  Outputs unsmoothed maps for each condition, which can be smoothed and thresholded with the script below.
+
+4. Visualize analysis results from multiple-run average
+
+```
+python analysis/visualize_average_run.py -i [animal ID] -S [session] -r [comma-separated list of runs] -m [Boolean for motion correction]
+-n [Boolean for interpolation of data points to constant rate] -g [Boolean for removal of rolling mean] -w [integer indicating size of boxcar window for timecourse averaging of each pixel] -f [full-width at half-max size of kernel for smoothing] -t [magnitude ratio threshold]
+```
+
+Typical example:
+
+```
+python analysis/visualize_average_run.py -i JC026 -S 20181207 -r 'run1, run2, run3, run4' -m True -g True -w 11 -f 7 -t .02
+```
+
+This script smooths phase map and threshold values based on magnitude ratio values per pixel for each condition.
+
