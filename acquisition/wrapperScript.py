@@ -12,6 +12,7 @@ outPath='./outputFiles/'
 
 
 os.system("python Retinotopy_phaseEncoding_imageBar_constantImage.py  -i JC026 -S 20181212\
+	--match-dim\
  	--save-images\
  	 --output-path "+outPath)
 

@@ -38,10 +38,11 @@ def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
 monitor_list = monitors.getAllMonitors()
-print(monitor_list)
+
 parser = optparse.OptionParser()
 parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
 parser.add_option('-S', '--session', action='store', dest='session', default='', help='session dir (format: YYYMMDD')
+parser.add_option('--match-dim', action="store_true", dest="match_dim", default=False, help="match sweep dimensions for horizontal and vertical conditions")
 
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
@@ -55,6 +56,8 @@ parser.add_option('--write-process', action="store_true", dest="save_in_separate
 parser.add_option('--write-thread', action="store_false", dest="save_in_separate_process", help="spawn threads for disk-writer")
 parser.add_option('--monitor', action="store", dest="whichMonitor", default='testMonitor', help=str(monitor_list))
 (options, args) = parser.parse_args()
+
+match_dim = options.match_dim
 
 acquire_images = options.acquire_images
 save_images = options.save_images
@@ -398,11 +401,17 @@ try:
 			startBar=endBar-barSize
 			stimPos=startBar
 		elif condNum==3:
-			endBar=np.ceil(((((drawT)/rotationPeriod)*effectiveSzY))%(effectiveSzY))
+			if match_dim:
+				endBar=np.ceil(((((drawT)/rotationPeriod)*effectiveSzX))%(effectiveSzX))
+			else:
+				endBar=np.ceil(((((drawT)/rotationPeriod)*effectiveSzY))%(effectiveSzY))
 			startBar=endBar-barSize
 			stimPos=startBar
 		elif condNum==4:
-			endBar=np.ceil((((1-(drawT)/rotationPeriod)*effectiveSzY))%(effectiveSzY))
+			if match_dim:
+				endBar=np.ceil((((1-(drawT)/rotationPeriod)*effectiveSzX))%(effectiveSzX))
+			else:
+				endBar=np.ceil((((1-(drawT)/rotationPeriod)*effectiveSzY))%(effectiveSzY))
 			startBar=endBar-barSize
 			stimPos=startBar
 			
