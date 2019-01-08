@@ -43,6 +43,7 @@ parser = optparse.OptionParser()
 parser.add_option('-i', '--animalid', action='store', dest='animalid', default='', help='Animal ID')
 parser.add_option('-S', '--session', action='store', dest='session', default='', help='session dir (format: YYYMMDD')
 parser.add_option('--match-dim', action="store_true", dest="match_dim", default=False, help="match sweep dimensions for horizontal and vertical conditions")
+parser.add_option('--2p-room', action="store_true", dest="two_p_room", default=False, help="use hard-coded options for 2p-room screen (need a more elegant way to tackle this)")
 
 parser.add_option('--no-camera', action="store_false", dest="acquire_images", default=True, help="just run PsychoPy protocol")
 parser.add_option('--save-images', action="store_true", dest="save_images", default=False, help="save camera frames to disk")
@@ -58,7 +59,8 @@ parser.add_option('--monitor', action="store", dest="whichMonitor", default='tes
 (options, args) = parser.parse_args()
 
 match_dim = options.match_dim
-
+two_p_room = options.two_p_room
+print(two_p_room)
 acquire_images = options.acquire_images
 save_images = options.save_images
 output_path = options.output_path
@@ -85,9 +87,12 @@ if output_format == 'tiff':
 elif output_format == 'npz':
     save_as_npz = True
  
-
-szX=1360
-szY=768
+if two_p_room:
+	szX=1024
+	szY=768
+else:
+	szX=1360
+	szY=768
 nx, ny = (szX, szY)
 
 x = np.linspace(1, nx, nx)
@@ -172,6 +177,8 @@ stimArray=[]
 for im in imList[0]:
 	imName = sourceFolder+im
 	imframe = scipy.misc.imread(imName)
+	if two_p_room:
+		imframe = scipy.misc.imresize(imframe,[szY,szX])
 	imframe = (imframe/127)-1
 	szY,szX = np.shape(imframe)
 	stimArray.append(imframe)
@@ -190,7 +197,10 @@ condNum=raw_input("\nEnter condition [1=V-Left, 2=V-Right, 3=H-Down, 4=H-Up] to 
 
 condNum=int(condNum)
 if winFlag==0:
-	win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5))
+	if two_p_room:
+		win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5), screen = 1)
+	else:
+		win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5))
 	winFlag=1
 	time.sleep(3)
 
