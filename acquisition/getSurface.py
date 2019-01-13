@@ -128,7 +128,7 @@ except OSError, e:
         raise e
     pass
 
-dataOutputPath=subjectPath+'Surface/'
+dataOutputPath=subjectPath+'/Surface/'
 
 
 
