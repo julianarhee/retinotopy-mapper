@@ -60,7 +60,6 @@ parser.add_option('--monitor', action="store", dest="whichMonitor", default='tes
 
 match_dim = options.match_dim
 two_p_room = options.two_p_room
-print(two_p_room)
 acquire_images = options.acquire_images
 save_images = options.save_images
 output_path = options.output_path
@@ -87,12 +86,10 @@ if output_format == 'tiff':
 elif output_format == 'npz':
     save_as_npz = True
  
-if two_p_room:
-	szX=1024
-	szY=768
-else:
-	szX=1360
-	szY=768
+
+szX=1024
+szY=768
+
 nx, ny = (szX, szY)
 
 x = np.linspace(1, nx, nx)
@@ -177,8 +174,7 @@ stimArray=[]
 for im in imList[0]:
 	imName = sourceFolder+im
 	imframe = scipy.misc.imread(imName)
-	if two_p_room:
-		imframe = scipy.misc.imresize(imframe,[szY,szX])
+	imframe = scipy.misc.imresize(imframe,[szY,szX])
 	imframe = (imframe/127)-1
 	szY,szX = np.shape(imframe)
 	stimArray.append(imframe)
