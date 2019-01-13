@@ -1512,83 +1512,93 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
             #define legend matrix
             if stimType=='bar':
                 szScreenY=768
-                szScreenX=1360
+                szScreenX=1024
 
                 x = np.linspace(0, 2*np.pi, szScreenX)
-                y = np.linspace(0, 2*np.pi, szScreenX)
+                y = np.linspace(0, 2*np.pi, szScreenY)
                 xv, yv = np.meshgrid(x, y)
-
-
-                if cond==1:
-                    legend=xv[296:1064,:]
-                elif cond==2:
-                    xv=(2*np.pi)-xv
-                    legend=xv[296:1064,:]
-                elif cond==3:
-                    y = np.linspace(0, 2*np.pi, szScreenY)
-                    xv, legend = np.meshgrid(x, y)
-
-                elif cond==4:
-                    y = np.linspace(0, 2*np.pi, szScreenY)
-                    xv, yv = np.meshgrid(x, y)
-                    legend=(2*np.pi)-yv
 
                 figName = '%s_cond%s_legend.png'%(sessID,cond)
                 fig=plt.figure()
-                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+                if cond==1:
+                    legend=xv
+                    plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+                elif cond==2:
+                    legend=(2*np.pi)-xv
+                    plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+                elif cond==3:
+                    x = np.linspace(0, 2*np.pi, szX)
+                    y = np.linspace(0, 2*np.pi, szX)
+                    xv, yv = np.meshgrid(x, y)
+                    legend = yv[128:896,:]
+
+                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+
+                elif cond==4:
+                    x = np.linspace(0, 2*np.pi, szX)
+                    y = np.linspace(0, 2*np.pi, szX)
+                    xv, yv = np.meshgrid(x, y)
+                    yv = (2*pi)-yv
+                    legend = yv[128:896,:]
+
+                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+
+                
                 plt.savefig(os.path.join(figOutDir,figName))
                 plt.close()
             elif stimType=='polar':
+                #depercated
+
                 szScreenY=768
                 szScreenX=1360
 
-                x = np.linspace(-1, 1, szScreenX)
-                y = np.linspace(-1, 1, szScreenX)
-                xv, yv = np.meshgrid(x, y)
+                # x = np.linspace(-1, 1, szScreenX)
+                # y = np.linspace(-1, 1, szScreenX)
+                # xv, yv = np.meshgrid(x, y)
 
-                rad,theta=cart2pol(xv,yv)
+                # rad,theta=cart2pol(xv,yv)
 
-                x = np.linspace(-szScreenX/2, szScreenX/2, szScreenX)
-                y = np.linspace(-szScreenY/2, szScreenY/2, szScreenY)
-                xv, yv = np.meshgrid(x, y)
+                # x = np.linspace(-szScreenX/2, szScreenX/2, szScreenX)
+                # y = np.linspace(-szScreenY/2, szScreenY/2, szScreenY)
+                # xv, yv = np.meshgrid(x, y)
 
-                radMask,thetaMask=cart2pol(xv,yv)
-
-
-                thetaLegend=np.copy(theta)
-                thetaLegend[theta<0]=-theta[theta<0]
-                thetaLegend[theta>0]=(2*np.pi)-thetaLegend[theta>0]
-                if cond == 1:
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    thetaLegend=thetaLegend-np.true_divide(np.pi,2)
-                    thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
-                    legend=thetaLegend[296:1064,:]
-                    legend[radMask>szScreenY/2]=0
-                elif cond ==2:
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    thetaLegend=thetaLegend-np.true_divide(np.pi,2)
-                    thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    legend=thetaLegend[296:1064,:]
-                    legend[radMask>szScreenY/2]=0
-                elif cond ==3:
-                    rad=rad[296:1064,:]
-                    rad[radMask>szScreenY/2]=0
-                    legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
+                # radMask,thetaMask=cart2pol(xv,yv)
 
 
-                elif cond ==4:
-                    rad=rad[296:1064,:]
-                    rad[radMask>szScreenY/2]=0
-                    legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
-                    legend=(2*np.pi)-legend
-                    legend[radMask>szScreenY/2]=0
+                # thetaLegend=np.copy(theta)
+                # thetaLegend[theta<0]=-theta[theta<0]
+                # thetaLegend[theta>0]=(2*np.pi)-thetaLegend[theta>0]
+                # if cond == 1:
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     thetaLegend=thetaLegend-np.true_divide(np.pi,2)
+                #     thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
+                #     legend=thetaLegend[296:1064,:]
+                #     legend[radMask>szScreenY/2]=0
+                # elif cond ==2:
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     thetaLegend=thetaLegend-np.true_divide(np.pi,2)
+                #     thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     legend=thetaLegend[296:1064,:]
+                #     legend[radMask>szScreenY/2]=0
+                # elif cond ==3:
+                #     rad=rad[296:1064,:]
+                #     rad[radMask>szScreenY/2]=0
+                #     legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
 
-                outFile = figOutDir+sessID+'_cond'+str(cond)+'_legend.png'
-                fig=plt.figure()
-                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
-                plt.savefig(outFile)
-                plt.close()
+
+                # elif cond ==4:
+                #     rad=rad[296:1064,:]
+                #     rad[radMask>szScreenY/2]=0
+                #     legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
+                #     legend=(2*np.pi)-legend
+                #     legend[radMask>szScreenY/2]=0
+
+                # outFile = figOutDir+sessID+'_cond'+str(cond)+'_legend.png'
+                # fig=plt.figure()
+                # plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+                # plt.savefig(outFile)
+                # plt.close()
 
 
         freqTextFile.close()
@@ -2312,86 +2322,95 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
                 plt.savefig(outFile)
                 plt.close()
 
-            #define legend matrix
             if stimType=='bar':
                 szScreenY=768
-                szScreenX=1360
+                szScreenX=1024
 
                 x = np.linspace(0, 2*np.pi, szScreenX)
-                y = np.linspace(0, 2*np.pi, szScreenX)
+                y = np.linspace(0, 2*np.pi, szScreenY)
                 xv, yv = np.meshgrid(x, y)
 
-
+                figName = '%s_cond%s_legend.png'%(sessID,cond)
+                fig=plt.figure()
                 if cond==1:
-                    legend=xv[296:1064,:]
+                    legend=xv
+                    plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
                 elif cond==2:
-                    xv=(2*np.pi)-xv
-                    legend=xv[296:1064,:]
+                    legend=(2*np.pi)-xv
+                    plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
                 elif cond==3:
-                    y = np.linspace(0, 2*np.pi, szScreenY)
-                    xv, legend = np.meshgrid(x, y)
+                    x = np.linspace(0, 2*np.pi, szX)
+                    y = np.linspace(0, 2*np.pi, szX)
+                    xv, yv = np.meshgrid(x, y)
+                    legend = yv[128:896,:]
+
+                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
 
                 elif cond==4:
-                    y = np.linspace(0, 2*np.pi, szScreenY)
+                    x = np.linspace(0, 2*np.pi, szX)
+                    y = np.linspace(0, 2*np.pi, szX)
                     xv, yv = np.meshgrid(x, y)
-                    legend=(2*np.pi)-yv
+                    yv = (2*pi)-yv
+                    legend = yv[128:896,:]
 
-                outFile = figOutDir+sessID+'_cond'+str(cond)+'_legend.png'
-                fig=plt.figure()
-                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
-                plt.savefig(outFile)
+                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+
+                
+                plt.savefig(os.path.join(figOutDir,figName))
                 plt.close()
             elif stimType=='polar':
+                #depercated
+
                 szScreenY=768
                 szScreenX=1360
 
-                x = np.linspace(-1, 1, szScreenX)
-                y = np.linspace(-1, 1, szScreenX)
-                xv, yv = np.meshgrid(x, y)
+                # x = np.linspace(-1, 1, szScreenX)
+                # y = np.linspace(-1, 1, szScreenX)
+                # xv, yv = np.meshgrid(x, y)
 
-                rad,theta=cart2pol(xv,yv)
+                # rad,theta=cart2pol(xv,yv)
 
-                x = np.linspace(-szScreenX/2, szScreenX/2, szScreenX)
-                y = np.linspace(-szScreenY/2, szScreenY/2, szScreenY)
-                xv, yv = np.meshgrid(x, y)
+                # x = np.linspace(-szScreenX/2, szScreenX/2, szScreenX)
+                # y = np.linspace(-szScreenY/2, szScreenY/2, szScreenY)
+                # xv, yv = np.meshgrid(x, y)
 
-                radMask,thetaMask=cart2pol(xv,yv)
+                # radMask,thetaMask=cart2pol(xv,yv)
 
 
-                thetaLegend=np.copy(theta)
-                thetaLegend[theta<0]=-theta[theta<0]
-                thetaLegend[theta>0]=(2*np.pi)-thetaLegend[theta>0]
-                if cond == 1:
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    thetaLegend=thetaLegend-np.true_divide(np.pi,2)
-                    thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
-                    legend=thetaLegend[296:1064,:]
-                    legend[radMask>szScreenY/2]=0
-                elif cond ==2:
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    thetaLegend=thetaLegend-np.true_divide(np.pi,2)
-                    thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
-                    thetaLegend=(2*np.pi)-thetaLegend
-                    legend=thetaLegend[296:1064,:]
-                    legend[radMask>szScreenY/2]=0
-                elif cond ==3:
-                    rad=rad[296:1064,:]
-                    rad[radMask>szScreenY/2]=0
-                    legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
-                    
-                    
-                elif cond ==4:
-                    rad=rad[296:1064,:]
-                    rad[radMask>szScreenY/2]=0
-                    legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
-                    legend=(2*np.pi)-legend
-                    legend[radMask>szScreenY/2]=0
+                # thetaLegend=np.copy(theta)
+                # thetaLegend[theta<0]=-theta[theta<0]
+                # thetaLegend[theta>0]=(2*np.pi)-thetaLegend[theta>0]
+                # if cond == 1:
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     thetaLegend=thetaLegend-np.true_divide(np.pi,2)
+                #     thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
+                #     legend=thetaLegend[296:1064,:]
+                #     legend[radMask>szScreenY/2]=0
+                # elif cond ==2:
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     thetaLegend=thetaLegend-np.true_divide(np.pi,2)
+                #     thetaLegend=(thetaLegend + np.pi) % (2*np.pi)
+                #     thetaLegend=(2*np.pi)-thetaLegend
+                #     legend=thetaLegend[296:1064,:]
+                #     legend[radMask>szScreenY/2]=0
+                # elif cond ==3:
+                #     rad=rad[296:1064,:]
+                #     rad[radMask>szScreenY/2]=0
+                #     legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
 
-                outFile = figOutDir+sessID+'_cond'+str(cond)+'_legend.png'
-                fig=plt.figure()
-                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
-                plt.savefig(outFile)
-                plt.close()
+
+                # elif cond ==4:
+                #     rad=rad[296:1064,:]
+                #     rad[radMask>szScreenY/2]=0
+                #     legend=np.true_divide(rad,np.max(rad))*(2*np.pi)
+                #     legend=(2*np.pi)-legend
+                #     legend[radMask>szScreenY/2]=0
+
+                # outFile = figOutDir+sessID+'_cond'+str(cond)+'_legend.png'
+                # fig=plt.figure()
+                # plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+                # plt.savefig(outFile)
+                # plt.close()
 
     freqTextFile.close()
 
