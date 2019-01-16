@@ -183,6 +183,7 @@ def get_surface(sourceRoot,targetRoot,animalID, sessID):
 
         
     #DEFINE DIRECTORY
+    print(sourceRoot+'/'+animalID+'_'+sessID+'_surface*')
     sourceDir=glob.glob(sourceRoot+'/'+animalID+'_'+sessID+'_surface*')
     surfDir=sourceDir[0]+'/Surface/'
     outDir=targetRoot+'/Surface/';
@@ -892,7 +893,10 @@ def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smoo
         ax.axis('off')
 
         ax.imshow(imSurf, 'gray')
-        ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+        if cond ==3 or cond ==4:
+            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.7,vmax=rangeMax-.7)
+        else:
+            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
 
         fig.savefig(os.path.join(figOutDir,fileName), dpi=dpi, transparent=True)
         plt.close()
@@ -918,7 +922,10 @@ def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smoo
             # Hide spines, ticks, etc.
             ax.axis('off')
             ax.imshow(imSurf, 'gray')
-            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+            if cond ==3 or cond ==4:
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.7,vmax=rangeMax-.7)
+            else:
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
 
             fig.savefig(outFile, dpi=dpi, transparent=True)
             plt.close()
@@ -1029,7 +1036,10 @@ def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smo
             ax.axis('off')
 
             ax.imshow(imSurf, 'gray')
-            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+            if cond ==3 or cond ==4:
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.7,vmax=rangeMax-.7)
+            else:
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
 
             fig.savefig(os.path.join(figOutDir,fileName), dpi=dpi, transparent=True)
             plt.close()
@@ -1055,7 +1065,10 @@ def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smo
                 # Hide spines, ticks, etc.
                 ax.axis('off')
                 ax.imshow(imSurf, 'gray')
-                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+                if cond ==3 or cond ==4:
+                    ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.7,vmax=rangeMax-.7)
+                else:
+                    ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
 
                 fig.savefig(outFile, dpi=dpi, transparent=True)
                 plt.close()
@@ -1448,7 +1461,10 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
 
             figName = 'phase_map_%s_Hz_%s_%s.png'%(str(np.around(freqs[freqIdx],4)),sessID,run)
             fig=plt.figure()
-            plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=0,vmax=2*np.pi)
+            if cond ==3 or cond ==4:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=.7,vmax=(2*np.pi)-.7)
+            else:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=0,vmax=2*np.pi)
             plt.colorbar()
             fig.suptitle(sessID+' '+run+' phaseMap', fontsize=20)
             plt.savefig(os.path.join(figOutDir,figName))
@@ -1482,7 +1498,11 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
 
             fig=plt.figure()
             plt.imshow(imSurf, 'gray')
-            plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
+            
+            if cond ==3 or cond ==4:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=.7,vmax=(2*np.pi)-.7)
+            else:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
             plt.colorbar()
             fig.suptitle(sessID+' cond'+str(cond)+' phaseMap', fontsize=20)
             plt.savefig(os.path.join(figOutDir,figName))
@@ -1503,16 +1523,29 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
                     (figOutDir+sessID,str(run),str(np.around(freqs[freqIdx],4)),mask)
                 fig=plt.figure()
                 plt.imshow(imSurf, 'gray')
-                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
+                if cond ==3 or cond ==4:
+                    plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=.7,vmax=(2*np.pi)-.7)
+                else:
+                    plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
                 plt.colorbar()
                 fig.suptitle(sessID+' cond'+str(cond)+' phaseMap', fontsize=20)
                 plt.savefig(outFile)
                 plt.close()
 
             #define legend matrix
+            szScreenY=768
+            szScreenX=1024
+
+            #some details of screen display hard-coded
+            deg_per_pixel = 81.2812/float(szScreenX)
+            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(0,85,5)-40
+
+            deg_per_pixel = 45.77/float(szScreenY)
+            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,45,5)-20)
             if stimType=='bar':
-                szScreenY=768
-                szScreenX=1024
+                
 
                 x = np.linspace(0, 2*np.pi, szScreenX)
                 y = np.linspace(0, 2*np.pi, szScreenY)
@@ -1527,23 +1560,24 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
                     legend=(2*np.pi)-xv
                     plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
                 elif cond==3:
-                    x = np.linspace(0, 2*np.pi, szX)
-                    y = np.linspace(0, 2*np.pi, szX)
+                    x = np.linspace(0, 2*np.pi, szScreenX)
+                    y = np.linspace(0, 2*np.pi, szScreenX)
                     xv, yv = np.meshgrid(x, y)
                     legend = yv[128:896,:]
 
-                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+                    plt.imshow(legend,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
 
                 elif cond==4:
-                    x = np.linspace(0, 2*np.pi, szX)
-                    y = np.linspace(0, 2*np.pi, szX)
+                    x = np.linspace(0, 2*np.pi, szScreenX)
+                    y = np.linspace(0, 2*np.pi, szScreenX)
                     xv, yv = np.meshgrid(x, y)
                     yv = (2*pi)-yv
                     legend = yv[128:896,:]
 
-                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+                    plt.imshow(legend,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
 
-                
+                plt.xticks(x_tick_loc,x_tick_label)
+                plt.yticks(y_tick_loc,y_tick_label)
                 plt.savefig(os.path.join(figOutDir,figName))
                 plt.close()
             elif stimType=='polar':
@@ -2261,7 +2295,10 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
 
             outFile = figOutDir+sessID+'_cond'+str(cond)+'_'+str(np.around(freqs[freqIdx],4))+'Hz_phaseMap.png'
             fig=plt.figure()
-            plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=0,vmax=2*np.pi)
+            if cond ==3 or cond ==4:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=.7,vmax=(2*np.pi)-.7)
+            else:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',vmin=0,vmax=2*np.pi)
             plt.colorbar()
             fig.suptitle(sessID+' cond'+str(cond)+' phaseMap', fontsize=20)
             plt.savefig(outFile)
@@ -2295,7 +2332,10 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
                 (figOutDir+sessID,str(int(cond)),str(np.around(freqs[freqIdx],4)))
             fig=plt.figure()
             plt.imshow(imSurf, 'gray')
-            plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
+            if cond ==3 or cond ==4:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=.7,vmax=(2*np.pi)-.7)
+            else:
+                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
             plt.colorbar()
             fig.suptitle(sessID+' cond'+str(cond)+' phaseMap', fontsize=20)
             plt.savefig(outFile)
@@ -2316,15 +2356,29 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
                     (figOutDir+sessID,str(int(cond)),str(np.around(freqs[freqIdx],4)),mask)
                 fig=plt.figure()
                 plt.imshow(imSurf, 'gray')
-                plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
+                if cond ==3 or cond ==4:
+                    plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=.7,vmax=(2*np.pi)-.7)
+                else:
+                    plt.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=0,vmax=2*np.pi)
                 plt.colorbar()
                 fig.suptitle(sessID+' cond'+str(cond)+' phaseMap', fontsize=20)
                 plt.savefig(outFile)
                 plt.close()
 
+            #define legend matrix
+            szScreenY=768
+            szScreenX=1024
+
+            #some details of screen display hard-coded
+            deg_per_pixel = 81.2812/float(szScreenX)
+            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(0,85,5)-40
+
+            deg_per_pixel = 45.77/float(szScreenY)
+            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,45,5)-20)
             if stimType=='bar':
-                szScreenY=768
-                szScreenX=1024
+                
 
                 x = np.linspace(0, 2*np.pi, szScreenX)
                 y = np.linspace(0, 2*np.pi, szScreenY)
@@ -2339,23 +2393,24 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
                     legend=(2*np.pi)-xv
                     plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
                 elif cond==3:
-                    x = np.linspace(0, 2*np.pi, szX)
-                    y = np.linspace(0, 2*np.pi, szX)
+                    x = np.linspace(0, 2*np.pi, szScreenX)
+                    y = np.linspace(0, 2*np.pi, szScreenX)
                     xv, yv = np.meshgrid(x, y)
                     legend = yv[128:896,:]
 
-                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+                    plt.imshow(legend,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
 
                 elif cond==4:
-                    x = np.linspace(0, 2*np.pi, szX)
-                    y = np.linspace(0, 2*np.pi, szX)
+                    x = np.linspace(0, 2*np.pi, szScreenX)
+                    y = np.linspace(0, 2*np.pi, szScreenX)
                     xv, yv = np.meshgrid(x, y)
                     yv = (2*pi)-yv
                     legend = yv[128:896,:]
 
-                    plt.imshow(,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+                    plt.imshow(legend,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
 
-                
+                plt.xticks(x_tick_loc,x_tick_label)
+                plt.yticks(y_tick_loc,y_tick_label)
                 plt.savefig(os.path.join(figOutDir,figName))
                 plt.close()
             elif stimType=='polar':
