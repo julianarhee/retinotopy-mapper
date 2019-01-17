@@ -37,12 +37,13 @@ def visualize_run(options):
     if smooth_fwhm is not None:
         smooth_fwhm = int(smooth_fwhm)
     flip = options.flip
+    bound_box = options.bound_box
 
     analysis_root = os.path.join(target_root,'Analyses')
     analysis_dir=get_analysis_path_timecourse(analysis_root, interp, exclude_edges, rolling_mean, \
         motion, time_average)
 
-    visualize_average_run(source_root, target_root, animalid, session, run_list, smooth_fwhm, ratio_thresh, analysis_dir, motion,flip)
+    visualize_average_run(source_root, target_root, animalid, session, run_list, smooth_fwhm, ratio_thresh, analysis_dir, motion,flip, bound_box)
 
 def extract_options(options):
 
@@ -67,6 +68,7 @@ def extract_options(options):
       parser.add_option('-f', '--fwhm', action='store', dest='smooth_fwhm', default=None, help='full-width at half-max size of kernel for smoothing')
       parser.add_option('-t', '--thresh', action='store', dest='ratio_thresh', default=None, help='magnitude ratio cut-off threshold')
       parser.add_option('-l', '--flip', action='store_true', dest='flip', default=False, help='boolean to indicate whether to perform horizontal flip on phase map images (to match actual orientation of FOV)')
+      parser.add_option('-b', '--bound-box', action='store_true', dest='bound_box', default=False, help='boolean to indicate whether to figure out portion of screen covered by imaged cortical area')
 
       parser.add_option('--default', action='store_true', dest='default', default='store_false', help="Use all DEFAULT params, for params not specified by user (prevent interactive)")
 
