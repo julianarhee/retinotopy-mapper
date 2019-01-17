@@ -22,6 +22,7 @@ import matplotlib.lines as mlines
 from matplotlib import colors
 import time
 import shutil
+import json
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -739,7 +740,21 @@ def perform_motion_registration(sourceRoot,targetRoot,animalID, sessID,runList,r
 # VISUALIZATION
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+def write_dict_to_json(pydict, writepath):
+    jstring = json.dumps(pydict, indent=4, allow_nan=True, sort_keys=True)
+    f = open(writepath, 'w')
+    print >> f, jstring
+    f.close()
 
+
+
+def convert_boundary(boundary_pix ,center_deg ,deg_per_pixel):
+    
+
+    boundary_deg = boundary_pix *deg_per_pixel
+    boundary_relative_deg = boundary_deg - center_deg
+    
+    return boundary_relative_deg
         
 def make_movie_from_stack(rootDir,frameStack,frameRate=24,movFile='test.mp4'):
     #Cesar Echavarria 10/2016
@@ -787,7 +802,7 @@ def make_movie_from_stack(rootDir,frameStack,frameRate=24,movFile='test.mp4'):
 
 
 def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smooth_fwhm=None, magRatio_thresh=None,\
-    analysisDir=None,motionCorrection=False, flip = False, modify_range=True, mask =None):
+    analysisDir=None,motionCorrection=False, flip = False, bound_box = False, modify_range=True, mask =None):
 
     anatSource=os.path.join(targetRoot,'Surface')
     motionDir=os.path.join(targetRoot,'Motion')
@@ -929,6 +944,129 @@ def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smoo
 
             fig.savefig(outFile, dpi=dpi, transparent=True)
             plt.close()
+
+        # output bounding box legend
+        if bound_box:
+            unique_phase = np.unique(phaseMapDisplay[~np.isnan(phaseMapDisplay)])
+            
+            data_dict = dict()
+            #hard-coding screen parameters, for now
+            szScreenY=768
+            szScreenX=1024
+            #TODO: Create a text file with these values that the user provides
+            screen_size_x_degrees = 81.2812
+            screen_size_y_degrees = 45.77
+
+            deg_per_pixel = screen_size_x_degrees/float(szScreenX)
+            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(0,85,5)-40
+
+            deg_per_pixel = screen_size_y_degrees/float(szScreenY)
+            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,45,5)-20)
+            
+            screen_size_x_cm = 103.0
+            screen_size_y_cm = 58.0
+            view_distance_cm = 60.0
+
+            
+            
+            data_dict['screen_params']=dict()
+            data_dict['screen_params']['screen_size_x_pixels'] = szScreenX
+            data_dict['screen_params']['screen_size_y_pixels'] = szScreenY
+            data_dict['screen_params']['screen_size_x_cm'] = screen_size_x_cm
+            data_dict['screen_params']['screen_size_y_cm'] = screen_size_y_cm
+            data_dict['screen_params']['view_distance_cm'] = view_distance_cm
+            data_dict['screen_params']['screen_size_x_degrees'] = screen_size_x_degrees
+            data_dict['screen_params']['screen_size_t_degrees'] = screen_size_y_degrees
+
+            x = np.linspace(0, 2*np.pi, szScreenX)
+            y = np.linspace(0, 2*np.pi, szScreenY)
+            xv, yv = np.meshgrid(x, y)
+            thick= 5
+
+            if cond==1 or cond ==2:
+                if cond ==1:
+                    legend=xv
+                    boundary_left = np.where(legend[0,:]>=np.min(unique_phase))[0][0]
+                    boundary_right = np.where(legend[0,:]>=np.max(unique_phase))[0][0]  
+                else:
+                    xv=(2*np.pi)-xv
+                    legend = xv
+                    boundary_left = np.where(legend[0,:]<=np.max(unique_phase))[0][0]
+                    boundary_right = np.where(legend[0,:]<=np.min(unique_phase))[0][0] 
+                    
+                legend[:,boundary_left-thick:boundary_left+thick] = 0
+                legend[:,boundary_right-thick:boundary_right+thick] = 0  
+                
+                #convert to degrees
+                boundary_left_deg = convert_boundary(boundary_left, screen_size_x_degrees/2.0, screen_size_x_degrees/float(szScreenX))
+                boundary_right_deg = convert_boundary(boundary_right, screen_size_x_degrees/2.0, screen_size_x_degrees/float(szScreenX))
+                
+                print('****************************************************************')
+                print('Boundaries in Degrees')
+                print('----------------------------------------------------------------')
+                print('Left: %10.4f, Right: %10.4f'%(boundary_left_deg, boundary_right_deg))
+                print('***************************************************************')
+                
+                data_dict['screen_boundaries']=dict()
+                data_dict['screen_boundaries']['boundary_left_pixels'] = boundary_left
+                data_dict['screen_boundaries']['boundary_right_pixels'] = boundary_right
+                data_dict['screen_boundaries']['boundary_left_degrees'] = boundary_left_deg
+                data_dict['screen_boundaries']['boundary_right_degrees'] = boundary_right_deg
+                
+        #         #save to Json
+                fileName ='screen_boundaries_%s_%s%s%s.json'% (sessID,run,smoothString,threshString)
+                write_dict_to_json(data_dict, os.path.join(figOutDir,fileName))
+                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+
+            elif cond==3 or cond==4:
+                x = np.linspace(0, 2*np.pi, szScreenX)
+                y = np.linspace(0, 2*np.pi, szScreenX)
+                xv, yv = np.meshgrid(x, y)
+                if cond ==3:
+                    legend = yv[128:896,:]
+
+
+                    boundary_down =  np.where(legend[:,0]>=np.max(unique_phase))[0][0]
+                    boundary_up = np.where(legend[:,0]>=np.min(unique_phase))[0][0]
+                else:
+                    legend = (2*pi)-yv
+                    legend = legend[128:896,:]
+
+                    boundary_down =  np.where(legend[:,0]<=np.min(unique_phase))[0][0]
+                    boundary_up = np.where(legend[:,0]>=np.max(unique_phase))[0][0]
+                legend[boundary_up-thick:boundary_up+thick,:] = 0
+                legend[boundary_down-thick:boundary_down+thick,:] = 0  
+                
+                #convert to degrees
+                boundary_down_deg = -convert_boundary(boundary_down, screen_size_y_degrees/2.0, screen_size_y_degrees/float(szScreenY))
+                boundary_up_deg = -convert_boundary(boundary_up, screen_size_y_degrees/2.0, screen_size_y_degrees/float(szScreenY))
+                plt.imshow(legend,'nipy_spectral',vmin=.78,vmax=(2*np.pi)-.78)
+
+                print('****************************************************************')
+                print('Boundaries in Degrees')
+                print('----------------------------------------------------------------')
+                print('Up: %10.4f, Down: %10.4f'%(boundary_up_deg, boundary_down_deg))
+                print('****************************************************************')
+                data_dict['screen_boundaries']=dict()
+                data_dict['screen_boundaries']['boundary_up_pixels'] = boundary_up
+                data_dict['screen_boundaries']['boundary_down_pixels'] = boundary_down
+                data_dict['screen_boundaries']['boundary_up_degrees'] = boundary_up_deg
+                data_dict['screen_boundaries']['boundary_down_degrees'] = boundary_down_deg
+
+        #         #save to Json
+                fileName ='screen_boundaries_%s_%s%s%s.json'% (sessID,run,smoothString,threshString)
+                write_dict_to_json(data_dict, os.path.join(figOutDir,fileName))
+                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
+
+            fileName = 'screen_boundaries_%s_%s%s%s.png'% (sessID,run,smoothString,threshString)
+            plt.xticks(x_tick_loc,x_tick_label)
+            plt.yticks(y_tick_loc,y_tick_label)
+            plt.savefig(os.path.join(figOutDir,fileName))
+            plt.close()
+
+
 
 def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smooth_fwhm=None, magRatio_thresh=None,\
     analysisDir=None,motionCorrection=False, flip = False, modify_range=True, mask =None):
