@@ -1058,7 +1058,6 @@ def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smoo
         #         #save to Json
                 fileName ='screen_boundaries_%s_%s%s%s.json'% (sessID,run,smoothString,threshString)
                 write_dict_to_json(data_dict, os.path.join(figOutDir,fileName))
-                plt.imshow(legend,'nipy_spectral',vmin=0,vmax=2*np.pi)
 
             fileName = 'screen_boundaries_%s_%s%s%s.png'% (sessID,run,smoothString,threshString)
             plt.xticks(x_tick_loc,x_tick_label)
@@ -1175,7 +1174,7 @@ def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smo
 
             ax.imshow(imSurf, 'gray')
             if cond ==3 or cond ==4:
-                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.7,vmax=rangeMax-.7)
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin+.6,vmax=rangeMax-.6)
             else:
                 ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
 
