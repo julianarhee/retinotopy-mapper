@@ -954,20 +954,21 @@ def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smoo
             szScreenY=768
             szScreenX=1024
             #TODO: Create a text file with these values that the user provides
-            screen_size_x_degrees = 81.2812
-            screen_size_y_degrees = 45.77
+            screen_size_x_degrees = 117.5584
+            screen_size_y_degrees = 67.323
 
-            deg_per_pixel = screen_size_x_degrees/float(szScreenX)
-            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
-            x_tick_label = np.arange(0,85,5)-40
+            #some details of screen display hard-coded
+            deg_per_pixel = 117.5584/float(szScreenX)
+            x_tick_loc = (np.arange(3,117.5584,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(5,120,5)-60
 
-            deg_per_pixel = screen_size_y_degrees/float(szScreenY)
-            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
-            y_tick_label = -1*(np.arange(0,45,5)-20)
+            deg_per_pixel = 67.323/float(szScreenY)
+            y_tick_loc = (np.arange(3.5,67.323,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,65,5)-30)
             
             screen_size_x_cm = 103.0
             screen_size_y_cm = 58.0
-            view_distance_cm = 60.0
+            view_distance_cm = 30.0
 
             
             
@@ -1219,20 +1220,21 @@ def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smo
             szScreenY=768
             szScreenX=1024
             #TODO: Create a text file with these values that the user provides
-            screen_size_x_degrees = 81.2812
-            screen_size_y_degrees = 45.77
+            screen_size_x_degrees = 117.5584
+            screen_size_y_degrees = 67.323
 
-            deg_per_pixel = screen_size_x_degrees/float(szScreenX)
-            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
-            x_tick_label = np.arange(0,85,5)-40
+            #some details of screen display hard-coded
+            deg_per_pixel = 117.5584/float(szScreenX)
+            x_tick_loc = (np.arange(3,117.5584,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(5,120,5)-60
 
-            deg_per_pixel = screen_size_y_degrees/float(szScreenY)
-            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
-            y_tick_label = -1*(np.arange(0,45,5)-20)
+            deg_per_pixel = 67.323/float(szScreenY)
+            y_tick_loc = (np.arange(3.5,67.323,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,65,5)-30)
             
             screen_size_x_cm = 103.0
             screen_size_y_cm = 58.0
-            view_distance_cm = 60.0
+            view_distance_cm = 30.0
 
             
             
@@ -1383,7 +1385,7 @@ def get_analysis_path_phase(analysisRoot, targetFreq, interp=False, excludeEdges
     if removeRollingMean:
         removeRollingString='minusRollingMean'
     if smooth_fwhm:
-    	fwhmString = 'fwhm_%i'%(int(smooth_fwhm))
+        fwhmString = 'fwhm_%i'%(int(smooth_fwhm))
 
     procedureDir=interpString+excludeString+averageString+fwhmString+removeRollingString
 
@@ -1795,13 +1797,13 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
             szScreenX=1024
 
             #some details of screen display hard-coded
-            deg_per_pixel = 81.2812/float(szScreenX)
-            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
-            x_tick_label = np.arange(0,85,5)-40
+            deg_per_pixel = 117.5584/float(szScreenX)
+            x_tick_loc = (np.arange(3,117.5584,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(5,120,5)-60
 
-            deg_per_pixel = 45.77/float(szScreenY)
-            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
-            y_tick_label = -1*(np.arange(0,45,5)-20)
+            deg_per_pixel = 67.323/float(szScreenY)
+            y_tick_loc = (np.arange(3.5,67.323,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,65,5)-30)
             if stimType=='bar':
                 
 
@@ -1945,7 +1947,7 @@ def smooth_array(inputArray,fwhm,phaseArray=False):
 def smooth_stack(inputStack,fwhm,phaseStack=False):
     outputStack = np.zeros(np.shape(inputStack))
     for f in range(np.shape(inputStack)[2]):
-    	outputStack[:,:,f]=smooth_array(np.squeeze(inputStack[:,:,f]),fwhm)
+        outputStack[:,:,f]=smooth_array(np.squeeze(inputStack[:,:,f]),fwhm)
     return outputStack
 
 
@@ -2628,13 +2630,13 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessI
             szScreenX=1024
 
             #some details of screen display hard-coded
-            deg_per_pixel = 81.2812/float(szScreenX)
-            x_tick_loc = (np.arange(.6406,81.2812,5))*(1/(deg_per_pixel))
-            x_tick_label = np.arange(0,85,5)-40
+            deg_per_pixel = 117.5584/float(szScreenX)
+            x_tick_loc = (np.arange(3,117.5584,5))*(1/(deg_per_pixel))
+            x_tick_label = np.arange(5,120,5)-60
 
-            deg_per_pixel = 45.77/float(szScreenY)
-            y_tick_loc = (np.arange(2.885,45.77,5))*(1/(deg_per_pixel))
-            y_tick_label = -1*(np.arange(0,45,5)-20)
+            deg_per_pixel = 67.323/float(szScreenY)
+            y_tick_loc = (np.arange(3.5,67.323,5))*(1/(deg_per_pixel))
+            y_tick_label = -1*(np.arange(0,65,5)-30)
             if stimType=='bar':
                 
 
