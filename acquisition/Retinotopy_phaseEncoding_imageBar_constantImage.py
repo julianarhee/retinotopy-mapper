@@ -100,7 +100,7 @@ xGrid, yGrid = np.meshgrid(x, y)
 
 
 # --EXPERIMENTAL VARIABLES  --
-barSize=125
+barSize=60
 effectiveSzX=szX+barSize
 effectiveSzY=szY+barSize
 rotationRate = 0.13# revs per sec
