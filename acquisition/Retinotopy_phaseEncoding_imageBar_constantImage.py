@@ -196,7 +196,7 @@ if winFlag==0:
 	if two_p_room:
 		win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5), screen = 1)
 	else:
-		win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5))
+		win = visual.Window(fullscr=fullscreen, size=winsize, units='pix', monitor=whichMonitor, color = (-.5,-.5,-.5), screen = 1)
 	winFlag=1
 	time.sleep(3)
 
